@@ -8,6 +8,8 @@ State: **COMPLETE**
 
 Milestone baseline commit: `62ba3275a3f016b2f07d333684286b59c1188cfa`
 
+M0.5 source-readiness commit: `b2180c00d0a6029a65996055ae7becbcddc5f0b7`
+
 M0.5 source readiness is complete. M1 is READY from the source-gate perspective
 but was not started and still requires explicit approval.
 
@@ -39,8 +41,8 @@ See `docs/DISCOVERY.md` and `evidence/discovery/REQUIRED-EVIDENCE.md`.
 | NetBox offline repositories excluded | PASS | Clean repolist and resolved repo IDs contained only BaseOS, AppStream, and `m05-zabbix`. |
 | No host packages installed/updated | PASS | No install/update command ran; host RPM hash matched and clean RPM count stayed zero. |
 | No module state changed | PASS | Module-state aggregate hashes matched before/after. |
-| No secrets committed | NOT-EXECUTED | Final staged-content secret scan is pending closeout. |
-| Build source evidence committed | NOT-EXECUTED | Pending M0.5 evidence commit. |
+| No secrets committed | PASS | Staged-content scans found no private-key marker, credential-like literal, or unredacted subscription identity. |
+| Build source evidence committed | PASS | Commit `b2180c00d0a6029a65996055ae7becbcddc5f0b7`. |
 
 ## M0 acceptance
 
