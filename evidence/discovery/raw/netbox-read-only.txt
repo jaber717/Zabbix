@@ -1,0 +1,76 @@
+CAPTURED_AT=2026-09-01T01:12:21.0686368+03:00
+PATH=Proxmox SSH -> read-only pct exec in running LXC 9000
+AUTH=existing portal read-only credential loaded by existing application code;
+credential value was not printed or saved
+
+=== SELECTED_LXC_CONFIG ===
+$ pct config 9000 | grep selected non-secret keys
+arch: amd64
+cores: 4
+hostname: netbox-demo
+memory: 8192
+net0: name=eth0,bridge=vmbr0,hwaddr=BC:24:11:38:1B:B1,ip=dhcp,type=veth
+onboot: 1
+ostype: ubuntu
+rootfs: local-lvm:vm-9000-disk-0,size=40G
+swap: 2048
+unprivileged: 1
+
+=== RUNTIME_IDENTITY ===
+$ pct exec 9000 -- hostname
+netbox-demo
+$ pct exec 9000 -- ip -brief address
+lo UNKNOWN 127.0.0.1/8 ::1/128
+eth0@if13 UP 192.168.1.89/24 metric 1024 fe80::be24:11ff:fe38:1bb1/64
+
+=== NETBOX_VERSION ===
+$ /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py version
+/opt/netbox-4.6.9/netbox/netbox/settings.py:251: UserWarning: API_TOKEN_PEPPERS is not defined. v2 API tokens cannot be used.
+6.0.8
+
+=== SERVICE_STATE ===
+$ systemctl is-active netbox netbox-rq nginx postgresql redis-server
+active
+active
+active
+active
+active
+$ systemctl is-active netbox-topology
+active
+
+=== DIRECT_UNAUTHENTICATED_API ===
+$ curl http://127.0.0.1/api/ (body discarded)
+HTTP_STATUS=403
+
+=== EXISTING_PORTAL_GETS ===
+$ GET http://127.0.0.1:8081/api/health
+{"netbox":"4.6.9","reachable":true,"cache_age_s":57,"cached":true,"last_error":null}
+$ GET http://127.0.0.1:8081/api/summary
+{"sites":3,"locations":4,"racks":11,"devices":81,"devices_by_role":{"console-server":1,"firewall":6,"leaf":10,"load-balancer":4,"management-switch":4,"odf":3,"patch-panel":16,"pdu":22,"server":11,"spine":4},"cables":84,"circuits":2,"prefixes":43,"ip_addresses":116,"data_quality":{"broken":0,"dangling":0,"uncabled_interfaces":1005},"environments":["DEV","DR","PROD"]}
+
+=== READ_ONLY_ENDPOINT_AUDIT ===
+{
+  "endpoints": {
+    "custom_fields": {"access": "UNAVAILABLE", "reason": "NetBoxUnavailable"},
+    "device_roles": {"access": "AVAILABLE", "count": 10},
+    "devices": {"access": "AVAILABLE", "count": 81, "statuses": ["active", "planned"]},
+    "locations": {"access": "AVAILABLE", "count": 4},
+    "manufacturers": {"access": "AVAILABLE", "count": 8},
+    "platforms": {"access": "AVAILABLE", "count": 4},
+    "sites": {"access": "AVAILABLE", "count": 3},
+    "tags": {"access": "UNAVAILABLE", "reason": "NetBoxUnavailable"},
+    "virtual_machines": {"access": "UNAVAILABLE", "reason": "NetBoxUnavailable"}
+  },
+  "monitoring_metadata": {
+    "matching_custom_field_names": null,
+    "matching_tag_names": null
+  },
+  "primary_ip_population": {
+    "devices_with_primary_ip": 40,
+    "virtual_machines_with_primary_ip": null
+  }
+}
+
+The client implementation used for the endpoint audit permits only GET and HEAD.
+No write method was called. Endpoint errors were normalized to exception class so
+credentials, response bodies, and sensitive headers could not enter evidence.

@@ -1,0 +1,8 @@
+CAPTURED_AT=2026-09-01T01:12:21.0686368+03:00
+TARGET=192.168.1.91:22
+METHOD=bounded TCP connect with no authentication attempt
+
+PROBE_1=NO_RESPONSE (1500 ms)
+PROBE_2=NO_RESPONSE (3000 ms)
+
+No remote command was executed.

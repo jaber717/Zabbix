@@ -1,0 +1,32 @@
+CAPTURED_AT=2026-09-01T01:12:21.0686368+03:00
+ROOT=C:\Users\jaber\Documents\Home-Server\netbox-topology
+INSPECTION=filesystem paths and selected route/client source, read-only
+
+PRESENT_FILES:
+README.md
+NOTES.md
+requirements.txt
+topology_acceptance.py
+visual_polish_acceptance.py
+app/main.py
+app/netbox.py
+app/path.py
+app/graph.py
+app/static/app.js
+app/static/index.html
+
+OBSERVED_PUBLIC_ROUTES:
+GET /
+GET /api/health
+GET /api/summary
+GET /api/graph
+GET /api/device/{device_id}
+GET /api/device/{device_id}/neighbors
+GET /api/path/{edge_id}
+GET /api/racks
+GET /api/intersite
+GET /api/refresh
+
+OBSERVED_CLIENT_METHOD_ALLOWLIST=GET,HEAD
+OBSERVED_HARDCODED_NETBOX_VERSION=4.6.9
+INDEPENDENT_GIT_DIRECTORY=NOT_DETECTED

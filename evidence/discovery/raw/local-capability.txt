@@ -1,0 +1,17 @@
+CAPTURED_AT=2026-09-01T01:12:21.0686368+03:00
+COMMANDS:
+  git --version
+  git -C C:\Users\jaber\Documents\Home-Server rev-parse --show-toplevel
+  Get-Command ssh
+  [System.Environment]::OSVersion.VersionString
+  [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+
+OUTPUT:
+git version 2.55.0.windows.2
+NOT_A_GIT_REPOSITORY
+C:\WINDOWS\System32\OpenSSH\ssh.exe
+Microsoft Windows NT 10.0.19045.0
+X64
+
+TARGET_DIRECTORY_INITIAL_STATE=ABSENT
+TARGET=C:\Users\jaber\Documents\Home-Server\zabbix-platform

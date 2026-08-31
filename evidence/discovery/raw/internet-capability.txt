@@ -1,0 +1,8 @@
+CAPTURED_AT=2026-09-01T01:12:21.0686368+03:00
+METHOD=curl HEAD/redirect follow, 10-second maximum, response body discarded
+
+https://www.zabbix.com/ HTTP_STATUS=200 EXIT=0
+https://access.redhat.com/ HTTP_STATUS=200 EXIT=0
+
+This output verifies outbound HTTPS reachability only. It is not a Zabbix version,
+package, subscription, entitlement, or repository-availability verification.

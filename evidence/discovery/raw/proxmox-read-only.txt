@@ -1,0 +1,76 @@
+CAPTURED_AT=2026-09-01T01:12:21.0686368+03:00
+ACCESS=SSH public-key authentication, BatchMode=yes, PasswordAuthentication=no,
+StrictHostKeyChecking=yes, ConnectTimeout=5
+OPERATIONS=read-only commands only
+
+=== HOST_IDENTITY ===
+$ hostname
+JaberLAB
+$ uname -srm
+Linux 6.8.12-14-pve x86_64
+
+=== PVE_VERSION ===
+$ pveversion
+pve-manager/8.4.13/5b08ebc2823dd9cb (running kernel: 6.8.12-14-pve)
+
+=== QEMU_LIST ===
+$ qm list
+      VMID NAME                 STATUS     MEM(MB)    BOOTDISK(GB) PID
+       110 PNET4.2.4            stopped    40960              0.00 0
+       120 EVE-LAB              stopped    16384             50.00 0
+       130 Ansible              stopped    4096              32.00 0
+       140 Netbox               stopped    12288             80.00 0
+
+=== LXC_LIST ===
+$ pct list
+VMID       Status     Lock         Name
+200        running                 mediastack
+201        running                 tailscale-lxc
+202        running                 filebrowser-lxc
+203        running                 jellyfin-lxc
+204        running                 adguard-lxc
+205        running                 npm-lxc
+210        stopped                 jaberlab-ops
+211        running                 claude-code
+212        running                 family-health-hub
+9000       running                 netbox-demo
+9001       stopped                 netbox-cmdb-test
+
+=== NODE_NETWORK_READ_ONLY ===
+$ pvesh get /nodes/JaberLAB/network --output-format yaml
+---
+- exists: 1
+  families:
+  - inet
+  iface: enp6s0
+  method: manual
+  method6: manual
+  priority: 5
+  type: eth
+- active: 1
+  exists: 1
+  families:
+  - inet
+  iface: enp5s0
+  method: manual
+  method6: manual
+  priority: 3
+  type: eth
+- active: 1
+  address: 192.168.1.100
+  autostart: 1
+  bridge_fd: '0'
+  bridge_ports: enp5s0
+  bridge_stp: off
+  cidr: 192.168.1.100/24
+  families:
+  - inet
+  gateway: 192.168.1.1
+  iface: vmbr0
+  method: static
+  method6: manual
+  netmask: '24'
+  options:
+  - dns-nameserver 192.168.1.1 8.8.8.8
+  priority: 4
+  type: bridge

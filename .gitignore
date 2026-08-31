@@ -1,0 +1,21 @@
+# Secrets and local runtime configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*token*
+*password*
+
+# Generated artifacts and caches
+dist/
+artifacts/
+*.tar
+*.tar.gz
+*.zip
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
