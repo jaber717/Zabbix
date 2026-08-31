@@ -45,14 +45,16 @@ RPM `gpgcheck=1` is mandatory. `repo_gpgcheck=0` is explicit until the project
 has an approved independent signing key and custody process. A private key stored
 beside the artifact would add no independent trust and is prohibited.
 
-### Unresolved `fping` source
+### Narrow `fping` source exception
 
 - **EXPECTED:** The three approved sources provide the complete Zabbix Server
   runtime closure.
 - **ACTUAL:** The official Zabbix 7.0.30 server RPM requires `fping`, while an
-  approved-source provider query returned no result.
-- **IMPACT:** M1 stopped before lockfile, repository, artifact, reproducibility,
-  and negative-test stages.
-- **RECOMMENDATION:** Obtain architect/owner approval for a supported `fping`
-  source or a controlled vendor-verified RPM ingestion path. EPEL or any other
-  third-party source must not be added silently.
+  original-source provider query returned no result. The owner subsequently
+  approved the official Zabbix non-supported RHEL 9 repository for `fping` only.
+- **IMPACT:** `fping-0:5.1-1.el9.x86_64` is an allowed exception with explicit
+  non-supported provenance. No other package may resolve from that repository.
+- **CONTROLS:** DNF `includepkgs=fping`, exact NEVRA and SHA256 pins, independent
+  signature verification against fingerprint
+  `D9AA84C2B617479C6E4FCF4D19F2475308EFA7DD`, and a lock-generation failure if
+  any other package is attributed to the source. EPEL remains prohibited.

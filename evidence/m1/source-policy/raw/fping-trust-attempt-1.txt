@@ -1,0 +1,59 @@
+OBSERVED_UTC=2026-08-31T23:29:33Z
+SOURCE=https://repo.zabbix.com/non-supported/rhel/9/x86_64/
+PURPOSE=fping only
+
+===== REPOMD_HEAD =====
+HTTP/2 200 
+server: nginx
+date: Mon, 31 Aug 2026 23:29:34 GMT
+content-type: text/xml
+content-length: 2966
+last-modified: Wed, 06 Jul 2022 11:03:24 GMT
+etag: "62c56bfc-b96"
+access-control-allow-origin: *
+vary: Origin
+x-xss-protection: 1; mode=block
+x-content-type-options: nosniff
+x-frame-options: DENY
+referrer-policy: strict-origin
+content-security-policy: frame-ancestors 'none'; upgrade-insecure-requests;
+strict-transport-security: max-age=31536000; includeSubDomains
+accept-ranges: bytes
+
+
+===== REPOMD_DOWNLOAD_AND_SHA256 =====
+1d97b215e1281c216faddd2bfdb85a61ea918aa1f8868ec9cf7c4908ad46493c  /var/lib/zabbix-offline-build/m1-fping-trust-check-20260831T232933Z-5334/repomd.xml
+
+===== UNFILTERED_REPOSITORY_CONTENT =====
+Added m1-zabbix-nonsupported repo from https://repo.zabbix.com/non-supported/rhel/9/x86_64/
+Last metadata expiration check: 0:00:45 ago on Tue 01 Sep 2026 02:28:52 AM +03.
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+fping|0:5.1-1.el9.x86_64|m1-zabbix-nonsupported|fping-5.1-1.el9.x86_64.rpm
+
+===== SIGNING_KEY_DOWNLOAD =====
+94e470351b6f04a4ebc52017a8371bf2594449fdd561952bd0399c32f5c121ed  /var/lib/zabbix-offline-build/m1-fping-trust-check-20260831T232933Z-5334/RPM-GPG-KEY-ZABBIX-08EFA7DD
+pub   rsa4096 2022-07-05 [SC] [expires: 2034-06-30]
+      D9AA 84C2 B617 479C 6E4F  CF4D 19F2 4753 08EF A7DD
+uid                      Zabbix LLC (Jul 2022) <packager@zabbix.com>
+sub   rsa4096 2022-07-05 [E] [expires: 2034-06-30]
+
+
+===== EXACT_RPM_DOWNLOAD =====
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Added m1-zabbix-nonsupported repo from https://repo.zabbix.com/non-supported/rhel/9/x86_64/
+Last metadata expiration check: 0:00:49 ago on Tue 01 Sep 2026 02:28:52 AM +03.
+fping-5.1-1.el9.x86_64.rpm                       27 kB/s |  35 kB     00:01    
+
+===== RPM_IDENTITY_AND_HASH =====
+warning: /var/lib/zabbix-offline-build/m1-fping-trust-check-20260831T232933Z-5334/rpm/fping-5.1-1.el9.x86_64.rpm: Header V4 RSA/SHA512 Signature, key ID 08efa7dd: NOKEY
+fping-0:5.1-1.el9.x86_64
+973ea94723ef69a9196c9f72f44ca414b7857a75ccc02e8a6492293fb010073c  /var/lib/zabbix-offline-build/m1-fping-trust-check-20260831T232933Z-5334/rpm/fping-5.1-1.el9.x86_64.rpm
+
+===== TRUSTED_SIGNATURE_CHECK =====
+error: can't create transaction lock on /var/lib/zabbix-offline-build/m1-fping-trust-check-20260831T232933Z-5334/rpmdb/.rpm.lock (No such file or directory)

@@ -20,6 +20,14 @@
       "url": "https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/",
       "key_url": "https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX-B5333005",
       "key_fingerprint": "4C3D6F2CC75F5146754FC374D913219AB5333005"
+    },
+    "zabbix_non_supported": {
+      "id": "m1-zabbix-nonsupported",
+      "url": "https://repo.zabbix.com/non-supported/rhel/9/x86_64/",
+      "purpose": "fping-only",
+      "allowed_packages": ["fping"],
+      "key_url": "https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX-08EFA7DD",
+      "key_fingerprint": "D9AA84C2B617479C6E4FCF4D19F2475308EFA7DD"
     }
   },
   "zabbix": {
@@ -49,6 +57,13 @@
     "postgresql": "16",
     "php": "8.3",
     "nginx": "1.24"
+  },
+  "fping": {
+    "version": "5.1",
+    "release": "1.el9",
+    "arch": "x86_64",
+    "nevra": "fping-0:5.1-1.el9.x86_64",
+    "sha256": "973ea94723ef69a9196c9f72f44ca414b7857a75ccc02e8a6492293fb010073c"
   },
   "python": {
     "abi": "3.11",

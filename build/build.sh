@@ -22,7 +22,7 @@ exec > >(tee "$OUTPUT_DIR/evidence/build.log") 2>&1
 BUILD_ROOT="/var/lib/zabbix-offline-build/m1-${RUN_ID}-$$"
 CLEAN_ROOT="$BUILD_ROOT/source-root"
 LOCAL_ROOT="$BUILD_ROOT/local-root"
-SIGDB="$BUILD_ROOT/signature-rpmdb"
+SIGDB="$BUILD_ROOT/signature-root/var/lib/rpm"
 cleanup() { safe_remove_root "$BUILD_ROOT"; }
 trap cleanup EXIT INT TERM
 
@@ -44,13 +44,20 @@ KEY_DIR="$OUTPUT_DIR/work/keys"
 mkdir -p "$KEY_DIR"
 curl --fail --silent --show-error --location --max-time 60 \
   --output "$KEY_DIR/RPM-GPG-KEY-ZABBIX-B5333005" "$ZABBIX_KEY_URL"
+curl --fail --silent --show-error --location --max-time 60 \
+  --output "$KEY_DIR/RPM-GPG-KEY-ZABBIX-08EFA7DD" "$NON_SUPPORTED_KEY_URL"
 cp /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release "$KEY_DIR/RPM-GPG-KEY-redhat-release"
 ACTUAL_ZABBIX_FPR=$(gpg --batch --with-colons --show-keys "$KEY_DIR/RPM-GPG-KEY-ZABBIX-B5333005" | awk -F: '$1=="fpr" {print $10; exit}')
 [[ "$ACTUAL_ZABBIX_FPR" == "$ZABBIX_KEY_FINGERPRINT" ]] || die "Zabbix key fingerprint mismatch"
+ACTUAL_NON_SUPPORTED_FPR=$(gpg --batch --with-colons --show-keys "$KEY_DIR/RPM-GPG-KEY-ZABBIX-08EFA7DD" | awk -F: '$1=="fpr" {print $10; exit}')
+[[ "$ACTUAL_NON_SUPPORTED_FPR" == "$NON_SUPPORTED_KEY_FINGERPRINT" ]] || die "Zabbix non-supported key fingerprint mismatch"
 {
   echo "ZABBIX_EXPECTED=$ZABBIX_KEY_FINGERPRINT"
   echo "ZABBIX_ACTUAL=$ACTUAL_ZABBIX_FPR"
   gpg --batch --show-keys --with-fingerprint "$KEY_DIR/RPM-GPG-KEY-ZABBIX-B5333005"
+  echo "NON_SUPPORTED_EXPECTED=$NON_SUPPORTED_KEY_FINGERPRINT"
+  echo "NON_SUPPORTED_ACTUAL=$ACTUAL_NON_SUPPORTED_FPR"
+  gpg --batch --show-keys --with-fingerprint "$KEY_DIR/RPM-GPG-KEY-ZABBIX-08EFA7DD"
   gpg --batch --show-keys --with-fingerprint "$KEY_DIR/RPM-GPG-KEY-redhat-release"
 } > "$OUTPUT_DIR/evidence/key-fingerprints.txt" 2>&1
 
@@ -58,6 +65,10 @@ log "refreshing metadata in empty source installroot"
 source_dnf makecache --refresh
 source_dnf repolist --enabled > "$OUTPUT_DIR/evidence/source-repolist.txt" 2>&1
 assert_source_repos "$OUTPUT_DIR/evidence/source-repolist.txt"
+fping_source_dnf -q repoquery --available --qf '%{name}|%{name}-%{epoch}:%{version}-%{release}.%{arch}|%{repoid}' '*' \
+  | grep -E '^[[:alnum:]_.+-]+\|' > "$OUTPUT_DIR/evidence/non-supported-content.txt"
+[[ $(wc -l < "$OUTPUT_DIR/evidence/non-supported-content.txt") -eq 1 ]] || die "non-supported repository exposed more than one permitted package"
+grep -Fxq "fping|$FPING_NEVRA|$NON_SUPPORTED_REPO" "$OUTPUT_DIR/evidence/non-supported-content.txt" || die "non-supported repository content policy mismatch"
 
 log "selecting target streams inside disposable source root"
 source_dnf module enable -y \
@@ -70,7 +81,7 @@ grep -Eq "php[[:space:]]+$PHP_STREAM([[:space:]]|$)" "$OUTPUT_DIR/evidence/sourc
 grep -Eq "nginx[[:space:]]+$NGINX_STREAM([[:space:]]|$)" "$OUTPUT_DIR/evidence/source-module-nginx.txt" || die "nginx stream absent"
 
 mapfile -t ZABBIX_SPECS < <(zabbix_specs)
-TARGETS=("${ZABBIX_SPECS[@]}" "${RUNTIME_PACKAGES[@]}" "${PYTHON_PACKAGES[@]}")
+TARGETS=("${ZABBIX_SPECS[@]}" "fping-$FPING_VERSION-$FPING_RELEASE.$FPING_ARCH" "${RUNTIME_PACKAGES[@]}" "${PYTHON_PACKAGES[@]}")
 printf '%s\n' "${TARGETS[@]}" > "$OUTPUT_DIR/evidence/target-packages.txt"
 
 log "downloading complete runtime closure with --resolve --alldeps"
@@ -87,13 +98,19 @@ for package in "${ZABBIX_PACKAGES[@]}"; do
   count=$(rpm -qp --qf '%{NAME}\n' "${RPM_FILES[@]}" 2>/dev/null | grep -cx "$package" || true)
   [[ "$count" == 1 ]] || die "expected exactly one payload for $package, found $count"
 done
+fping_count=$(rpm -qp --qf '%{NAME}\n' "${RPM_FILES[@]}" 2>/dev/null | grep -cx fping || true)
+[[ "$fping_count" == 1 ]] || die "expected exactly one fping payload, found $fping_count"
 
 LOCK_CANDIDATE="$OUTPUT_DIR/rpm-lockfile.candidate.txt"
 printf 'NEVRA\tARCH\tREPO_ID\tSHA256\n' > "$LOCK_CANDIDATE"
 for rpm_file in "${RPM_FILES[@]}"; do
   IFS='|' read -r name nevra arch < <(rpm -qp --qf '%{NAME}|%{NAME}-%{EPOCHNUM}:%{VERSION}-%{RELEASE}.%{ARCH}|%{ARCH}\n' "$rpm_file")
-  query=$(source_dnf -q repoquery --available --qf '%{repoid}' "$nevra" 2>/dev/null | grep -E "^($BASEOS_REPO|$APPSTREAM_REPO|$ZABBIX_REPO)$" | LC_ALL=C sort -u || true)
-  if [[ "$name" == zabbix-* ]]; then
+  query=$(source_dnf -q repoquery --available --qf '%{repoid}' "$nevra" 2>/dev/null | grep -E "^($BASEOS_REPO|$APPSTREAM_REPO|$ZABBIX_REPO|$NON_SUPPORTED_REPO)$" | LC_ALL=C sort -u || true)
+  if [[ "$name" == fping ]]; then
+    [[ "$nevra" == "$FPING_NEVRA" ]] || die "unexpected fping NEVRA: $nevra"
+    grep -qx "$NON_SUPPORTED_REPO" <<< "$query" || die "fping non-supported provenance missing"
+    repo=$NON_SUPPORTED_REPO
+  elif [[ "$name" == zabbix-* ]]; then
     grep -qx "$ZABBIX_REPO" <<< "$query" || die "Zabbix provenance missing for $nevra"
     repo=$ZABBIX_REPO
   elif grep -qx "$BASEOS_REPO" <<< "$query"; then
@@ -103,10 +120,15 @@ for rpm_file in "${RPM_FILES[@]}"; do
   else
     die "approved provenance missing for $nevra"
   fi
-  printf '%s\t%s\t%s\t%s\n' "$nevra" "$arch" "$repo" "$(sha256sum "$rpm_file" | awk '{print $1}')" >> "$LOCK_CANDIDATE"
+  rpm_sha=$(sha256sum "$rpm_file" | awk '{print $1}')
+  if [[ "$repo" == "$NON_SUPPORTED_REPO" ]]; then
+    [[ "$name" == fping && "$rpm_sha" == "$FPING_SHA256" ]] || die "non-supported repository policy violation for $nevra"
+  fi
+  printf '%s\t%s\t%s\t%s\n' "$nevra" "$arch" "$repo" "$rpm_sha" >> "$LOCK_CANDIDATE"
 done
 { head -n1 "$LOCK_CANDIDATE"; tail -n +2 "$LOCK_CANDIDATE" | LC_ALL=C sort -u; } > "$LOCK_CANDIDATE.sorted"
 mv "$LOCK_CANDIDATE.sorted" "$LOCK_CANDIDATE"
+assert_lock_source_policy "$LOCK_CANDIDATE"
 
 if [[ "$UPDATE_LOCK" == 1 ]]; then
   cp "$LOCK_CANDIDATE" "$PROJECT_ROOT/rpm-lockfile.txt"
@@ -126,7 +148,7 @@ python3 "$PROJECT_ROOT/build/lib/filter_modulemd.py" \
   "$MODULE_DIR/upstream-modules.yaml.gz" "$MODULE_DIR/selected-modules.yaml" \
   | tee "$OUTPUT_DIR/evidence/module-filter.txt"
 modulemd-merge "$MODULE_DIR/selected-modules.yaml" "$MODULE_DIR/validated-modules.yaml"
-sha256sum "$MODULE_DIR/upstream-modules.yaml.gz" "$MODULE_DIR/selected-modules.yaml" "$MODULE_DIR/validated-modules.yaml" \
+(cd "$MODULE_DIR" && sha256sum upstream-modules.yaml.gz selected-modules.yaml validated-modules.yaml) \
   > "$OUTPUT_DIR/evidence/module-metadata-sha256.txt"
 
 REPO_DIR="$OUTPUT_DIR/repository"
@@ -139,6 +161,7 @@ modifyrepo_c --mdtype=modules "$MODULE_DIR/validated-modules.yaml" "$REPO_DIR/re
 sudo -n rpm --dbpath="$SIGDB" --initdb
 sudo -n rpm --dbpath="$SIGDB" --import "$KEY_DIR/RPM-GPG-KEY-redhat-release"
 sudo -n rpm --dbpath="$SIGDB" --import "$KEY_DIR/RPM-GPG-KEY-ZABBIX-B5333005"
+sudo -n rpm --dbpath="$SIGDB" --import "$KEY_DIR/RPM-GPG-KEY-ZABBIX-08EFA7DD"
 : > "$OUTPUT_DIR/evidence/rpm-signatures.txt"
 for rpm_file in "$REPO_DIR"/rpm/*.rpm; do
   signature=$(sudo -n rpmkeys --dbpath="$SIGDB" --checksig --verbose "$rpm_file" 2>&1) || {
@@ -148,6 +171,9 @@ for rpm_file in "$REPO_DIR"/rpm/*.rpm; do
   printf '%s\n%s\n' "$rpm_file" "$signature" >> "$OUTPUT_DIR/evidence/rpm-signatures.txt"
   if [[ $(basename "$rpm_file") == zabbix-* ]] && ! grep -Eqi 'key ID b5333005: OK' <<< "$signature"; then
     die "Zabbix RPM was not verified by expected key: $(basename "$rpm_file")"
+  fi
+  if [[ $(basename "$rpm_file") == fping-* ]] && ! grep -Eqi 'key ID 08efa7dd: OK' <<< "$signature"; then
+    die "fping RPM was not verified by expected key: $(basename "$rpm_file")"
   fi
 done
 
@@ -168,6 +194,7 @@ gpgcheck=1
 repo_gpgcheck=0
 gpgkey=file:///opt/zabbix-offline/repository/gpg/RPM-GPG-KEY-redhat-release
        file:///opt/zabbix-offline/repository/gpg/RPM-GPG-KEY-ZABBIX-B5333005
+       file:///opt/zabbix-offline/repository/gpg/RPM-GPG-KEY-ZABBIX-08EFA7DD
 EOF
 
 log "testing repository with local content only"
@@ -223,7 +250,7 @@ jq -n \
   --arg modulemd_sha "$(sha256sum "$MODULE_DIR/upstream-modules.yaml.gz" | awk '{print $1}')" \
   --arg local_repomd_sha "$(sha256sum "$REPO_DIR/repodata/repomd.xml" | awk '{print $1}')" \
   --argjson rpm_count "$RPM_COUNT" --argjson wheel_count "$WHEEL_COUNT" \
-  --argjson repos "$(printf '%s\n' "$BASEOS_REPO" "$APPSTREAM_REPO" "$ZABBIX_REPO" | jq -R . | jq -s .)" \
+  --argjson repos "$(printf '%s\n' "$BASEOS_REPO" "$APPSTREAM_REPO" "$ZABBIX_REPO" "$NON_SUPPORTED_REPO" | jq -R . | jq -s .)" \
   '{release:$release,designation:$designation,build_timestamp_utc:$timestamp,git:{commit:$git_commit,dirty:$git_dirty},build_host:$host,target:{rhel_release:$rhel,arch:$arch},zabbix:$zabbix,streams:{postgresql:$postgresql,php:$php,nginx:$nginx},python:{abi:$python,status:"selected; requirements intentionally empty pending M4"},source_repository_ids:$repos,metadata:{upstream_appstream_modulemd_sha256:$modulemd_sha,local_repomd_sha256:$local_repomd_sha},rpm_count:$rpm_count,wheel_count:$wheel_count,artifact_sha256:null}' \
   > "$RELEASE_TREE/BUILD-INFO.json"
 

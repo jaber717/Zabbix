@@ -14,6 +14,9 @@
 - Recorded the mandatory M1 stop: Zabbix Server requires `fping`, but no provider
   is available from the approved BaseOS, AppStream, and official Zabbix sources.
   No unapproved repository, artifact, or downstream PASS result was introduced.
+- Resumed M1 under a narrow source-policy amendment permitting the official
+  Zabbix non-supported RHEL 9 repository to provide only the pinned and
+  signature-verified `fping-0:5.1-1.el9.x86_64` package; EPEL remains prohibited.
 - Milestone 0 repository scaffold and durable specifications.
 - Capability, Proxmox, NetBox, portal-source, Internet, and build-VM discovery
   evidence.

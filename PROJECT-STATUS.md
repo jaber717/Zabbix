@@ -4,17 +4,22 @@
 
 Milestone: **M1 — Offline Build Pipeline**
 
-State: **BLOCKED**
+State: **IN-PROGRESS — RESUMED**
 
 Milestone baseline commit: `62ba3275a3f016b2f07d333684286b59c1188cfa`
 
 M0.5 source-readiness commit: `b2180c00d0a6029a65996055ae7becbcddc5f0b7`
 
 M0.5 source readiness is complete. M1 was explicitly authorized on 2026-09-01,
-implemented to the dependency gate, and stopped. The clean approved-source
+implemented to the dependency gate, and stopped. The clean original-source
 transaction could not resolve `fping`, an exact requirement of
 `zabbix-server-pgsql-7.0.30-release1.el9.x86_64`. M2 has not been started and is
-blocked by incomplete M1.
+blocked until M1 completes.
+
+The owner then approved a narrow amendment: the official Zabbix non-supported
+RHEL 9 x86_64 source may provide only the pinned `fping` package. M1 has resumed
+from the dependency gate; EPEL and every broader source expansion remain
+prohibited.
 
 M1 pipeline source commit: `fbf3573`
 
@@ -25,7 +30,7 @@ M1 blocked-run evidence commit: `499f35a`
 | Item | Current evidence | Gate impact |
 |---|---|---|
 | RHEL source repository readiness | BaseOS/AppStream and official Zabbix 7.0 sources passed host and isolated clean-installroot metadata/query tests. | RESOLVED; M1 READY |
-| `fping` source for Zabbix Server | Zabbix 7.0.30 requires `fping`; no provider was returned by the three approved sources. | BLOCKS M1 and therefore M2 |
+| `fping` source for Zabbix Server | Narrow official Zabbix non-supported source approved for pinned `fping` only; metadata, NEVRA, SHA256, key fingerprint, and signature independently verified. | RESOLVED FOR AMENDED M1; controls mandatory |
 | NetBox VM/tag/custom-field permission | Existing read-only credential is denied for these endpoints. | BLOCKS M4 |
 | NetBox/portal version mismatch | NetBox reports 6.0.8; portal declares 4.6.9. | BLOCKS/AFFECTS M4 and M6 |
 | PNETLab/EVE stopped | QEMU 110 and 120 were stopped and left unchanged. | Prerequisite only for M8 |

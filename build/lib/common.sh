@@ -42,6 +42,25 @@ source_dnf() {
     --enablerepo="$ZABBIX_REPO" \
     --setopt="$ZABBIX_REPO.gpgcheck=1" \
     --setopt="$ZABBIX_REPO.gpgkey=$ZABBIX_KEY_URL" \
+    --repofrompath="$NON_SUPPORTED_REPO,$NON_SUPPORTED_REPO_URL" \
+    --enablerepo="$NON_SUPPORTED_REPO" \
+    --setopt="$NON_SUPPORTED_REPO.includepkgs=fping" \
+    --setopt="$NON_SUPPORTED_REPO.gpgcheck=1" \
+    --setopt="$NON_SUPPORTED_REPO.gpgkey=$NON_SUPPORTED_KEY_URL" \
+    "$@"
+}
+
+fping_source_dnf() {
+  sudo -n dnf \
+    --installroot="$CLEAN_ROOT" \
+    --releasever="$RHEL_RELEASE" \
+    --forcearch="$TARGET_ARCH" \
+    --disablerepo='*' \
+    --repofrompath="$NON_SUPPORTED_REPO,$NON_SUPPORTED_REPO_URL" \
+    --enablerepo="$NON_SUPPORTED_REPO" \
+    --setopt="$NON_SUPPORTED_REPO.includepkgs=fping" \
+    --setopt="$NON_SUPPORTED_REPO.gpgcheck=1" \
+    --setopt="$NON_SUPPORTED_REPO.gpgkey=$NON_SUPPORTED_KEY_URL" \
     "$@"
 }
 
@@ -58,18 +77,37 @@ local_dnf() {
     --enablerepo=m1-local \
     --setopt=m1-local.gpgcheck=1 \
     --setopt=m1-local.repo_gpgcheck=0 \
-    --setopt="m1-local.gpgkey=file://$repo/gpg/RPM-GPG-KEY-redhat-release file://$repo/gpg/RPM-GPG-KEY-ZABBIX-B5333005" \
+    --setopt="m1-local.gpgkey=file://$repo/gpg/RPM-GPG-KEY-redhat-release file://$repo/gpg/RPM-GPG-KEY-ZABBIX-B5333005 file://$repo/gpg/RPM-GPG-KEY-ZABBIX-08EFA7DD" \
     "$@"
 }
 
 assert_source_repos() {
   local output=$1
-  grep -q "$BASEOS_REPO" "$output" || die "BaseOS source absent"
-  grep -q "$APPSTREAM_REPO" "$output" || die "AppStream source absent"
-  grep -q "$ZABBIX_REPO" "$output" || die "Zabbix source absent"
-  if grep -Eqi 'netbox-offline|epel|remi|pgdg|rocky|alma|centos' "$output"; then
-    die "unapproved repository visible in clean source context"
-  fi
+  local actual expected
+  actual=$(awk '/^repo id/ {table=1; next} table && NF {print $1}' "$output" | LC_ALL=C sort -u)
+  expected=$(printf '%s\n' "$APPSTREAM_REPO" "$BASEOS_REPO" "$NON_SUPPORTED_REPO" "$ZABBIX_REPO" | LC_ALL=C sort)
+  [[ "$actual" == "$expected" ]] || {
+    printf 'EXPECTED_REPOS:\n%s\nACTUAL_REPOS:\n%s\n' "$expected" "$actual" >&2
+    die "clean source repository allow-list mismatch"
+  }
+}
+
+assert_lock_source_policy() {
+  local lockfile=$1
+  local nevra arch repo sha nonsupported_count=0
+  while IFS=$'\t' read -r nevra arch repo sha; do
+    [[ "$nevra" == NEVRA ]] && continue
+    case "$repo" in
+      "$BASEOS_REPO"|"$APPSTREAM_REPO") ;;
+      "$ZABBIX_REPO") [[ "$nevra" == zabbix-* ]] || die "non-Zabbix package attributed to official Zabbix repository: $nevra" ;;
+      "$NON_SUPPORTED_REPO")
+        [[ "$nevra" == "$FPING_NEVRA" && "$sha" == "$FPING_SHA256" ]] || die "non-supported source policy violation: $nevra"
+        nonsupported_count=$((nonsupported_count + 1))
+        ;;
+      *) die "unapproved repository in RPM lock: $repo ($nevra)" ;;
+    esac
+  done < "$lockfile"
+  [[ "$nonsupported_count" == 1 ]] || die "expected exactly one non-supported fping lock entry, found $nonsupported_count"
 }
 
 zabbix_specs() {

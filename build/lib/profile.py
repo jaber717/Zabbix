@@ -20,6 +20,7 @@ REQUIRED = {
     "modules.php": "8.3",
     "modules.nginx": "1.24",
     "python.abi": "3.11",
+    "fping.nevra": "fping-0:5.1-1.el9.x86_64",
 }
 
 
@@ -52,9 +53,18 @@ def emit_env(data: dict) -> None:
         "ZABBIX_REPO_URL": get(data, "repositories.zabbix.url"),
         "ZABBIX_KEY_URL": get(data, "repositories.zabbix.key_url"),
         "ZABBIX_KEY_FINGERPRINT": get(data, "repositories.zabbix.key_fingerprint"),
+        "NON_SUPPORTED_REPO": get(data, "repositories.zabbix_non_supported.id"),
+        "NON_SUPPORTED_REPO_URL": get(data, "repositories.zabbix_non_supported.url"),
+        "NON_SUPPORTED_KEY_URL": get(data, "repositories.zabbix_non_supported.key_url"),
+        "NON_SUPPORTED_KEY_FINGERPRINT": get(data, "repositories.zabbix_non_supported.key_fingerprint"),
         "ZABBIX_MAJOR": get(data, "zabbix.major"),
         "ZABBIX_VERSION": get(data, "zabbix.version"),
         "ZABBIX_RELEASE": get(data, "zabbix.release"),
+        "FPING_VERSION": get(data, "fping.version"),
+        "FPING_RELEASE": get(data, "fping.release"),
+        "FPING_ARCH": get(data, "fping.arch"),
+        "FPING_NEVRA": get(data, "fping.nevra"),
+        "FPING_SHA256": get(data, "fping.sha256"),
         "POSTGRESQL_STREAM": get(data, "modules.postgresql"),
         "PHP_STREAM": get(data, "modules.php"),
         "NGINX_STREAM": get(data, "modules.nginx"),

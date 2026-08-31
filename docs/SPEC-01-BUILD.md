@@ -16,12 +16,22 @@ Verified source identifiers for RHEL 9.6 x86_64 are:
 - `rhel-9-for-x86_64-appstream-rpms`
 - official Zabbix 7.0 RHEL 9 x86_64 source at
   `https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/`
+- narrowly approved official Zabbix non-supported RHEL 9 x86_64 source at
+  `https://repo.zabbix.com/non-supported/rhel/9/x86_64/`, restricted to the
+  `fping` package only
 
 M1 must use `--disablerepo='*'` and explicitly enable only approved source IDs in
 the clean build context. `netbox-offline-base` and `netbox-offline-modules` are
 unrelated prior artifacts and must have zero influence. M0.5 observed official
 key fingerprint `4C3D 6F2C C75F 5146 754F C374 D913 219A B533 3005`; M1 must
 still download RPM payloads and verify their vendor signatures before inclusion.
+
+The non-supported source is a documented exception for the Zabbix Server
+`fping` runtime requirement. M1 pins `fping-0:5.1-1.el9.x86_64`, restricts that
+repository with `includepkgs=fping`, and fails if any other package is attributed
+to it. This exception does not authorize EPEL, compilation, or another package
+from the non-supported area. The package's upstream support classification must
+remain visible in provenance and operator documentation.
 
 ## Compatibility and locks
 

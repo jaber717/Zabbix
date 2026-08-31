@@ -11,6 +11,8 @@ system. `compat/zabbix-7.0.yaml` is the single version and source authority.
 - Usable `rhel-9-for-x86_64-baseos-rpms` and
   `rhel-9-for-x86_64-appstream-rpms` sources.
 - HTTPS access to the official Zabbix 7.0 RHEL 9 x86_64 repository.
+- HTTPS access to the official Zabbix non-supported RHEL 9 x86_64 repository,
+  constrained to the pinned `fping` RPM only.
 - Passwordless approved `sudo` for disposable installroots and RPM database
   operations.
 - `dnf-plugins-core`, `createrepo_c`, `modulemd-tools`,
@@ -49,9 +51,10 @@ build/run-negative-tests.sh build/out/m1-run2 \
 ## Isolation and module handling
 
 Source commands always use `--installroot`, `--releasever=9.6`,
-`--disablerepo='*'`, and only the approved BaseOS, AppStream, and temporary
-official Zabbix source. An automated assertion rejects NetBox, EPEL, Remi, PGDG,
-Rocky, Alma, or CentOS source visibility.
+`--disablerepo='*'`, and only the approved BaseOS, AppStream, temporary official
+Zabbix source, and the fping-only non-supported source. That exception has
+`includepkgs=fping`; the generated provenance also fails if any other package is
+attributed to it. An automated assertion rejects any additional repository.
 
 M0.5 proved that `/var/tmp` is unsuitable for the clean RPM database under the
 VM's SELinux policy. M1 therefore uses a unique directory immediately beneath
@@ -112,5 +115,9 @@ path and evidence retention needs are checked.
 
 The first M1 execution stopped as designed: the official
 `zabbix-server-pgsql-7.0.30-release1.el9.x86_64` package requires `fping`, and no
-provider was visible from the approved sources. Do not resume the build until a
-supported source or controlled RPM ingestion decision is explicitly approved.
+provider was visible from the original sources. The approved amendment now adds
+only `https://repo.zabbix.com/non-supported/rhel/9/x86_64/` for
+`fping-0:5.1-1.el9.x86_64`. Its expected SHA256 is
+`973ea94723ef69a9196c9f72f44ca414b7857a75ccc02e8a6492293fb010073c`, and it must
+verify against Zabbix key fingerprint
+`D9AA 84C2 B617 479C 6E4F CF4D 19F2 4753 08EF A7DD`.

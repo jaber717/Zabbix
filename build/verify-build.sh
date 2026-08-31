@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(cd "$(dirname "$0")" && pwd -P)/lib/common.sh"
+
 RELEASE_TREE=${1:?release tree required}
 LOCKFILE=${2:?lockfile required}
 [[ -d "$RELEASE_TREE" && -f "$LOCKFILE" ]] || { echo "invalid verification inputs" >&2; exit 2; }
@@ -43,6 +45,7 @@ pass "manifest bidirectional coverage"
 pass "release SHA256SUMS"
 cmp -s "$RELEASE_TREE/rpm-lockfile.txt" "$LOCKFILE" || fail "release lockfile mismatch"
 cmp -s "$RELEASE_TREE/RPM-MANIFEST.txt" "$LOCKFILE" || fail "RPM manifest mismatch"
+assert_lock_source_policy "$LOCKFILE" || fail "RPM source policy mismatch"
 pass "RPM lock and manifest"
 
 [[ $(find "$RELEASE_TREE/repository/rpm" -type f -name '*.rpm' | wc -l) -eq $(($(wc -l < "$LOCKFILE") - 1)) ]] || fail "RPM count mismatch"

@@ -24,8 +24,18 @@ cp "$LOCK" "$NEG_ROOT/drift.lock"
 printf 'unexpected-0:0-0.noarch\tnoarch\tunapproved\t0\n' >> "$NEG_ROOT/drift.lock"
 if cmp -s "$LOCK" "$NEG_ROOT/drift.lock"; then record LOCK_DRIFT FAIL; exit 1; else record LOCK_DRIFT PASS; fi
 
-printf '%s\n%s\n%s\n%s\n' "$BASEOS_REPO" "$APPSTREAM_REPO" "$ZABBIX_REPO" netbox-offline-base > "$NEG_ROOT/repos.txt"
+{
+  echo 'repo id repo name'
+  printf '%s\n%s\n%s\n%s\n%s\n' "$BASEOS_REPO" "$APPSTREAM_REPO" "$ZABBIX_REPO" "$NON_SUPPORTED_REPO" netbox-offline-base
+} > "$NEG_ROOT/repos.txt"
 if (assert_source_repos "$NEG_ROOT/repos.txt") >/dev/null 2>&1; then record UNRELATED_REPO FAIL; exit 1; else record UNRELATED_REPO PASS; fi
+
+awk -F '\t' -v OFS='\t' -v repo="$NON_SUPPORTED_REPO" '
+  NR == 1 {print; next}
+  !changed && $1 !~ /^fping-/ {$3=repo; changed=1}
+  {print}
+' "$LOCK" > "$NEG_ROOT/non-supported-scope.lock"
+if (assert_lock_source_policy "$NEG_ROOT/non-supported-scope.lock") >/dev/null 2>&1; then record NON_SUPPORTED_SCOPE FAIL; exit 1; else record NON_SUPPORTED_SCOPE PASS; fi
 
 cp -al "$REPO" "$NEG_ROOT/missing-repo"
 missing=$(find "$NEG_ROOT/missing-repo/rpm" -name "zabbix-server-pgsql-$ZABBIX_VERSION-$ZABBIX_RELEASE.*.rpm" -print -quit)
