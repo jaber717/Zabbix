@@ -83,10 +83,11 @@ rc=$?
 set -e
 if ((rc == 0)); then record LAB_LEAKAGE FAIL; exit 1; else record LAB_LEAKAGE PASS; fi
 
-sudo -n install -d -m 0755 "$NEG_ROOT/empty-rpmdb"
-sudo -n rpm --dbpath="$NEG_ROOT/empty-rpmdb" --initdb
+UNTRUSTED_SIGDB="$NEG_ROOT/untrusted-root/var/lib/rpm"
+sudo -n install -d -m 0755 "$UNTRUSTED_SIGDB"
+sudo -n rpm --dbpath="$UNTRUSTED_SIGDB" --initdb
 set +e
-sudo -n rpmkeys --dbpath="$NEG_ROOT/empty-rpmdb" --checksig "$good_rpm" > "$NEG_ROOT/untrusted-signature.log" 2>&1
+sudo -n rpmkeys --dbpath="$UNTRUSTED_SIGDB" --checksig "$good_rpm" > "$NEG_ROOT/untrusted-signature.log" 2>&1
 rc=$?
 set -e
 if ((rc == 0)); then record UNTRUSTED_SIGNATURE FAIL; exit 1; else record UNTRUSTED_SIGNATURE PASS; fi

@@ -22,6 +22,8 @@ exec > >(tee "$OUTPUT_DIR/evidence/build.log") 2>&1
 BUILD_ROOT="/var/lib/zabbix-offline-build/m1-${RUN_ID}-$$"
 CLEAN_ROOT="$BUILD_ROOT/source-root"
 LOCAL_ROOT="$BUILD_ROOT/local-root"
+PROXY_PGSQL_ROOT="$BUILD_ROOT/proxy-pgsql-root"
+PROXY_SQLITE_ROOT="$BUILD_ROOT/proxy-sqlite-root"
 SIGDB="$BUILD_ROOT/signature-root/var/lib/rpm"
 cleanup() { safe_remove_root "$BUILD_ROOT"; }
 trap cleanup EXIT INT TERM
@@ -86,6 +88,7 @@ printf '%s\n' "${TARGETS[@]}" > "$OUTPUT_DIR/evidence/target-packages.txt"
 
 log "downloading complete runtime closure with --resolve --alldeps"
 source_dnf download --resolve --alldeps --arch=x86_64,noarch \
+  --exclude=zabbix-web-mysql --exclude=zabbix-proxy-mysql \
   --destdir="$OUTPUT_DIR/work/downloaded" "${TARGETS[@]}"
 
 mapfile -t RPM_FILES < <(find "$OUTPUT_DIR/work/downloaded" -maxdepth 1 -type f -name '*.rpm' -print | LC_ALL=C sort)
@@ -100,6 +103,9 @@ for package in "${ZABBIX_PACKAGES[@]}"; do
 done
 fping_count=$(rpm -qp --qf '%{NAME}\n' "${RPM_FILES[@]}" 2>/dev/null | grep -cx fping || true)
 [[ "$fping_count" == 1 ]] || die "expected exactly one fping payload, found $fping_count"
+if rpm -qp --qf '%{NAME}\n' "${RPM_FILES[@]}" 2>/dev/null | grep -Eq '^zabbix-(web|proxy)-mysql$'; then
+  die "MySQL Zabbix variant entered the PostgreSQL-only closure"
+fi
 
 LOCK_CANDIDATE="$OUTPUT_DIR/rpm-lockfile.candidate.txt"
 printf 'NEVRA\tARCH\tREPO_ID\tSHA256\n' > "$LOCK_CANDIDATE"
@@ -214,10 +220,34 @@ grep -Eq "nginx[[:space:]]+$NGINX_STREAM([[:space:]]|$)" "$OUTPUT_DIR/evidence/l
 local_dnf "$LOCAL_ROOT" "$REPO_DIR" module enable -y \
   "postgresql:$POSTGRESQL_STREAM" "php:$PHP_STREAM" "nginx:$NGINX_STREAM" \
   > "$OUTPUT_DIR/evidence/local-module-enable.txt" 2>&1
-local_dnf "$LOCAL_ROOT" "$REPO_DIR" install -y "${TARGETS[@]}" \
+LOCAL_INSTALL_TARGETS=()
+for target in "${TARGETS[@]}"; do
+  case "$target" in
+    zabbix-proxy-pgsql-*|zabbix-proxy-sqlite3-*) ;;
+    *) LOCAL_INSTALL_TARGETS+=("$target") ;;
+  esac
+done
+local_dnf "$LOCAL_ROOT" "$REPO_DIR" install -y "${LOCAL_INSTALL_TARGETS[@]}" \
   > "$OUTPUT_DIR/evidence/local-install.txt" 2>&1
 sudo -n rpm --root "$LOCAL_ROOT" -qa --qf '%{NAME}|%{EPOCHNUM}:%{VERSION}-%{RELEASE}.%{ARCH}\n' \
   | LC_ALL=C sort > "$OUTPUT_DIR/evidence/local-installed-packages.txt"
+
+for proxy_spec in \
+  "zabbix-proxy-pgsql-$ZABBIX_VERSION-$ZABBIX_RELEASE" \
+  "zabbix-proxy-sqlite3-$ZABBIX_VERSION-$ZABBIX_RELEASE"; do
+  case "$proxy_spec" in
+    zabbix-proxy-pgsql-*) proxy_root=$PROXY_PGSQL_ROOT; proxy_label=pgsql ;;
+    zabbix-proxy-sqlite3-*) proxy_root=$PROXY_SQLITE_ROOT; proxy_label=sqlite3 ;;
+  esac
+  sudo -n install -d -m 0755 "$proxy_root/var/lib/rpm"
+  sudo -n rpm --root "$proxy_root" --initdb
+  local_dnf "$proxy_root" "$REPO_DIR" makecache --refresh \
+    > "$OUTPUT_DIR/evidence/local-proxy-$proxy_label-makecache.txt" 2>&1
+  local_dnf "$proxy_root" "$REPO_DIR" install -y "$proxy_spec" \
+    > "$OUTPUT_DIR/evidence/local-proxy-$proxy_label-install.txt" 2>&1
+  sudo -n rpm --root "$proxy_root" -q "$proxy_spec" \
+    > "$OUTPUT_DIR/evidence/local-proxy-$proxy_label-query.txt" 2>&1
+done
 
 POST_RPM_HASH=$(host_rpm_hash)
 POST_MODULE_HASH=$(host_module_hash)

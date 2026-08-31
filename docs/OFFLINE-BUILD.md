@@ -65,14 +65,20 @@ PostgreSQL 16, PHP 8.3, and nginx 1.24 are enabled only inside the disposable
 source and local-test installroots. The build filters the original AppStream
 modulemd documents for those streams, parses them with `modulemd-merge`, and adds
 the validated metadata to the generated repository. A second empty installroot
-then lists, enables, resolves, and installs from that local file repository with
-all external repositories disabled.
+then lists, enables, resolves, and installs the Phase-1 server/frontend set from
+that local file repository with all external repositories disabled. PostgreSQL
+and SQLite proxy payloads are retained for future use but are installed in two
+additional disposable roots because their configuration files intentionally
+conflict and the variants cannot coexist on one target.
 
 The Red Hat `modulesync --resolve` path was tested in a disposable probe and
 rejected for this runtime artifact: a single nginx stream expanded to 707
 packages including build/source and i686 content. The probe was interrupted and
 cleaned. M1 retains supported upstream modulemd while the actual x86_64/noarch
 runtime transaction is resolved with `dnf download --resolve --alldeps`.
+Weak dependencies are disabled, and MySQL frontend/proxy variants are excluded,
+so alternative providers outside the PostgreSQL/nginx target do not enter the
+locked runtime closure.
 
 ## Supply-chain and repository policy
 
@@ -81,6 +87,11 @@ VM's official Red Hat release keys and the Zabbix public key whose fingerprint
 must equal `4C3D 6F2C C75F 5146 754F C374 D913 219A B533 3005`. Any failed or
 unknown signature stops the build. Exact NEVRA, source repository ID, and SHA256
 are recorded in the committed lockfile and release RPM manifest.
+
+The sole exception is the pinned `fping` RPM, which must verify against the older
+official Zabbix signing key fingerprint
+`D9AA 84C2 B617 479C 6E4F CF4D 19F2 4753 08EF A7DD`. No other package may use
+the non-supported source or that exception path.
 
 The target `.repo` file uses `gpgcheck=1`. `repo_gpgcheck=0` is explicit because
 M1 has no approved, independently controlled repository-metadata signing key.

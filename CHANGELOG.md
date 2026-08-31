@@ -17,6 +17,9 @@
 - Resumed M1 under a narrow source-policy amendment permitting the official
   Zabbix non-supported RHEL 9 repository to provide only the pinned and
   signature-verified `fping-0:5.1-1.el9.x86_64` package; EPEL remains prohibited.
+- Split mutually exclusive PostgreSQL/SQLite proxy installation checks into
+  separate disposable roots and narrowed closure generation to required
+  dependencies for the PostgreSQL/nginx target.
 - Milestone 0 repository scaffold and durable specifications.
 - Capability, Proxmox, NetBox, portal-source, Internet, and build-VM discovery
   evidence.

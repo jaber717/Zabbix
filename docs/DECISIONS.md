@@ -21,9 +21,12 @@
 ### Target content
 
 Zabbix is pinned to `7.0.30-release1.el9`. The bundle includes PostgreSQL and
-SQLite proxy packages but excludes the MySQL proxy because no approved
-operational requirement exists. `zabbix-web-service` is included to keep the
-approved web/reporting component available without installing it during M1.
+SQLite proxy packages but excludes MySQL frontend and proxy variants because no
+approved operational requirement exists. The two retained proxy variants are
+validated in separate clean roots because they intentionally own the same
+configuration path and cannot be installed together. `zabbix-web-service` is
+included to keep the approved web/reporting component available without
+installing it during M1.
 `zabbix-selinux-policy` is included as the vendor-provided SELinux integration.
 
 RHEL `ansible-core` is included for the future installer architecture. No

@@ -35,6 +35,7 @@ source_dnf() {
     --releasever="$RHEL_RELEASE" \
     --forcearch="$TARGET_ARCH" \
     --setopt=module_platform_id=platform:el9 \
+    --setopt=install_weak_deps=False \
     --disablerepo='*' \
     --enablerepo="$BASEOS_REPO" \
     --enablerepo="$APPSTREAM_REPO" \
@@ -72,6 +73,7 @@ local_dnf() {
     --releasever="$RHEL_RELEASE" \
     --forcearch="$TARGET_ARCH" \
     --setopt=module_platform_id=platform:el9 \
+    --setopt=install_weak_deps=False \
     --disablerepo='*' \
     --repofrompath=m1-local,"file://$repo" \
     --enablerepo=m1-local \
