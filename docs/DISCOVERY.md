@@ -20,7 +20,14 @@ request it rather than inferring it from this report or memory.
 | Direct read-only endpoint audit observed 81 devices (active/planned), 10 roles, 4 platforms, 8 manufacturers, and 40 devices with a primary IP. | VERIFIED FACT | `raw/netbox-read-only.txt` |
 | The existing credential was insufficient for virtual machines, tags, and custom fields. | VERIFIED FACT | `raw/netbox-read-only.txt` |
 | A local topology portal source tree is present and exposes read-only graph/summary routes; it was not detected as its own Git repository. | VERIFIED FACT | `raw/portal-source-inventory.txt` |
-| Candidate RHEL build VM `192.168.1.91` did not answer bounded TCP/22 probes. | VERIFIED FACT | `raw/rhel-build-reachability.txt` |
+| The build VM became reachable at `192.168.1.91`; public-key SSH authenticated as unprivileged user `jaber`, and `hostname -f` returned `netbox-dev`. | VERIFIED FACT | `raw/rhel-build-baseline.txt` |
+| The build VM runs Red Hat Enterprise Linux 9.6 (Plow), x86_64, kernel `5.14.0-570.12.1.el9_6.x86_64`, under KVM/QEMU. The `redhat-release` package is `9.6-0.1.el9.x86_64`. | VERIFIED FACT | `raw/rhel-build-baseline.txt`, `raw/rhel-build-repository-readiness.txt` |
+| A single `sudo -n true` check succeeded. Subsequent privileged read-only queries reported subscription-manager Overall Status `Disabled`, Simple Content Access mode, a successful identity response (identifiers redacted), and release `9.6`. | VERIFIED FACT | `raw/rhel-build-repository-readiness.txt` |
+| `subscription-manager repos --list-enabled` reported no repositories matching the criteria. Current `dnf repolist` showed only `netbox-offline-base` and `netbox-offline-modules`. | VERIFIED FACT | `raw/rhel-build-repository-readiness.txt` |
+| `dnf repolist --all` listed standard RHEL 9 BaseOS/AppStream definitions, including `rhel-9-for-x86_64-baseos-rpms` and `rhel-9-for-x86_64-appstream-rpms`, as disabled. This proves current state only, not permanent entitlement or availability. | VERIFIED FACT | `raw/rhel-build-repository-readiness.txt` |
+| Current offline modular metadata exposed PostgreSQL 15 and 16 (16 marked enabled), PHP 8.1/8.2/8.3, and nginx 1.22/1.24/1.26 (1.24 marked enabled). No stream was changed. | VERIFIED FACT | `raw/rhel-build-baseline.txt` |
+| Installed `python3` reports 3.9.21. The available `python3*` query against the currently enabled repositories exposed Python 3.9.21 packages; this does not establish all Python versions available from restored Red Hat sources. | VERIFIED FACT | `raw/rhel-build-baseline.txt` |
+| The VM has an 80 GiB disk; `/` had 46 GiB available and `/home` had 23 GiB available at capture time. | VERIFIED FACT | `raw/rhel-build-baseline.txt` |
 
 Runtime statuses, addresses, counts, and reachability are point-in-time facts, not
 permanent configuration guarantees.
@@ -43,8 +50,6 @@ was performed and the approved Zabbix baseline was not changed.
 
 ## Assumptions
 
-- ASSUMPTION: `192.168.1.91` remains the intended RHEL build VM candidate because
-  it appears in existing local project configuration. This was not verified live.
 - ASSUMPTION: the existing portal credential is intentionally scoped to the
   portal's DCIM use case. Its permission design was not changed or independently
   audited beyond observed endpoint outcomes.
@@ -56,9 +61,12 @@ Assumptions are not build inputs until verified.
 
 ## Unknowns
 
-- UNKNOWN: RHEL build VM release, architecture, subscription status, enabled
-  repositories, disk, Python minors, and PostgreSQL/PHP/nginx module streams.
-- UNKNOWN: approved Python minor/ABI for the integration service.
+- UNKNOWN: BaseOS/AppStream entitlement and actual usability from the future
+  clean build context. They are currently disabled/not enabled; this does not
+  prove permanent unavailability.
+- UNKNOWN: required Zabbix and other approved source-repository readiness for M1.
+- UNKNOWN: approved Python minor/ABI for the integration service. Python 3.9.21
+  is observed in the current offline-repository view but has not been selected.
 - UNKNOWN: NetBox VM inventory, VM statuses/primary IP coverage, monitoring-related
   tags, and monitoring-related custom fields because the available credential was
   denied.
@@ -70,6 +78,13 @@ Assumptions are not build inputs until verified.
   NetBox 6.0.8 beyond the limited successful GETs observed.
 
 ## Blockers and contradictions
+
+| Item | Gate impact |
+|---|---|
+| RHEL source repository readiness | BLOCKER FOR M1 |
+| NetBox VM/tag/custom-field read permission | BLOCKER FOR M4 |
+| NetBox 6.0.8 versus portal 4.6.9 | BLOCKS/AFFECTS M4 and M6 |
+| PNETLab/EVE stopped | Prerequisite only for M8; not an M1 blocker |
 
 ### NetBox and portal version mismatch
 
@@ -96,12 +111,18 @@ Assumptions are not build inputs until verified.
   credential with the listed view permissions. Do not alter NetBox permissions in
   Milestone 0.
 
-### Build VM unavailable
+### RHEL source repository readiness
 
-- EXPECTED: Reuse an Internet-connected RHEL 9.6 x86_64 build VM and discover its
-  supported module/Python inputs.
-- ACTUAL: The candidate endpoint did not answer TCP/22 probes.
-- IMPACT: No compatibility profile, module choice, Python ABI, or M1 build plan
-  can be finalized from authoritative evidence.
-- RECOMMENDATION: Restore authorized read-only access and capture the exact
-  commands in `evidence/discovery/REQUIRED-EVIDENCE.md` before M1 begins.
+- EXPECTED: The RHEL 9.6 build context can use verified BaseOS, AppStream, and all
+  other approved source repositories needed for clean installroot dependency
+  resolution.
+- ACTUAL: The VM shell is reachable and its OS/storage/module facts were captured.
+  DNF currently enables only the pre-existing NetBox offline repositories;
+  BaseOS/AppStream definitions are visible but disabled, and subscription-manager
+  lists no enabled repositories.
+- IMPACT: Existing offline content cannot be treated as authoritative source
+  closure for Zabbix. BaseOS/AppStream entitlement and clean-build usability have
+  not been verified, so M1 remains blocked.
+- RECOMMENDATION: Have the system/subscription owner restore or verify the approved
+  source repositories outside this discovery run, then repeat the non-mutating
+  readiness checks in `evidence/discovery/REQUIRED-EVIDENCE.md` before M1 approval.

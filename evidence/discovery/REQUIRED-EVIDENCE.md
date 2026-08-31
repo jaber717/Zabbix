@@ -4,36 +4,39 @@ Save returned text exactly under `evidence/discovery/raw/`, removing only secret
 values. Never paste credentials or authorization headers. These items remain
 required because Milestone 0 could not obtain them safely.
 
-## RHEL build VM baseline
+## RHEL source repository readiness
 
-**Why needed:** Proves target release/architecture, entitlements, enabled repos,
-disk, Python ABI candidates, and module streams used by M1 compatibility and
-dependency closure. The candidate host did not answer on TCP 22.
+**Already verified:** VM reachability/authenticated shell, RHEL 9.6 x86_64,
+storage, current module metadata, current Python view, subscription-manager read
+output, and current repository state. See `raw/rhel-build-baseline.txt` and
+`raw/rhel-build-repository-readiness.txt`.
 
-**Preconditions:** Power on the intended Internet-connected RHEL 9.6 x86_64 build
-VM and provide authorized read-only SSH access.
+**Why still needed:** M1 requires usable, approved BaseOS/AppStream and other
+source repositories in a clean build context. Current DNF enables only the
+pre-existing NetBox offline repositories. Standard BaseOS/AppStream definitions
+are visible but disabled. This does not prove their permanent availability or
+unavailability.
+
+**Preconditions:** The system/subscription owner restores or verifies approved
+source access outside this M0 run and authorizes a subsequent read-only readiness
+check. Do not register, attach, enable, disable, refresh, or edit repositories as
+part of discovery.
 
 **Exact safe commands:**
 
 ```bash
-set -o pipefail
-cat /etc/redhat-release
-uname -m
-subscription-manager status
-dnf repolist --enabled
-df -hT
-command -v python3 || true
-python3 --version || true
-ls -1 /usr/bin/python3* 2>/dev/null || true
-dnf module list postgresql
-dnf module list php
-dnf module list nginx
+sudo -n subscription-manager status
+sudo -n subscription-manager repos --list-enabled
+sudo -n subscription-manager release --show
+dnf repolist
+dnf repolist --all
 ```
 
-**Expected output type:** Plain-text OS/repository/disk/interpreter/module facts.
-Do not include subscription identity, credentials, or private entitlement data.
+**Expected output type:** Approved BaseOS/AppStream and required build source IDs
+shown usable for the intended build context. Do not save subscription identity,
+organization identifiers, credentials, or private entitlement data.
 
-**Save as:** `evidence/discovery/raw/rhel-build-baseline.txt`
+**Save as:** `evidence/discovery/raw/rhel-source-readiness-revalidation.txt`
 
 ## NetBox integration endpoints and permissions
 

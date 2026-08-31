@@ -18,12 +18,22 @@ separate explicit approval and ends with a stop/review gate.
   remote mutation, inferred PASS.
 - **Stop condition:** Commit the M0 baseline and wait. Do not install or build.
 
+### Gate dependency matrix
+
+| Dependency | Affected milestone |
+|---|---|
+| Verified usable RHEL BaseOS/AppStream and required build sources | Blocks M1 |
+| NetBox VM/tag/custom-field read permission | Blocks M4 |
+| NetBox 6.0.8 versus portal 4.6.9 compatibility | Blocks/affects M4 and M6 |
+| PNETLab/EVE availability | Prerequisite only for M8 |
+
 ## M1 — Offline Build Pipeline
 
 - **Scope:** Compatibility profile, clean installroot, RPM/module closure, Python
   wheels, artifact assembly, manifests, hashes, and build verification.
-- **Inputs:** Completed RHEL build evidence, approved versions/Python ABI,
-  repository entitlements and source policy, resolved M0 blockers.
+- **Inputs:** Completed RHEL build evidence; verified usable BaseOS/AppStream and
+  all approved source repositories in the clean build context; approved
+  versions/Python ABI and source policy; resolved M1 blockers.
 - **Deliverables:** `compat/zabbix-7.0.yaml`, reproducible build automation,
   offline repository/wheelhouse, curated artifact builder and metadata.
 - **Tests:** Clean buildroot closure; external repos disabled; module list/enable;
