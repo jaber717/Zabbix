@@ -1,0 +1,15 @@
+ZABBIX_EXPECTED=4C3D6F2CC75F5146754FC374D913219AB5333005
+ZABBIX_ACTUAL=4C3D6F2CC75F5146754FC374D913219AB5333005
+pub   rsa4096 2024-04-30 [SC] [expires: 2034-04-28]
+      4C3D 6F2C C75F 5146 754F  C374 D913 219A B533 3005
+uid                      Zabbix LLC (Apr 2024) <packager@zabbix.com>
+sub   rsa4096 2024-04-30 [E] [expires: 2034-04-28]
+
+pub   rsa4096 2009-10-22 [SC]
+      567E 347A D004 4ADE 55BA  8A5F 199E 2F91 FD43 1D51
+uid                      Red Hat, Inc. (release key 2) <security@redhat.com>
+
+pub   rsa4096 2022-03-09 [SC]
+      7E46 2425 8C40 6535 D56D  6F13 5054 E4A4 5A63 40B3
+uid                      Red Hat, Inc. (auxiliary key 3) <security@redhat.com>
+

@@ -11,6 +11,9 @@
   deterministic lock/manifests, allow-listed artifact assembly, wheel pipeline,
   reproducibility comparison, and safe negative-test automation.
 - Added the M1 offline-build, architecture, and material-decision documentation.
+- Recorded the mandatory M1 stop: Zabbix Server requires `fping`, but no provider
+  is available from the approved BaseOS, AppStream, and official Zabbix sources.
+  No unapproved repository, artifact, or downstream PASS result was introduced.
 - Milestone 0 repository scaffold and durable specifications.
 - Capability, Proxmox, NetBox, portal-source, Internet, and build-VM discovery
   evidence.

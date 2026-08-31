@@ -1,0 +1,104 @@
+OBSERVED_UTC=2026-08-31T23:18:49Z
+TARGET=192.168.1.91
+CONTEXT=read-only confirmation after first build stopped at dependency resolution
+APPROVED_REPOSITORIES=rhel-9-for-x86_64-baseos-rpms,rhel-9-for-x86_64-appstream-rpms,m1-zabbix
+
+===== ZABBIX_SERVER_REQUIREMENTS =====
+Added m1-zabbix repo from https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/
+Last metadata expiration check: 0:13:59 ago on Tue 01 Sep 2026 02:04:52 AM +03.
+
+/bin/sh
+This system has release set to 9.6 and it receives updates only for this release.
+Updating Subscription Management repositories.
+fping
+libOpenIPMI.so.0()(64bit)
+libOpenIPMIposix.so.0()(64bit)
+libc.so.6(GLIBC_2.34)(64bit)
+libcares.so.2()(64bit)
+libcrypto.so.3()(64bit)
+libcrypto.so.3(OPENSSL_3.0.0)(64bit)
+libcurl.so.4()(64bit)
+libevent_core-2.1.so.7()(64bit)
+libevent_extra-2.1.so.7()(64bit)
+libevent_pthreads-2.1.so.7()(64bit)
+liblber.so.2()(64bit)
+liblber.so.2(OPENLDAP_2.200)(64bit)
+libldap.so.2()(64bit)
+libldap.so.2(OPENLDAP_2.200)(64bit)
+libm.so.6()(64bit)
+libm.so.6(GLIBC_2.2.5)(64bit)
+libm.so.6(GLIBC_2.29)(64bit)
+libnetsnmp.so.40()(64bit)
+libodbc.so.2()(64bit)
+libpcre2-8.so.0()(64bit)
+libpq.so.5()(64bit)
+libssh.so.4()(64bit)
+libssh.so.4(LIBSSH_4_5_0)(64bit)
+libssl.so.3()(64bit)
+libssl.so.3(OPENSSL_3.0.0)(64bit)
+libxml2.so.2()(64bit)
+libxml2.so.2(LIBXML2_2.4.30)(64bit)
+libxml2.so.2(LIBXML2_2.6.0)(64bit)
+libxml2.so.2(LIBXML2_2.6.5)(64bit)
+libz.so.1()(64bit)
+libz.so.1(ZLIB_1.2.0)(64bit)
+logrotate
+rtld(GNU_HASH)
+systemd
+
+===== FPING_PROVIDER_APPROVED_SOURCES =====
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Added m1-zabbix repo from https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/
+Last metadata expiration check: 0:09:08 ago on Tue 01 Sep 2026 02:09:45 AM +03.
+PROVIDER_QUERY_EXIT=0
+
+===== CLEAN_ROOT_REMAINDERS =====
+
+===== RELEASE_PIN =====
+Release: 9.6
+
+===== SELINUX =====
+Enforcing
+
+===== HOST_MODULE_SHA256 =====
+9ca84f282a92fea4083f0f467f9f86ce564e92769cb8c24a90bb84ecbffad083  -
+
+===== HOST_RPM_SHA256 =====
+458f0c828fa380a0f444364ce83ff996fbad57b89201b7acb9210025f732cf64  -
+
+===== BUILD_TOOL_PACKAGES =====
+createrepo_c-0.20.1-2.el9.x86_64
+createrepo_c-libs-0.20.1-2.el9.x86_64
+python3-createrepo_c-0.20.1-2.el9.x86_64
+modulemd-tools-0.9-5.el9.noarch
+python3-libmodulemd-2.13.0-2.el9.x86_64
+python3-dnf-plugin-modulesync-4.3.0-20.el9.noarch
+
+===== TARGET_APPLICATION_PACKAGES_CURRENT =====
+nginx-core|1:1.24.0-4.module+el9.5.0+22954+e2d70a1c.1.x86_64
+nginx-filesystem|1:1.24.0-4.module+el9.5.0+22954+e2d70a1c.1.noarch
+nginx|1:1.24.0-4.module+el9.5.0+22954+e2d70a1c.1.x86_64
+postgresql-contrib|0:16.10-1.module+el9.6.0+23420+848a4539.x86_64
+postgresql-private-libs|0:16.10-1.module+el9.6.0+23420+848a4539.x86_64
+postgresql-server|0:16.10-1.module+el9.6.0+23420+848a4539.x86_64
+postgresql|0:16.10-1.module+el9.6.0+23420+848a4539.x86_64
+
+===== ENABLED_REPOS =====
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+repo id                          repo name
+netbox-offline-base              NetBox RHEL 9.6 offline base closure
+netbox-offline-modules           NetBox RHEL 9.6 offline modular content
+rhel-9-for-x86_64-appstream-rpms Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)
+rhel-9-for-x86_64-baseos-rpms    Red Hat Enterprise Linux 9 for x86_64 - BaseOS (RPMs)
+
+===== DISK =====
+Filesystem             Size  Used Avail Use% Mounted on
+/dev/mapper/rhel-root   50G  3.7G   46G   8% /
+/dev/mapper/rhel-home   24G  1.6G   23G   7% /home
+/dev/mapper/rhel-root   50G  3.7G   46G   8% /

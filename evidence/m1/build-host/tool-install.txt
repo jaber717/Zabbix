@@ -1,0 +1,99 @@
+OBSERVED_UTC=2026-08-31T23:05:19Z
+ACTION=Install narrowly scoped M1 build tooling from approved RHEL BaseOS/AppStream only
+REQUESTED=createrepo_c modulemd-tools python3-dnf-plugin-modulesync
+
+===== PRE_REQUESTED_PACKAGES =====
+package createrepo_c is not installed
+package modulemd-tools is not installed
+package python3-dnf-plugin-modulesync is not installed
+
+===== INSTALL_TRANSACTION =====
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Last metadata expiration check: 0:00:25 ago on Tue 01 Sep 2026 02:04:57 AM +03.
+Dependencies resolved.
+=============================================================================================
+ Package                         Arch    Version      Repository                         Size
+=============================================================================================
+Installing:
+ createrepo_c                    x86_64  0.20.1-2.el9 rhel-9-for-x86_64-appstream-rpms   80 k
+ modulemd-tools                  noarch  0.9-5.el9    rhel-9-for-x86_64-appstream-rpms   71 k
+ python3-dnf-plugin-modulesync   noarch  4.3.0-20.el9 rhel-9-for-x86_64-appstream-rpms   19 k
+Installing dependencies:
+ createrepo_c-libs               x86_64  0.20.1-2.el9 rhel-9-for-x86_64-appstream-rpms  102 k
+ python3-createrepo_c            x86_64  0.20.1-2.el9 rhel-9-for-x86_64-appstream-rpms   56 k
+ python3-libmodulemd             x86_64  2.13.0-2.el9 rhel-9-for-x86_64-appstream-rpms   18 k
+
+Transaction Summary
+=============================================================================================
+Install  6 Packages
+
+Total download size: 346 k
+Installed size: 742 k
+Downloading Packages:
+(1/6): createrepo_c-libs-0.20.1-2.el9.x86_64.rp 112 kB/s | 102 kB     00:00    
+(2/6): createrepo_c-0.20.1-2.el9.x86_64.rpm      69 kB/s |  80 kB     00:01    
+(3/6): modulemd-tools-0.9-5.el9.noarch.rpm       90 kB/s |  71 kB     00:00    
+(4/6): python3-libmodulemd-2.13.0-2.el9.x86_64.  32 kB/s |  18 kB     00:00    
+(5/6): python3-dnf-plugin-modulesync-4.3.0-20.e  50 kB/s |  19 kB     00:00    
+(6/6): python3-createrepo_c-0.20.1-2.el9.x86_64  20 kB/s |  56 kB     00:02    
+--------------------------------------------------------------------------------
+Total                                           122 kB/s | 346 kB     00:02     
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Preparing        :                                                        1/1 
+  Installing       : createrepo_c-libs-0.20.1-2.el9.x86_64                  1/6 
+  Installing       : createrepo_c-0.20.1-2.el9.x86_64                       2/6 
+  Installing       : python3-createrepo_c-0.20.1-2.el9.x86_64               3/6 
+  Installing       : python3-libmodulemd-2.13.0-2.el9.x86_64                4/6 
+  Installing       : modulemd-tools-0.9-5.el9.noarch                        5/6 
+  Installing       : python3-dnf-plugin-modulesync-4.3.0-20.el9.noarch      6/6 
+  Running scriptlet: python3-dnf-plugin-modulesync-4.3.0-20.el9.noarch      6/6 
+  Verifying        : python3-createrepo_c-0.20.1-2.el9.x86_64               1/6 
+  Verifying        : createrepo_c-libs-0.20.1-2.el9.x86_64                  2/6 
+  Verifying        : createrepo_c-0.20.1-2.el9.x86_64                       3/6 
+  Verifying        : modulemd-tools-0.9-5.el9.noarch                        4/6 
+  Verifying        : python3-libmodulemd-2.13.0-2.el9.x86_64                5/6 
+  Verifying        : python3-dnf-plugin-modulesync-4.3.0-20.el9.noarch      6/6 
+Installed products updated.
+
+Installed:
+  createrepo_c-0.20.1-2.el9.x86_64                                              
+  createrepo_c-libs-0.20.1-2.el9.x86_64                                         
+  modulemd-tools-0.9-5.el9.noarch                                               
+  python3-createrepo_c-0.20.1-2.el9.x86_64                                      
+  python3-dnf-plugin-modulesync-4.3.0-20.el9.noarch                             
+  python3-libmodulemd-2.13.0-2.el9.x86_64                                       
+
+Complete!
+INSTALL_EXIT=0
+
+===== POST_REQUESTED_PACKAGES =====
+createrepo_c-0.20.1-2.el9.x86_64
+modulemd-tools-0.9-5.el9.noarch
+python3-dnf-plugin-modulesync-4.3.0-20.el9.noarch
+
+===== POST_RELEVANT_PACKAGES =====
+createrepo_c-libs|0:0.20.1-2.el9.x86_64
+createrepo_c|0:0.20.1-2.el9.x86_64
+libmodulemd|0:2.13.0-2.el9.x86_64
+modulemd-tools|0:0.9-5.el9.noarch
+python3-dnf-plugin-modulesync|0:4.3.0-20.el9.noarch
+python3-libmodulemd|0:2.13.0-2.el9.x86_64
+
+===== TARGET_APPLICATION_PACKAGES =====
+postgresql-private-libs|0:16.10-1.module+el9.6.0+23420+848a4539.x86_64
+postgresql|0:16.10-1.module+el9.6.0+23420+848a4539.x86_64
+nginx-filesystem|1:1.24.0-4.module+el9.5.0+22954+e2d70a1c.1.noarch
+nginx-core|1:1.24.0-4.module+el9.5.0+22954+e2d70a1c.1.x86_64
+postgresql-server|0:16.10-1.module+el9.6.0+23420+848a4539.x86_64
+postgresql-contrib|0:16.10-1.module+el9.6.0+23420+848a4539.x86_64
+nginx|1:1.24.0-4.module+el9.5.0+22954+e2d70a1c.1.x86_64
+
+===== POST_RPMDB_SHA256 =====
+458f0c828fa380a0f444364ce83ff996fbad57b89201b7acb9210025f732cf64  -

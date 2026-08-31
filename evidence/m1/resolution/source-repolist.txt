@@ -1,0 +1,10 @@
+Updating Subscription Management repositories.
+Unable to read consumer identity
+
+This system is not registered with an entitlement server. You can use "rhc" or "subscription-manager" to register.
+
+Added m1-zabbix repo from https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/
+repo id                          repo name
+m1-zabbix                        m1-zabbix
+rhel-9-for-x86_64-appstream-rpms Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)
+rhel-9-for-x86_64-baseos-rpms    Red Hat Enterprise Linux 9 for x86_64 - BaseOS (RPMs)

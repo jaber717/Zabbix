@@ -4,25 +4,46 @@
 
 Milestone: **M1 — Offline Build Pipeline**
 
-State: **IN-PROGRESS**
+State: **BLOCKED**
 
 Milestone baseline commit: `62ba3275a3f016b2f07d333684286b59c1188cfa`
 
 M0.5 source-readiness commit: `b2180c00d0a6029a65996055ae7becbcddc5f0b7`
 
-M0.5 source readiness is complete. M1 was explicitly authorized on 2026-09-01
-and is in progress. M2 has not been started and is not authorized.
+M0.5 source readiness is complete. M1 was explicitly authorized on 2026-09-01,
+implemented to the dependency gate, and stopped. The clean approved-source
+transaction could not resolve `fping`, an exact requirement of
+`zabbix-server-pgsql-7.0.30-release1.el9.x86_64`. M2 has not been started and is
+blocked by incomplete M1.
+
+M1 pipeline source commit: `fbf3573`
 
 ## Gate and blocker matrix
 
 | Item | Current evidence | Gate impact |
 |---|---|---|
 | RHEL source repository readiness | BaseOS/AppStream and official Zabbix 7.0 sources passed host and isolated clean-installroot metadata/query tests. | RESOLVED; M1 READY |
+| `fping` source for Zabbix Server | Zabbix 7.0.30 requires `fping`; no provider was returned by the three approved sources. | BLOCKS M1 and therefore M2 |
 | NetBox VM/tag/custom-field permission | Existing read-only credential is denied for these endpoints. | BLOCKS M4 |
 | NetBox/portal version mismatch | NetBox reports 6.0.8; portal declares 4.6.9. | BLOCKS/AFFECTS M4 and M6 |
 | PNETLab/EVE stopped | QEMU 110 and 120 were stopped and left unchanged. | Prerequisite only for M8 |
 
 See `docs/DISCOVERY.md` and `evidence/discovery/REQUIRED-EVIDENCE.md`.
+
+## M1 result
+
+- Compatibility/source profile, isolated resolver, signature verification,
+  modulemd filtering, local-only validation, manifests, allow-list assembly,
+  wheel scaffolding, and negative-test automation were implemented and syntax
+  checked.
+- Build 1 used an empty RPM database, enabled PostgreSQL 16, PHP 8.3, and nginx
+  1.24 only in the disposable root, and saw only BaseOS, AppStream, and the
+  temporary official Zabbix source.
+- The actual `dnf download --resolve --alldeps` transaction failed because no
+  approved source provides `fping`. Per the M1 stop policy, no repository,
+  artifact, reproducibility build, or post-build negative suite was attempted.
+- See `evidence/m1/ACCEPTANCE.md` for every gate status and
+  `evidence/m1/resolution/` for the raw resolver output.
 
 ## M0.5 acceptance
 
@@ -74,9 +95,16 @@ See `docs/DISCOVERY.md` and `evidence/discovery/REQUIRED-EVIDENCE.md`.
 - Proxmox configuration or guest lifecycle modified: **No**.
 - Build VM repository state modified: **Yes, authorized** — only standard RHEL 9
   BaseOS and AppStream were enabled.
-- RHEL packages installed/updated/removed: **No**.
+- RHEL packages installed/updated/removed in M1: **Yes, authorized build tooling
+  only** — `createrepo_c`, `modulemd-tools`,
+  `python3-dnf-plugin-modulesync`, and three direct libraries. No general update
+  ran. PostgreSQL 16/nginx 1.24 packages were already present before the M1 tool
+  transaction; no Zabbix package is installed on the host.
 - Module state, release pin, SELinux policy/mode, firewall, or networking modified:
   **No**.
 - DNF metadata cache changed: **Yes, expected** from authorized `makecache` tests.
 - Secrets placed in evidence or documentation: **No observed occurrence**; M0
   staged-content scans found no private-key marker or credential-like literal.
+- M1 disposable roots: **Removed** after the resolver failure.
+- M1 host package/module hashes: **Unchanged during the pipeline after the
+  authorized tool transaction**.

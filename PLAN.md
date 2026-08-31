@@ -1,7 +1,8 @@
 # Implementation Plan
 
-M0 and M0.5 are complete. M1 is explicitly approved and IN-PROGRESS. Every
-milestone ends with a stop/review gate.
+M0 and M0.5 are complete. M1 was explicitly approved and is BLOCKED at its
+mandatory dependency-resolution stop condition. Every milestone ends with a
+stop/review gate.
 
 ## M0 — Discovery + Specifications
 
@@ -47,7 +48,10 @@ milestone ends with a stop/review gate.
 
 ## M1 — Offline Build Pipeline
 
-- **State:** IN-PROGRESS (authorized 2026-09-01); M2 is not authorized.
+- **State:** BLOCKED (authorized 2026-09-01); the first clean `--resolve
+  --alldeps` transaction proved that Zabbix Server requires `fping`, for which
+  the approved sources expose no provider. M2 is not authorized and cannot
+  begin.
 - **Scope:** Compatibility profile, clean installroot, RPM/module closure, Python
   wheels, artifact assembly, manifests, hashes, and build verification.
 - **Inputs:** Completed RHEL build evidence; verified usable BaseOS/AppStream and
@@ -61,6 +65,9 @@ milestone ends with a stop/review gate.
 - **Risks:** Incomplete modular metadata, host-state dependency, ABI mismatch,
   licensing/provenance gaps, artifact contamination.
 - **Stop condition:** Reproducible verified build artifact; do not install it.
+- **Actual stop:** Mandatory source/dependency failure. Await an explicit,
+  supported source decision for `fping`; do not introduce EPEL or another source
+  without approval.
 
 ## M2 — Installer
 

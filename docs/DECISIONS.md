@@ -44,3 +44,15 @@ the acceptance criteria.
 RPM `gpgcheck=1` is mandatory. `repo_gpgcheck=0` is explicit until the project
 has an approved independent signing key and custody process. A private key stored
 beside the artifact would add no independent trust and is prohibited.
+
+### Unresolved `fping` source
+
+- **EXPECTED:** The three approved sources provide the complete Zabbix Server
+  runtime closure.
+- **ACTUAL:** The official Zabbix 7.0.30 server RPM requires `fping`, while an
+  approved-source provider query returned no result.
+- **IMPACT:** M1 stopped before lockfile, repository, artifact, reproducibility,
+  and negative-test stages.
+- **RECOMMENDATION:** Obtain architect/owner approval for a supported `fping`
+  source or a controlled vendor-verified RPM ingestion path. EPEL or any other
+  third-party source must not be added silently.

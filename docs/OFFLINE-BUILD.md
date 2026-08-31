@@ -109,3 +109,8 @@ SELinux, or repository configuration. Failed runs remove only their validated
 `/var/lib/zabbix-offline-build/m1-*` root. Generated `build/out/` directories are
 not deleted automatically and may be removed manually only after their absolute
 path and evidence retention needs are checked.
+
+The first M1 execution stopped as designed: the official
+`zabbix-server-pgsql-7.0.30-release1.el9.x86_64` package requires `fping`, and no
+provider was visible from the approved sources. Do not resume the build until a
+supported source or controlled RPM ingestion decision is explicitly approved.
