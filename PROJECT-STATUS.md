@@ -2,16 +2,16 @@
 
 ## Current gate
 
-Milestone: **M0.5 — Build Source Readiness**
+Milestone: **M1 — Offline Build Pipeline**
 
-State: **COMPLETE**
+State: **IN-PROGRESS**
 
 Milestone baseline commit: `62ba3275a3f016b2f07d333684286b59c1188cfa`
 
 M0.5 source-readiness commit: `b2180c00d0a6029a65996055ae7becbcddc5f0b7`
 
-M0.5 source readiness is complete. M1 is READY from the source-gate perspective
-but was not started and still requires explicit approval.
+M0.5 source readiness is complete. M1 was explicitly authorized on 2026-09-01
+and is in progress. M2 has not been started and is not authorized.
 
 ## Gate and blocker matrix
 

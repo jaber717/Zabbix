@@ -1,7 +1,7 @@
 # Implementation Plan
 
-M0 and M0.5 are complete. M1 is next and source-ready, but requires separate
-explicit approval. Every milestone ends with a stop/review gate.
+M0 and M0.5 are complete. M1 is explicitly approved and IN-PROGRESS. Every
+milestone ends with a stop/review gate.
 
 ## M0 — Discovery + Specifications
 
@@ -47,6 +47,7 @@ explicit approval. Every milestone ends with a stop/review gate.
 
 ## M1 — Offline Build Pipeline
 
+- **State:** IN-PROGRESS (authorized 2026-09-01); M2 is not authorized.
 - **Scope:** Compatibility profile, clean installroot, RPM/module closure, Python
   wheels, artifact assembly, manifests, hashes, and build verification.
 - **Inputs:** Completed RHEL build evidence; verified usable BaseOS/AppStream and

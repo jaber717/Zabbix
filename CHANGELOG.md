@@ -4,6 +4,13 @@
 
 ### Added
 
+- Began M1 with the RHEL 9.6/Zabbix 7.0.30 compatibility profile and selected
+  PostgreSQL 16, PHP 8.3, nginx 1.24, and CPython 3.11.
+- Added the isolated RPM resolver, upstream modular-metadata preservation,
+  temporary-keyring signature verification, local-only install validation,
+  deterministic lock/manifests, allow-listed artifact assembly, wheel pipeline,
+  reproducibility comparison, and safe negative-test automation.
+- Added the M1 offline-build, architecture, and material-decision documentation.
 - Milestone 0 repository scaffold and durable specifications.
 - Capability, Proxmox, NetBox, portal-source, Internet, and build-VM discovery
   evidence.

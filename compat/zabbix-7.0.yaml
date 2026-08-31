@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "release": {
+    "name": "zabbix-rhel96-offline",
+    "version": "1.0.0",
+    "build": 1,
+    "designation": "M1 pre-install release candidate"
+  },
+  "target": {
+    "os": "rhel",
+    "release": "9.6",
+    "arch": "x86_64",
+    "selinux": "Enforcing"
+  },
+  "repositories": {
+    "baseos": "rhel-9-for-x86_64-baseos-rpms",
+    "appstream": "rhel-9-for-x86_64-appstream-rpms",
+    "zabbix": {
+      "id": "m1-zabbix",
+      "url": "https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/",
+      "key_url": "https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX-B5333005",
+      "key_fingerprint": "4C3D6F2CC75F5146754FC374D913219AB5333005"
+    }
+  },
+  "zabbix": {
+    "major": "7.0",
+    "version": "7.0.30",
+    "release": "release1.el9",
+    "packages": [
+      "zabbix-server-pgsql",
+      "zabbix-web-pgsql",
+      "zabbix-nginx-conf",
+      "zabbix-sql-scripts",
+      "zabbix-agent2",
+      "zabbix-sender",
+      "zabbix-get",
+      "zabbix-web-service",
+      "zabbix-proxy-sqlite3",
+      "zabbix-proxy-pgsql",
+      "zabbix-selinux-policy"
+    ],
+    "sql_paths": {
+      "postgresql_server": "/usr/share/zabbix-sql-scripts/postgresql/server.sql.gz",
+      "postgresql_proxy": "/usr/share/zabbix-sql-scripts/postgresql/proxy.sql",
+      "sqlite_proxy": "/usr/share/zabbix-sql-scripts/sqlite3/proxy.sql"
+    }
+  },
+  "modules": {
+    "postgresql": "16",
+    "php": "8.3",
+    "nginx": "1.24"
+  },
+  "python": {
+    "abi": "3.11",
+    "status": "selected-rhel-native-wheel-pipeline-parameterized",
+    "packages": [
+      "python3.11",
+      "python3.11-pip",
+      "python3.11-setuptools",
+      "python3.11-wheel"
+    ]
+  },
+  "runtime_packages": [
+    "postgresql",
+    "postgresql-server",
+    "postgresql-contrib",
+    "nginx",
+    "php",
+    "php-cli",
+    "php-fpm",
+    "php-pgsql",
+    "php-gd",
+    "php-bcmath",
+    "php-mbstring",
+    "php-xml",
+    "php-ldap",
+    "firewalld",
+    "policycoreutils-python-utils",
+    "ansible-core"
+  ],
+  "ansible": {
+    "package": "ansible-core",
+    "external_collections": []
+  }
+}

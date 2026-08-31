@@ -1,0 +1,2 @@
+# Intentionally empty in M1: no speculative integration dependencies.
+# Future entries must be exact pins with --hash=sha256:<digest> values.

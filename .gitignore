@@ -10,6 +10,8 @@
 *password*
 
 # Generated artifacts and caches
+build/work/
+build/out/
 dist/
 artifacts/
 *.tar
