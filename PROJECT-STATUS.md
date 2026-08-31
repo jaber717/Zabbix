@@ -4,7 +4,9 @@
 
 Milestone: **M0 — Discovery + Specifications**
 
-State: **COMPLETE pending recorded Git commit verification**
+State: **COMPLETE**
+
+Milestone baseline commit: `62ba3275a3f016b2f07d333684286b59c1188cfa`
 
 No M1 work is authorized. The next gate is M1 only after explicit approval and
 after required RHEL evidence and architecture-affecting blockers are resolved.
@@ -32,16 +34,16 @@ See `docs/DISCOVERY.md` and `evidence/discovery/REQUIRED-EVIDENCE.md`.
 | Missing evidence explicitly requested | PASS | `evidence/discovery/REQUIRED-EVIDENCE.md`. |
 | NetBox LXC 9000 was not modified | PASS | Only selected config/status/version and HTTP GET reads were executed; no write endpoint or modifying command was called. |
 | Existing Proxmox workloads were not modified | PASS | `hostname`, `uname`, `pveversion`, `pvesh get`, `qm list`, `pct list/config/exec` with read-only inner commands only. |
-| No secrets committed | NOT-EXECUTED | Final staged-content secret scan and commit review occur after repository assembly. |
+| No secrets committed | PASS | Staged and committed content scans found no private-key marker or credential-like literal assignment. |
 | `DISCOVERY.md` created | PASS | `docs/DISCOVERY.md`. |
 | `PLAN.md` created | PASS | `PLAN.md` includes scope, inputs, deliverables, tests, permissions, risks, and stop for M0–M9. |
 | `PROJECT-STATUS.md` updated | PASS | This file records gate and blockers. |
-| Git status reviewed | NOT-EXECUTED | Scheduled after repository initialization/staging. |
-| Milestone commit created | NOT-EXECUTED | Scheduled after final validation. |
+| Git status reviewed | PASS | `git diff --cached --check` returned 0 before commit; post-commit `git status --short` was empty. |
+| Milestone commit created | PASS | `62ba3275a3f016b2f07d333684286b59c1188cfa` on branch `main`. |
 
 ## Safety statement
 
 - NetBox modified: **No**.
 - Proxmox guests modified: **No**.
-- Secrets placed in evidence or documentation: **No observed occurrence**; final
-  repository scan remains an M0 closeout test.
+- Secrets placed in evidence or documentation: **No observed occurrence**; M0
+  staged-content scans found no private-key marker or credential-like literal.
