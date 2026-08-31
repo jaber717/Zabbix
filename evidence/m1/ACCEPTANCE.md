@@ -40,8 +40,8 @@ unapproved repository was introduced and no downstream result is inferred.
 | Reproducibility test passed | NOT-EXECUTED | First build did not complete. |
 | Negative tests executed/documented | NOT-EXECUTED | Stop condition precluded post-build negative suite. |
 | OFFLINE-BUILD.md complete | PASS | Reproduction, isolation, trust, lock, failure, and cleanup are documented. |
-| M1 evidence committed | PENDING | Becomes PASS only in the closeout commit. |
-| Git working tree clean | PENDING | Evaluated after the closeout commit. |
+| M1 evidence committed | PASS | Blocked-run evidence commit `499f35a`. |
+| Git working tree clean | PASS | Verified after the final status commit. |
 
 ## Blocker
 

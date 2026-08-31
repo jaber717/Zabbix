@@ -18,6 +18,8 @@ blocked by incomplete M1.
 
 M1 pipeline source commit: `fbf3573`
 
+M1 blocked-run evidence commit: `499f35a`
+
 ## Gate and blocker matrix
 
 | Item | Current evidence | Gate impact |
