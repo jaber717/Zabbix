@@ -15,9 +15,9 @@ is not treated as access. Evidence paths are relative to the repository root.
 | PNET/EVE | UNAVAILABLE | Proxmox inventory shows QEMU 110 and 120 stopped. They were not started and no guest access was attempted. |
 | Portal source repository | AVAILABLE | A local source tree exists at `../netbox-topology`; selected filenames and routes were inspected read-only. It is a source directory, not an independently detected Git repository; see `raw/portal-source-inventory.txt`. |
 
-The VM's current DNF view contains only pre-existing NetBox offline repositories.
-BaseOS/AppStream entitlement and usability for a clean M1 build context remain
-unverified; capability to reach the shell is not repository readiness.
+M0.5 subsequently enabled and verified standard RHEL 9 BaseOS/AppStream and used
+them with the temporary official Zabbix 7.0 source in a clean installroot. Source
+readiness for M1 is AVAILABLE; see `evidence/m0.5/`.
 
 No credential value or private-key content was read into evidence. Subscription
 identity and organization identifiers were redacted from raw output.

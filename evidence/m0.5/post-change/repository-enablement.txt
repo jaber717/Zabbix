@@ -1,0 +1,8 @@
+OBSERVED_DATE=2026-09-01
+TARGET=192.168.1.91
+CHANGE=enable only standard RHEL 9 x86_64 BaseOS and AppStream through subscription-manager
+COMMAND=sudo -n subscription-manager repos --enable=rhel-9-for-x86_64-baseos-rpms --enable=rhel-9-for-x86_64-appstream-rpms
+
+INITIAL_COMMAND_COMPLETION=NOT-OBSERVED
+REASON=The SSH execution continued beyond the bounded client yield and returned no completion output to the evidence collector.
+FOLLOW_UP=The process completed without remaining subscription-manager enable process; post-change repository inventory is authoritative for resulting state.

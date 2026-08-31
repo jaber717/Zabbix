@@ -6,7 +6,22 @@ Build on an Internet-connected RHEL 9.6 x86_64 system, but resolve from a clean,
 isolated context such as `dnf --installroot=<clean-buildroot>`. Correctness must
 not depend on packages already installed on the build host or operator memory.
 Use complete dependency closure, including `--resolve` and `--alldeps` where
-appropriate. Milestone 0 does not execute a build.
+appropriate. M0/M0.5 did not execute a build.
+
+## Approved source decision — M0.5
+
+Verified source identifiers for RHEL 9.6 x86_64 are:
+
+- `rhel-9-for-x86_64-baseos-rpms`
+- `rhel-9-for-x86_64-appstream-rpms`
+- official Zabbix 7.0 RHEL 9 x86_64 source at
+  `https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/`
+
+M1 must use `--disablerepo='*'` and explicitly enable only approved source IDs in
+the clean build context. `netbox-offline-base` and `netbox-offline-modules` are
+unrelated prior artifacts and must have zero influence. M0.5 observed official
+key fingerprint `4C3D 6F2C C75F 5146 754F C374 D913 219A B533 3005`; M1 must
+still download RPM payloads and verify their vendor signatures before inclusion.
 
 ## Compatibility and locks
 

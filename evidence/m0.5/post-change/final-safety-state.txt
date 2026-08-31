@@ -1,0 +1,65 @@
+OBSERVED_DATE=2026-09-01
+TARGET=192.168.1.91
+PURPOSE=final M0.5 host state and safety verification
+
+
+===== RELEASE_PIN =====
+$ sudo -n subscription-manager release --show
+Release: 9.6
+COMMAND_EXIT=0
+
+===== ENABLED_SUBSCRIPTION_REPOS =====
+$ sudo -n subscription-manager repos --list-enabled
++----------------------------------------------------------+
+    Available Repositories in /etc/yum.repos.d/redhat.repo
++----------------------------------------------------------+
+Repo ID:   rhel-9-for-x86_64-baseos-rpms
+Repo Name: Red Hat Enterprise Linux 9 for x86_64 - BaseOS (RPMs)
+Repo URL:  https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/baseos/os
+Enabled:   1
+
+Repo ID:   rhel-9-for-x86_64-appstream-rpms
+Repo Name: Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)
+Repo URL:  https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/appstream/os
+Enabled:   1
+
+COMMAND_EXIT=0
+
+===== ENABLED_DNF_REPOS =====
+$ sudo -n dnf repolist
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+repo id                          repo name
+netbox-offline-base              NetBox RHEL 9.6 offline base closure
+netbox-offline-modules           NetBox RHEL 9.6 offline modular content
+rhel-9-for-x86_64-appstream-rpms Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)
+rhel-9-for-x86_64-baseos-rpms    Red Hat Enterprise Linux 9 for x86_64 - BaseOS (RPMs)
+COMMAND_EXIT=0
+
+===== YUM_REPO_FILES =====
+$ sudo -n find /etc/yum.repos.d -maxdepth 1 -type f -printf %f\\n
+redhat.repo
+netbox-offline-base.repo
+netbox-offline-modules.repo
+COMMAND_EXIT=0
+
+===== HOST_RPMDB_SHA256 =====
+$ rpm -qa ... | sha256sum
+005e82f902130c9ee18a0716b9f8d3fa09d4f7f4fedd75dae81a58ac5fc2a067  -
+COMMAND_EXIT=0
+
+===== HOST_MODULE_STATE_SHA256 =====
+$ find /etc/dnf/modules.d ... | sha256sum
+9ca84f282a92fea4083f0f467f9f86ce564e92769cb8c24a90bb84ecbffad083  -
+COMMAND_EXIT=0
+
+===== SELINUX =====
+$ getenforce
+Enforcing
+COMMAND_EXIT=0
+
+===== TEMP_ROOT_REMAINDERS =====
+$ sudo -n find /var/tmp /var/lib /tmp -maxdepth 1 -type d -name zabbix-m05-\* -print
+COMMAND_EXIT=0

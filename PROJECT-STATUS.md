@@ -2,26 +2,45 @@
 
 ## Current gate
 
-Milestone: **M0 — Discovery + Specifications**
+Milestone: **M0.5 — Build Source Readiness**
 
 State: **COMPLETE**
 
 Milestone baseline commit: `62ba3275a3f016b2f07d333684286b59c1188cfa`
 
-No M1 work is authorized. Build-VM shell discovery is complete, but M1 remains
-blocked until source-repository readiness is verified and explicit approval is
-given.
+M0.5 source readiness is complete. M1 is READY from the source-gate perspective
+but was not started and still requires explicit approval.
 
 ## Gate and blocker matrix
 
 | Item | Current evidence | Gate impact |
 |---|---|---|
-| RHEL source repository readiness | VM and SSH are available. Current DNF view enables only pre-existing NetBox offline repositories; BaseOS/AppStream and required build sources are not verified usable from a clean build context. | BLOCKS M1 |
+| RHEL source repository readiness | BaseOS/AppStream and official Zabbix 7.0 sources passed host and isolated clean-installroot metadata/query tests. | RESOLVED; M1 READY |
 | NetBox VM/tag/custom-field permission | Existing read-only credential is denied for these endpoints. | BLOCKS M4 |
 | NetBox/portal version mismatch | NetBox reports 6.0.8; portal declares 4.6.9. | BLOCKS/AFFECTS M4 and M6 |
 | PNETLab/EVE stopped | QEMU 110 and 120 were stopped and left unchanged. | Prerequisite only for M8 |
 
 See `docs/DISCOVERY.md` and `evidence/discovery/REQUIRED-EVIDENCE.md`.
+
+## M0.5 acceptance
+
+| Item | Status | Evidence |
+|---|---|---|
+| RHEL BaseOS repository ID confirmed | PASS | Live inventory contained `rhel-9-for-x86_64-baseos-rpms`. |
+| RHEL AppStream repository ID confirmed | PASS | Live inventory contained `rhel-9-for-x86_64-appstream-rpms`. |
+| BaseOS usable | PASS | Isolated makecache, `bash` query, and clean resolution succeeded. |
+| AppStream usable | PASS | Isolated module/Python queries and clean resolution succeeded. |
+| RHEL release remains pinned to 9.6 | PASS | Pre-change, post-change, and final clean-context queries returned 9.6. |
+| Real RHEL module streams captured | PASS | PostgreSQL, PHP, and nginx inventories came from only BaseOS/AppStream. |
+| Python availability captured from approved RHEL sources | PASS | Python 3.9, 3.11, and 3.12 package families were observed. |
+| Official Zabbix RHEL 9 repository reachable | PASS | HTTPS repomd, key, makecache, and repoquery succeeded. |
+| Zabbix 7.0.30 package families verified | PASS | All eleven investigated families returned `7.0.30-release1.el9`. |
+| Clean installroot accesses approved sources | PASS | Attempt 4 used an empty RPM database and completed package/dependency queries. |
+| NetBox offline repositories excluded | PASS | Clean repolist and resolved repo IDs contained only BaseOS, AppStream, and `m05-zabbix`. |
+| No host packages installed/updated | PASS | No install/update command ran; host RPM hash matched and clean RPM count stayed zero. |
+| No module state changed | PASS | Module-state aggregate hashes matched before/after. |
+| No secrets committed | NOT-EXECUTED | Final staged-content secret scan is pending closeout. |
+| Build source evidence committed | NOT-EXECUTED | Pending M0.5 evidence commit. |
 
 ## M0 acceptance
 
@@ -50,8 +69,12 @@ See `docs/DISCOVERY.md` and `evidence/discovery/REQUIRED-EVIDENCE.md`.
 ## Safety statement
 
 - NetBox modified: **No**.
-- Proxmox guests modified: **No**.
-- RHEL packages, repositories, subscription configuration, module state, SELinux,
-  firewall, and networking modified: **No**.
+- Proxmox configuration or guest lifecycle modified: **No**.
+- Build VM repository state modified: **Yes, authorized** — only standard RHEL 9
+  BaseOS and AppStream were enabled.
+- RHEL packages installed/updated/removed: **No**.
+- Module state, release pin, SELinux policy/mode, firewall, or networking modified:
+  **No**.
+- DNF metadata cache changed: **Yes, expected** from authorized `makecache` tests.
 - Secrets placed in evidence or documentation: **No observed occurrence**; M0
   staged-content scans found no private-key marker or credential-like literal.

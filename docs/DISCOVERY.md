@@ -23,11 +23,44 @@ request it rather than inferring it from this report or memory.
 | The build VM became reachable at `192.168.1.91`; public-key SSH authenticated as unprivileged user `jaber`, and `hostname -f` returned `netbox-dev`. | VERIFIED FACT | `raw/rhel-build-baseline.txt` |
 | The build VM runs Red Hat Enterprise Linux 9.6 (Plow), x86_64, kernel `5.14.0-570.12.1.el9_6.x86_64`, under KVM/QEMU. The `redhat-release` package is `9.6-0.1.el9.x86_64`. | VERIFIED FACT | `raw/rhel-build-baseline.txt`, `raw/rhel-build-repository-readiness.txt` |
 | A single `sudo -n true` check succeeded. Subsequent privileged read-only queries reported subscription-manager Overall Status `Disabled`, Simple Content Access mode, a successful identity response (identifiers redacted), and release `9.6`. | VERIFIED FACT | `raw/rhel-build-repository-readiness.txt` |
-| `subscription-manager repos --list-enabled` reported no repositories matching the criteria. Current `dnf repolist` showed only `netbox-offline-base` and `netbox-offline-modules`. | VERIFIED FACT | `raw/rhel-build-repository-readiness.txt` |
-| `dnf repolist --all` listed standard RHEL 9 BaseOS/AppStream definitions, including `rhel-9-for-x86_64-baseos-rpms` and `rhel-9-for-x86_64-appstream-rpms`, as disabled. This proves current state only, not permanent entitlement or availability. | VERIFIED FACT | `raw/rhel-build-repository-readiness.txt` |
+| Before M0.5, `subscription-manager repos --list-enabled` reported no repositories matching the criteria and `dnf repolist` showed only `netbox-offline-base` and `netbox-offline-modules`. | VERIFIED FACT | `raw/rhel-build-repository-readiness.txt` |
+| Before M0.5, `dnf repolist --all` listed standard RHEL 9 BaseOS/AppStream definitions, including `rhel-9-for-x86_64-baseos-rpms` and `rhel-9-for-x86_64-appstream-rpms`, as disabled. | VERIFIED FACT | `raw/rhel-build-repository-readiness.txt` |
 | Current offline modular metadata exposed PostgreSQL 15 and 16 (16 marked enabled), PHP 8.1/8.2/8.3, and nginx 1.22/1.24/1.26 (1.24 marked enabled). No stream was changed. | VERIFIED FACT | `raw/rhel-build-baseline.txt` |
 | Installed `python3` reports 3.9.21. The available `python3*` query against the currently enabled repositories exposed Python 3.9.21 packages; this does not establish all Python versions available from restored Red Hat sources. | VERIFIED FACT | `raw/rhel-build-baseline.txt` |
 | The VM has an 80 GiB disk; `/` had 46 GiB available and `/home` had 23 GiB available at capture time. | VERIFIED FACT | `raw/rhel-build-baseline.txt` |
+
+## M0.5 verified source readiness
+
+- VERIFIED FACT: The live Red Hat inventory confirmed the standard repository IDs
+  `rhel-9-for-x86_64-baseos-rpms` and
+  `rhel-9-for-x86_64-appstream-rpms` before enablement.
+- VERIFIED FACT: M0.5 enabled only those two Red Hat repositories. The pre-existing
+  `netbox-offline-base` and `netbox-offline-modules` repositories were retained
+  unchanged. The release pin remained 9.6.
+- VERIFIED FACT: With every other repository disabled, BaseOS/AppStream metadata
+  refresh and a `bash` package query succeeded. Real RHEL sources exposed
+  PostgreSQL streams 15/16, PHP 8.1/8.2/8.3, nginx 1.22/1.24/1.26, and Python
+  package families for minors 3.9, 3.11, and 3.12.
+- VERIFIED FACT: Official Zabbix 7.0 RHEL 9 x86_64 repository metadata was
+  reachable at `https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/`. Query-only
+  metadata contained exact `7.0.30-release1.el9` packages for all investigated
+  server, web, Agent 2, tool, web-service, and proxy families.
+- VERIFIED FACT: The official key file was reachable and GPG reported fingerprint
+  `4C3D 6F2C C75F 5146 754F C374 D913 219A B533 3005`. RPM signature verification
+  was not performed because no RPM payload was downloaded; that remains an M1
+  build gate.
+- VERIFIED FACT: A disposable RHEL 9.6/x86_64 installroot with an empty RPM
+  database saw only BaseOS, AppStream, and a temporary official Zabbix repository.
+  Exact Zabbix 7.0.30 core packages and recursive dependencies resolved only from
+  those three sources. RPM counts stayed zero, no RPM payload was downloaded,
+  host RPM/module-state hashes were unchanged, SELinux remained Enforcing, and
+  the validated temporary root was removed.
+
+The clean installroot printed an expected subscription-plugin warning because the
+disposable root contained no consumer identity. It nevertheless accessed the
+explicit host-approved Red Hat repository definitions and completed all metadata
+and resolution queries successfully. This warning is not evidence that the host
+registration is invalid.
 
 Runtime statuses, addresses, counts, and reachability are point-in-time facts, not
 permanent configuration guarantees.
@@ -45,8 +78,9 @@ discovery:
   Enforcing and firewalld enabled.
 - ARCHITECT BASELINE: NetBox LXC 9000 is the integration source; QEMU 140 is not.
 
-Internet reachability was verified, but no upstream version verification report
-was performed and the approved Zabbix baseline was not changed.
+M0.5 verified the approved exact Zabbix 7.0.30 package set in the official RHEL 9
+repository. It did not perform a general newer-upstream version review and did not
+change the approved baseline.
 
 ## Assumptions
 
@@ -61,19 +95,16 @@ Assumptions are not build inputs until verified.
 
 ## Unknowns
 
-- UNKNOWN: BaseOS/AppStream entitlement and actual usability from the future
-  clean build context. They are currently disabled/not enabled; this does not
-  prove permanent unavailability.
-- UNKNOWN: required Zabbix and other approved source-repository readiness for M1.
-- UNKNOWN: approved Python minor/ABI for the integration service. Python 3.9.21
-  is observed in the current offline-repository view but has not been selected.
+- UNKNOWN: approved Python minor/ABI for the integration service. Approved RHEL
+  sources expose 3.9, 3.11, and 3.12 package families, but M0.5 did not select one.
 - UNKNOWN: NetBox VM inventory, VM statuses/primary IP coverage, monitoring-related
   tags, and monitoring-related custom fields because the available credential was
   denied.
 - UNKNOWN: PNETLab/EVE guest versions and management reachability; both guests
   were stopped and deliberately not started.
-- UNKNOWN: exact Zabbix/RHEL package availability and modular metadata behavior;
-  no build was authorized.
+- UNKNOWN: complete M1 dependency closure, RPM signature results, and offline
+  modular-metadata reproduction. M0.5 proved source readiness only and did not
+  build or download the artifact payload.
 - UNKNOWN: whether the current topology portal is functionally compatible with
   NetBox 6.0.8 beyond the limited successful GETs observed.
 
@@ -81,7 +112,7 @@ Assumptions are not build inputs until verified.
 
 | Item | Gate impact |
 |---|---|
-| RHEL source repository readiness | BLOCKER FOR M1 |
+| RHEL source repository readiness | RESOLVED; M1 source gate READY |
 | NetBox VM/tag/custom-field read permission | BLOCKER FOR M4 |
 | NetBox 6.0.8 versus portal 4.6.9 | BLOCKS/AFFECTS M4 and M6 |
 | PNETLab/EVE stopped | Prerequisite only for M8; not an M1 blocker |
@@ -111,18 +142,16 @@ Assumptions are not build inputs until verified.
   credential with the listed view permissions. Do not alter NetBox permissions in
   Milestone 0.
 
-### RHEL source repository readiness
+### RHEL source repository readiness — resolved by M0.5
 
 - EXPECTED: The RHEL 9.6 build context can use verified BaseOS, AppStream, and all
   other approved source repositories needed for clean installroot dependency
   resolution.
-- ACTUAL: The VM shell is reachable and its OS/storage/module facts were captured.
-  DNF currently enables only the pre-existing NetBox offline repositories;
-  BaseOS/AppStream definitions are visible but disabled, and subscription-manager
-  lists no enabled repositories.
-- IMPACT: Existing offline content cannot be treated as authoritative source
-  closure for Zabbix. BaseOS/AppStream entitlement and clean-build usability have
-  not been verified, so M1 remains blocked.
-- RECOMMENDATION: Have the system/subscription owner restore or verify the approved
-  source repositories outside this discovery run, then repeat the non-mutating
-  readiness checks in `evidence/discovery/REQUIRED-EVIDENCE.md` before M1 approval.
+- ACTUAL: BaseOS and AppStream were enabled through subscription-manager, queried
+  independently, and used with the temporary official Zabbix 7.0 source in an
+  isolated clean installroot. The NetBox offline repositories had zero influence.
+- IMPACT: The source-readiness blocker for M1 is resolved. Full dependency
+  download, RPM signature verification, module metadata preservation, artifact
+  assembly, and Python selection remain M1 work rather than M0.5 work.
+- RECOMMENDATION: M1 may begin after explicit approval, using the exact source IDs,
+  release pin, architecture, isolation pattern, and evidence recorded here.

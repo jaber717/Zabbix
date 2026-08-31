@@ -1,0 +1,23 @@
+OBSERVED_DATE=2026-09-01
+TARGET=192.168.1.91
+ATTEMPT=3; initialize disposable RPM database with host-path --dbpath, then use it through --installroot
+CONTEXT=disposable clean installroot with empty RPM database
+RELEASEVER=9.6
+ARCH=x86_64
+APPROVED_REPOSITORIES=rhel-9-for-x86_64-baseos-rpms,rhel-9-for-x86_64-appstream-rpms,m05-zabbix temporary repofrompath
+EXCLUDED_REPOSITORIES=all others, including netbox-offline-base and netbox-offline-modules
+HOST_PACKAGE_OPERATION=none; metadata and repoquery only
+TEMPORARY_STATE=RPM database and metadata cache inside validated /var/tmp/zabbix-m05-root.* path, removed after capture
+
+CLEAN_ROOT=/var/tmp/zabbix-m05-root.7ujyzs
+HOST_RPMDB_SHA256_BEFORE=005e82f902130c9ee18a0716b9f8d3fa09d4f7f4fedd75dae81a58ac5fc2a067
+HOST_MODULE_STATE_SHA256_BEFORE=9ca84f282a92fea4083f0f467f9f86ce564e92769cb8c24a90bb84ecbffad083
+
+===== CLEAN_RPMDB_DIRECTORY =====
+$ sudo -n mkdir -p /var/tmp/zabbix-m05-root.7ujyzs/var/lib/rpm
+COMMAND_EXIT=0
+
+===== CLEAN_RPMDB_INIT =====
+$ sudo -n rpm --dbpath /var/tmp/zabbix-m05-root.7ujyzs/var/lib/rpm --initdb
+COMMAND_EXIT=255
+error: can't create transaction lock on /var/tmp/zabbix-m05-root.7ujyzs/var/lib/rpm/.rpm.lock (Permission denied)

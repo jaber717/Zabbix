@@ -1,7 +1,7 @@
 # Implementation Plan
 
-Only M0 is authorized in this repository state. Every later milestone requires a
-separate explicit approval and ends with a stop/review gate.
+M0 and M0.5 are complete. M1 is next and source-ready, but requires separate
+explicit approval. Every milestone ends with a stop/review gate.
 
 ## M0 — Discovery + Specifications
 
@@ -22,10 +22,28 @@ separate explicit approval and ends with a stop/review gate.
 
 | Dependency | Affected milestone |
 |---|---|
-| Verified usable RHEL BaseOS/AppStream and required build sources | Blocks M1 |
+| Verified usable RHEL BaseOS/AppStream and official Zabbix 7.0 source | RESOLVED by M0.5; M1 READY |
 | NetBox VM/tag/custom-field read permission | Blocks M4 |
 | NetBox 6.0.8 versus portal 4.6.9 compatibility | Blocks/affects M4 and M6 |
 | PNETLab/EVE availability | Prerequisite only for M8 |
+
+## M0.5 — Build Source Readiness
+
+- **Scope:** Capture pre-change state; enable only standard RHEL 9 BaseOS and
+  AppStream; verify real modules/Python; verify official Zabbix 7.0.30 metadata;
+  prove isolated clean-installroot source and dependency access.
+- **Inputs:** Accepted M0 evidence, registered RHEL 9.6 x86_64 build VM,
+  passwordless approved repository administration.
+- **Deliverables:** Redacted pre/post repository evidence, module/Python source
+  inventory, official Zabbix metadata/key/package evidence, clean-context proof,
+  source decision, gate update, commit.
+- **Tests:** All M0.5 acceptance items in `PROJECT-STATUS.md`.
+- **Permissions:** Enable only BaseOS/AppStream; metadata/query operations;
+  disposable clean-root state. No host package install or module change.
+- **Risks:** Wrong source IDs, unintended repository influence, account identifier
+  leakage, host RPM/module mutation, stale temporary state.
+- **Stop condition:** Source readiness proven and committed. Do not start M1.
+- **Result:** COMPLETE; M1 source gate READY.
 
 ## M1 — Offline Build Pipeline
 

@@ -1,0 +1,402 @@
+OBSERVED_DATE=2026-09-01
+TARGET=192.168.1.91
+REPOSITORY_SCOPE=rhel-9-for-x86_64-baseos-rpms,rhel-9-for-x86_64-appstream-rpms
+EXCLUDED=all other repositories, including netbox-offline-base and netbox-offline-modules
+OPERATIONS=metadata/query only; no package installation and no module state change
+
+
+===== RHEL_ONLY_MAKECACHE =====
+$ sudo -n dnf --disablerepo=\* --enablerepo=rhel-9-for-x86_64-baseos-rpms --enablerepo=rhel-9-for-x86_64-appstream-rpms makecache
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Red Hat Enterprise Linux 9 for x86_64 - BaseOS   13 MB/s |  87 MB     00:06
+Red Hat Enterprise Linux 9 for x86_64 - AppStre  13 MB/s |  73 MB     00:05
+Metadata cache created.
+COMMAND_EXIT=0
+
+===== RHEL_ONLY_REPOLIST =====
+$ sudo -n dnf --disablerepo=\* --enablerepo=rhel-9-for-x86_64-baseos-rpms --enablerepo=rhel-9-for-x86_64-appstream-rpms repolist
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+repo id                          repo name
+rhel-9-for-x86_64-appstream-rpms Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)
+rhel-9-for-x86_64-baseos-rpms    Red Hat Enterprise Linux 9 for x86_64 - BaseOS (RPMs)
+COMMAND_EXIT=0
+
+===== RHEL_ONLY_BASH_QUERY =====
+$ sudo -n dnf --disablerepo=\* --enablerepo=rhel-9-for-x86_64-baseos-rpms --enablerepo=rhel-9-for-x86_64-appstream-rpms repoquery --available --qf %\{name\}\ %\{epoch\}:%\{version\}-%\{release\}.%\{arch\}\ %\{repoid\} bash
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Last metadata expiration check: 0:00:09 ago on Tue Sep  1 01:43:31 2026.
+bash 0:5.1.8-4.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+bash 0:5.1.8-5.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+bash 0:5.1.8-6.el9_1.x86_64 rhel-9-for-x86_64-baseos-rpms
+bash 0:5.1.8-9.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+COMMAND_EXIT=0
+
+===== RHEL_ONLY_POSTGRESQL_MODULES =====
+$ sudo -n dnf --disablerepo=\* --enablerepo=rhel-9-for-x86_64-baseos-rpms --enablerepo=rhel-9-for-x86_64-appstream-rpms module list postgresql
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Last metadata expiration check: 0:00:12 ago on Tue Sep  1 01:43:31 2026.
+Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)
+Name       Stream Profiles           Summary
+postgresql 15     client, server [d] PostgreSQL server and client module
+postgresql 16 [e] client, server [d] PostgreSQL server and client module
+
+Hint: [d]efault, [e]nabled, [x]disabled, [i]nstalled
+COMMAND_EXIT=0
+
+===== RHEL_ONLY_PHP_MODULES =====
+$ sudo -n dnf --disablerepo=\* --enablerepo=rhel-9-for-x86_64-baseos-rpms --enablerepo=rhel-9-for-x86_64-appstream-rpms module list php
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Last metadata expiration check: 0:00:16 ago on Tue Sep  1 01:43:31 2026.
+Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)
+Name Stream Profiles                   Summary
+php  8.1    common [d], devel, minimal PHP scripting language
+php  8.2    common [d], devel, minimal PHP scripting language
+php  8.3    common [d], devel, minimal PHP scripting language
+
+Hint: [d]efault, [e]nabled, [x]disabled, [i]nstalled
+COMMAND_EXIT=0
+
+===== RHEL_ONLY_NGINX_MODULES =====
+$ sudo -n dnf --disablerepo=\* --enablerepo=rhel-9-for-x86_64-baseos-rpms --enablerepo=rhel-9-for-x86_64-appstream-rpms module list nginx
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Last metadata expiration check: 0:00:19 ago on Tue Sep  1 01:43:31 2026.
+Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)
+Name  Stream   Profiles   Summary
+nginx 1.22     common [d] nginx webserver
+nginx 1.24 [e] common [d] nginx webserver
+nginx 1.26     common [d] nginx webserver
+
+Hint: [d]efault, [e]nabled, [x]disabled, [i]nstalled
+COMMAND_EXIT=0
+
+===== RHEL_ONLY_PYTHON_RUNTIME_QUERY =====
+$ sudo -n dnf --disablerepo=\* --enablerepo=rhel-9-for-x86_64-baseos-rpms --enablerepo=rhel-9-for-x86_64-appstream-rpms repoquery --available --qf %\{name\}\ %\{epoch\}:%\{version\}-%\{release\}.%\{arch\}\ %\{repoid\} python3 python3.11 python3.12 python3.13
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Last metadata expiration check: 0:00:22 ago on Tue Sep  1 01:43:31 2026.
+python3 0:3.9.10-2.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.10-3.el9_0.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.14-1.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.14-1.el9_1.1.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.14-1.el9_1.2.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.16-1.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.16-1.el9_2.1.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.16-1.el9_2.2.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.18-1.el9_3.1.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.18-1.el9_3.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.18-3.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.18-3.el9_4.1.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.18-3.el9_4.3.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.18-3.el9_4.5.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.18-3.el9_4.6.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.19-8.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.19-8.el9_5.1.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.21-1.el9_5.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.21-2.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.21-2.el9_6.1.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3 0:3.9.21-2.el9_6.2.x86_64 rhel-9-for-x86_64-baseos-rpms
+python3.11 0:3.11.11-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.11-2.el9_6.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.11-2.el9_6.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.2-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.2-2.el9_2.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.2-2.el9_2.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.5-1.el9_3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.7-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.7-1.el9_4.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.7-1.el9_4.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.7-1.el9_4.5.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.7-1.el9_4.6.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.9-7.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.9-7.el9_5.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.9-7.el9_5.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.9-7.el9_5.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.1-4.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.1-4.el9_4.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.1-4.el9_4.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.1-4.el9_4.4.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.5-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.5-2.el9_5.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.5-2.el9_5.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.5-2.el9_5.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.9-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.9-1.el9_6.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.9-1.el9_6.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+COMMAND_EXIT=0
+
+===== RHEL_ONLY_PYTHON_311_PACKAGES =====
+$ sudo -n dnf --disablerepo=\* --enablerepo=rhel-9-for-x86_64-baseos-rpms --enablerepo=rhel-9-for-x86_64-appstream-rpms repoquery --available --qf %\{name\}\ %\{epoch\}:%\{version\}-%\{release\}.%\{arch\}\ %\{repoid\} python3.11\*
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Last metadata expiration check: 0:00:25 ago on Tue Sep  1 01:43:31 2026.
+python3.11 0:3.11.11-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.11-2.el9_6.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.11-2.el9_6.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.2-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.2-2.el9_2.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.2-2.el9_2.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.5-1.el9_3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.7-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.7-1.el9_4.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.7-1.el9_4.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.7-1.el9_4.5.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.7-1.el9_4.6.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.9-7.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.9-7.el9_5.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.9-7.el9_5.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11 0:3.11.9-7.el9_5.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-PyMySQL 0:1.0.2-1.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-PyMySQL 0:1.0.2-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-PyMySQL+rsa 0:1.0.2-1.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-PyMySQL+rsa 0:1.0.2-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-cffi 0:1.15.1-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-charset-normalizer 0:2.1.0-1.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-cryptography 0:37.0.2-5.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-cryptography 0:37.0.2-6.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.11-2.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.11-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.11-2.el9_6.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.11-2.el9_6.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.11-2.el9_6.2.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.11-2.el9_6.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.2-2.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.2-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.2-2.el9_2.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.2-2.el9_2.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.2-2.el9_2.2.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.2-2.el9_2.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.5-1.el9_3.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.5-1.el9_3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.7-1.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.7-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.7-1.el9_4.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.7-1.el9_4.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.7-1.el9_4.3.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.7-1.el9_4.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.7-1.el9_4.5.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.7-1.el9_4.5.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.7-1.el9_4.6.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.7-1.el9_4.6.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.9-7.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.9-7.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.9-7.el9_5.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.9-7.el9_5.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.9-7.el9_5.2.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.9-7.el9_5.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.9-7.el9_5.3.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-devel 0:3.11.9-7.el9_5.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-idna 0:3.4-1.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.11-2.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.11-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.11-2.el9_6.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.11-2.el9_6.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.11-2.el9_6.2.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.11-2.el9_6.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.2-2.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.2-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.2-2.el9_2.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.2-2.el9_2.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.2-2.el9_2.2.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.2-2.el9_2.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.5-1.el9_3.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.5-1.el9_3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.7-1.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.7-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.7-1.el9_4.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.7-1.el9_4.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.7-1.el9_4.3.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.7-1.el9_4.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.7-1.el9_4.5.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.7-1.el9_4.5.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.7-1.el9_4.6.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.7-1.el9_4.6.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.9-7.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.9-7.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.9-7.el9_5.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.9-7.el9_5.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.9-7.el9_5.2.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.9-7.el9_5.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.9-7.el9_5.3.i686 rhel-9-for-x86_64-appstream-rpms
+python3.11-libs 0:3.11.9-7.el9_5.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-lxml 0:4.9.2-3.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-lxml 0:4.9.2-4.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-mod_wsgi 0:4.9.4-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-numpy 0:1.23.5-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-numpy-f2py 0:1.23.5-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-pip 0:22.3.1-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-pip 0:22.3.1-4.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-pip 0:22.3.1-4.el9_3.1.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-pip 0:22.3.1-5.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-pip-wheel 0:22.3.1-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-pip-wheel 0:22.3.1-4.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-pip-wheel 0:22.3.1-4.el9_3.1.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-pip-wheel 0:22.3.1-5.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-ply 0:3.11-1.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-psycopg2 0:2.9.3-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-pycparser 0:2.20-1.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-pysocks 0:1.7.1-1.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-pyyaml 0:6.0-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-requests 0:2.28.1-1.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-requests+security 0:2.28.1-1.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-requests+socks 0:2.28.1-1.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-scipy 0:1.10.0-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-scipy 0:1.10.1-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-setuptools 0:65.5.1-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-setuptools 0:65.5.1-2.el9_4.1.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-setuptools 0:65.5.1-3.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-setuptools 0:65.5.1-4.el9_6.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-setuptools-wheel 0:65.5.1-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-setuptools-wheel 0:65.5.1-2.el9_4.1.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-setuptools-wheel 0:65.5.1-3.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-setuptools-wheel 0:65.5.1-4.el9_6.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-six 0:1.16.0-1.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.11-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.11-2.el9_6.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.11-2.el9_6.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.2-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.2-2.el9_2.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.2-2.el9_2.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.5-1.el9_3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.7-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.7-1.el9_4.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.7-1.el9_4.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.7-1.el9_4.5.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.7-1.el9_4.6.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.9-7.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.9-7.el9_5.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.9-7.el9_5.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-tkinter 0:3.11.9-7.el9_5.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.11-urllib3 0:1.26.12-1.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-urllib3 0:1.26.12-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-urllib3 0:1.26.12-2.el9_5.1.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-urllib3 0:1.26.12-2.el9_5.2.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-urllib3 0:1.26.12-5.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.11-wheel 0:0.38.4-3.el9.noarch rhel-9-for-x86_64-appstream-rpms
+COMMAND_EXIT=0
+
+===== RHEL_ONLY_PYTHON_312_PACKAGES =====
+$ sudo -n dnf --disablerepo=\* --enablerepo=rhel-9-for-x86_64-baseos-rpms --enablerepo=rhel-9-for-x86_64-appstream-rpms repoquery --available --qf %\{name\}\ %\{epoch\}:%\{version\}-%\{release\}.%\{arch\}\ %\{repoid\} python3.12\*
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Last metadata expiration check: 0:00:28 ago on Tue Sep  1 01:43:31 2026.
+python3.12 0:3.12.1-4.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.1-4.el9_4.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.1-4.el9_4.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.1-4.el9_4.4.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.5-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.5-2.el9_5.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.5-2.el9_5.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.5-2.el9_5.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.9-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.9-1.el9_6.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12 0:3.12.9-1.el9_6.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-PyMySQL 0:1.1.0-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-PyMySQL 0:1.1.0-3.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-PyMySQL+rsa 0:1.1.0-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-PyMySQL+rsa 0:1.1.0-3.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-cffi 0:1.16.0-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-charset-normalizer 0:3.3.0-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-cryptography 0:41.0.7-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-cryptography 0:41.0.7-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-cryptography 0:41.0.7-2.el9_6.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.1-4.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.1-4.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.1-4.el9_4.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.1-4.el9_4.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.1-4.el9_4.3.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.1-4.el9_4.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.1-4.el9_4.4.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.1-4.el9_4.4.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.5-2.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.5-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.5-2.el9_5.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.5-2.el9_5.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.5-2.el9_5.2.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.5-2.el9_5.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.5-2.el9_5.3.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.5-2.el9_5.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.9-1.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.9-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.9-1.el9_6.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.9-1.el9_6.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.9-1.el9_6.2.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-devel 0:3.12.9-1.el9_6.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-idna 0:3.4-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.1-4.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.1-4.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.1-4.el9_4.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.1-4.el9_4.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.1-4.el9_4.3.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.1-4.el9_4.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.1-4.el9_4.4.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.1-4.el9_4.4.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.5-2.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.5-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.5-2.el9_5.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.5-2.el9_5.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.5-2.el9_5.2.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.5-2.el9_5.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.5-2.el9_5.3.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.5-2.el9_5.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.9-1.el9.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.9-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.9-1.el9_6.1.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.9-1.el9_6.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.9-1.el9_6.2.i686 rhel-9-for-x86_64-appstream-rpms
+python3.12-libs 0:3.12.9-1.el9_6.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-lxml 0:4.9.3-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-mod_wsgi 0:4.9.4-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-numpy 0:1.24.4-3.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-numpy-f2py 0:1.24.4-3.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-pip 0:23.2.1-4.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-pip-wheel 0:23.2.1-4.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-ply 0:3.11-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-psycopg2 0:2.9.6-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-pycparser 0:2.20-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-pyyaml 0:6.0.1-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-requests 0:2.28.2-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-scipy 0:1.11.1-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-setuptools 0:68.2.2-3.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-setuptools 0:68.2.2-3.el9_4.1.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-setuptools 0:68.2.2-4.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-setuptools 0:68.2.2-5.el9_6.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-tkinter 0:3.12.1-4.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-tkinter 0:3.12.1-4.el9_4.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-tkinter 0:3.12.1-4.el9_4.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-tkinter 0:3.12.1-4.el9_4.4.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-tkinter 0:3.12.5-2.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-tkinter 0:3.12.5-2.el9_5.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-tkinter 0:3.12.5-2.el9_5.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-tkinter 0:3.12.5-2.el9_5.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-tkinter 0:3.12.9-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-tkinter 0:3.12.9-1.el9_6.1.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-tkinter 0:3.12.9-1.el9_6.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+python3.12-urllib3 0:1.26.18-2.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-urllib3 0:1.26.18-2.el9_5.1.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-urllib3 0:1.26.19-1.el9.noarch rhel-9-for-x86_64-appstream-rpms
+python3.12-wheel 0:0.41.2-3.el9.noarch rhel-9-for-x86_64-appstream-rpms
+COMMAND_EXIT=0

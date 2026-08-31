@@ -1,0 +1,544 @@
+OBSERVED_DATE=2026-09-01
+TARGET=192.168.1.91
+ATTEMPT=4; validated non-world-writable /var/lib disposable root
+CONTEXT=disposable clean installroot with empty RPM database
+RELEASEVER=9.6
+ARCH=x86_64
+APPROVED_REPOSITORIES=rhel-9-for-x86_64-baseos-rpms,rhel-9-for-x86_64-appstream-rpms,m05-zabbix temporary repofrompath
+EXCLUDED_REPOSITORIES=all others, including netbox-offline-base and netbox-offline-modules
+HOST_PACKAGE_OPERATION=none; metadata and repoquery only
+TEMPORARY_STATE=RPM database and metadata cache inside validated /var/lib/zabbix-m05-root.* path, removed after capture
+
+CLEAN_ROOT=/var/lib/zabbix-m05-root.aRGYvW
+HOST_RPMDB_SHA256_BEFORE=005e82f902130c9ee18a0716b9f8d3fa09d4f7f4fedd75dae81a58ac5fc2a067
+HOST_MODULE_STATE_SHA256_BEFORE=9ca84f282a92fea4083f0f467f9f86ce564e92769cb8c24a90bb84ecbffad083
+
+===== CLEAN_ROOT_MODE =====
+$ sudo -n chmod 0755 /var/lib/zabbix-m05-root.aRGYvW
+COMMAND_EXIT=0
+
+===== CLEAN_RPMDB_DIRECTORY =====
+$ sudo -n mkdir -p /var/lib/zabbix-m05-root.aRGYvW/var/lib/rpm
+COMMAND_EXIT=0
+
+===== CLEAN_RPMDB_INIT =====
+$ sudo -n rpm --dbpath /var/lib/zabbix-m05-root.aRGYvW/var/lib/rpm --initdb
+COMMAND_EXIT=0
+
+===== CLEAN_RPMDB_COUNT_BEFORE =====
+$ sudo -n sh -c rpm\ --dbpath\ \'/var/lib/zabbix-m05-root.aRGYvW/var/lib/rpm\'\ -qa\ \|\ wc\ -l
+0
+COMMAND_EXIT=0
+
+===== CLEAN_APPROVED_REPOLIST =====
+$ sudo -n dnf --installroot=/var/lib/zabbix-m05-root.aRGYvW --releasever=9.6 --forcearch=x86_64 --setopt=module_platform_id=platform:el9 --disablerepo=\* --enablerepo=rhel-9-for-x86_64-baseos-rpms --enablerepo=rhel-9-for-x86_64-appstream-rpms --repofrompath=m05-zabbix\,https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/ --enablerepo=m05-zabbix --setopt=m05-zabbix.gpgcheck=1 --setopt=m05-zabbix.gpgkey=https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX-B5333005 repolist
+Updating Subscription Management repositories.
+Unable to read consumer identity
+
+This system is not registered with an entitlement server. You can use "rhc" or "subscription-manager" to register.
+
+Added m05-zabbix repo from https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/
+repo id                          repo name
+m05-zabbix                       m05-zabbix
+rhel-9-for-x86_64-appstream-rpms Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)
+rhel-9-for-x86_64-baseos-rpms    Red Hat Enterprise Linux 9 for x86_64 - BaseOS (RPMs)
+COMMAND_EXIT=0
+
+===== CLEAN_APPROVED_MAKECACHE =====
+$ sudo -n dnf --installroot=/var/lib/zabbix-m05-root.aRGYvW --releasever=9.6 --forcearch=x86_64 --setopt=module_platform_id=platform:el9 --disablerepo=\* --enablerepo=rhel-9-for-x86_64-baseos-rpms --enablerepo=rhel-9-for-x86_64-appstream-rpms --repofrompath=m05-zabbix\,https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/ --enablerepo=m05-zabbix --setopt=m05-zabbix.gpgcheck=1 --setopt=m05-zabbix.gpgkey=https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX-B5333005 makecache
+Updating Subscription Management repositories.
+Unable to read consumer identity
+
+This system is not registered with an entitlement server. You can use "rhc" or "subscription-manager" to register.
+
+Added m05-zabbix repo from https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/
+Red Hat Enterprise Linux 9 for x86_64 - BaseOS   15 MB/s |  87 MB     00:05
+Red Hat Enterprise Linux 9 for x86_64 - AppStre  14 MB/s |  73 MB     00:05
+m05-zabbix                                      180 kB/s | 581 kB     00:03
+Last metadata expiration check: 0:00:01 ago on Tue Sep  1 01:51:43 2026.
+Metadata cache created.
+COMMAND_EXIT=0
+
+===== CLEAN_7030_PACKAGE_QUERY =====
+$ sudo -n dnf --installroot=/var/lib/zabbix-m05-root.aRGYvW --releasever=9.6 --forcearch=x86_64 --setopt=module_platform_id=platform:el9 --disablerepo=\* --enablerepo=rhel-9-for-x86_64-baseos-rpms --enablerepo=rhel-9-for-x86_64-appstream-rpms --repofrompath=m05-zabbix\,https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/ --enablerepo=m05-zabbix --setopt=m05-zabbix.gpgcheck=1 --setopt=m05-zabbix.gpgkey=https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX-B5333005 repoquery --available --qf %\{name\}\ %\{epoch\}:%\{version\}-%\{release\}.%\{arch\}\ %\{repoid\} zabbix-server-pgsql-7.0.30\* zabbix-web-pgsql-7.0.30\* zabbix-nginx-conf-7.0.30\* zabbix-sql-scripts-7.0.30\* zabbix-agent2-7.0.30\*
+Updating Subscription Management repositories.
+Unable to read consumer identity
+
+This system is not registered with an entitlement server. You can use "rhc" or "subscription-manager" to register.
+
+Added m05-zabbix repo from https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/
+Last metadata expiration check: 0:00:04 ago on Tue Sep  1 01:51:43 2026.
+zabbix-agent2 0:7.0.30-release1.el9.x86_64 m05-zabbix
+zabbix-nginx-conf 0:7.0.30-release1.el9.noarch m05-zabbix
+zabbix-server-pgsql 0:7.0.30-release1.el9.x86_64 m05-zabbix
+zabbix-sql-scripts 0:7.0.30-release1.el9.noarch m05-zabbix
+zabbix-web-pgsql 0:7.0.30-release1.el9.noarch m05-zabbix
+COMMAND_EXIT=0
+
+===== CLEAN_RECURSIVE_RESOLUTION =====
+$ sudo -n dnf --installroot=/var/lib/zabbix-m05-root.aRGYvW --releasever=9.6 --forcearch=x86_64 --setopt=module_platform_id=platform:el9 --disablerepo=\* --enablerepo=rhel-9-for-x86_64-baseos-rpms --enablerepo=rhel-9-for-x86_64-appstream-rpms --repofrompath=m05-zabbix\,https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/ --enablerepo=m05-zabbix --setopt=m05-zabbix.gpgcheck=1 --setopt=m05-zabbix.gpgkey=https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX-B5333005 repoquery --available --requires --resolve --recursive --qf %\{name\}\ %\{epoch\}:%\{version\}-%\{release\}.%\{arch\}\ %\{repoid\} zabbix-server-pgsql-7.0.30\* zabbix-web-pgsql-7.0.30\* zabbix-nginx-conf-7.0.30\* zabbix-sql-scripts-7.0.30\* zabbix-agent2-7.0.30\*
+Updating Subscription Management repositories.
+Unable to read consumer identity
+
+This system is not registered with an entitlement server. You can use "rhc" or "subscription-manager" to register.
+
+Added m05-zabbix repo from https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/
+Last metadata expiration check: 0:00:05 ago on Tue Sep  1 01:51:43 2026.
+OpenIPMI-libs 0:2.0.36-1.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+acl 0:2.3.1-4.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+alternatives 0:1.24-2.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+audit-libs 0:3.1.5-4.el9.i686 rhel-9-for-x86_64-baseos-rpms
+audit-libs 0:3.1.5-4.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+basesystem 0:11-13.el9.noarch rhel-9-for-x86_64-baseos-rpms
+bash 0:5.1.8-9.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+bzip2-libs 0:1.0.8-10.el9_5.i686 rhel-9-for-x86_64-baseos-rpms
+bzip2-libs 0:1.0.8-10.el9_5.x86_64 rhel-9-for-x86_64-baseos-rpms
+c-ares 0:1.19.1-2.el9_4.x86_64 rhel-9-for-x86_64-baseos-rpms
+ca-certificates 0:2025.2.80_v9.0.305-91.el9.noarch rhel-9-for-x86_64-baseos-rpms
+coreutils 0:8.32-39.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+coreutils-common 0:8.32-39.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+coreutils-single 0:8.32-39.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+cracklib 0:2.9.6-27.el9.i686 rhel-9-for-x86_64-baseos-rpms
+cracklib 0:2.9.6-27.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+cracklib-dicts 0:2.9.6-27.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+crypto-policies 0:20250128-1.git5269e22.el9.noarch rhel-9-for-x86_64-baseos-rpms
+cryptsetup-libs 0:2.7.2-3.el9_6.1.i686 rhel-9-for-x86_64-baseos-rpms
+cryptsetup-libs 0:2.7.2-3.el9_6.1.x86_64 rhel-9-for-x86_64-baseos-rpms
+curl 0:7.76.1-31.el9_6.1.x86_64 rhel-9-for-x86_64-baseos-rpms
+curl-minimal 0:7.76.1-31.el9_6.1.x86_64 rhel-9-for-x86_64-baseos-rpms
+cyrus-sasl-lib 0:2.1.27-21.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+dbus 1:1.12.20-8.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+dbus-broker 0:28-7.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+dbus-common 1:1.12.20-8.el9.noarch rhel-9-for-x86_64-baseos-rpms
+dejavu-sans-fonts 0:2.37-18.el9.noarch rhel-9-for-x86_64-baseos-rpms
+device-mapper 9:1.02.202-6.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+device-mapper-libs 9:1.02.202-6.el9.i686 rhel-9-for-x86_64-baseos-rpms
+device-mapper-libs 9:1.02.202-6.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+diffutils 0:3.7-12.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+expat 0:2.5.0-5.el9_6.x86_64 rhel-9-for-x86_64-baseos-rpms
+filesystem 0:3.16-5.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+findutils 1:4.8.0-7.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+fontconfig 0:2.14.0-2.el9_1.x86_64 rhel-9-for-x86_64-appstream-rpms
+fonts-filesystem 1:2.0.5-7.el9.1.noarch rhel-9-for-x86_64-baseos-rpms
+freetype 0:2.10.4-10.el9_5.i686 rhel-9-for-x86_64-baseos-rpms
+freetype 0:2.10.4-10.el9_5.x86_64 rhel-9-for-x86_64-baseos-rpms
+gawk 0:5.1.0-6.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+gd 0:2.3.2-3.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+gdbm-libs 1:1.23-1.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+glib2 0:2.68.4-16.el9_6.3.i686 rhel-9-for-x86_64-baseos-rpms
+glib2 0:2.68.4-16.el9_6.3.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc 0:2.34-168.el9_6.24.i686 rhel-9-for-x86_64-baseos-rpms
+glibc 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-all-langpacks 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-common 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-gconv-extra 0:2.34-168.el9_6.24.i686 rhel-9-for-x86_64-baseos-rpms
+glibc-gconv-extra 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-aa 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-af 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-agr 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ak 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-am 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-an 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-anp 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ar 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-as 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ast 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ayc 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-az 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-be 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-bem 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ber 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-bg 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-bhb 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-bho 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-bi 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-bn 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-bo 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-br 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-brx 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-bs 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-byn 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ca 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ce 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-chr 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ckb 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-cmn 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-crh 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-cs 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-csb 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-cv 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-cy 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-da 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-de 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-doi 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-dsb 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-dv 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-dz 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-el 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-en 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-eo 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-es 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-et 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-eu 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-fa 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ff 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-fi 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-fil 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-fo 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-fr 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-fur 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-fy 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ga 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-gd 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-gez 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-gl 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-gu 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-gv 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ha 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-hak 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-he 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-hi 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-hif 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-hne 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-hr 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-hsb 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ht 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-hu 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-hy 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ia 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-id 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ig 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ik 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-is 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-it 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-iu 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ja 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ka 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-kab 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-kk 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-kl 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-km 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-kn 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ko 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-kok 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ks 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ku 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-kw 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ky 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-lb 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-lg 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-li 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-lij 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ln 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-lo 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-lt 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-lv 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-lzh 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-mag 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-mai 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-mfe 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-mg 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-mhr 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-mi 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-miq 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-mjw 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-mk 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ml 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-mn 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-mni 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-mnw 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-mr 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ms 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-mt 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-my 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-nan 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-nb 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-nds 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ne 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-nhn 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-niu 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-nl 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-nn 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-nr 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-nso 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-oc 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-om 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-or 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-os 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-pa 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-pap 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-pl 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ps 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-pt 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-quz 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-raj 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ro 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ru 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-rw 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sa 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sah 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sat 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sc 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sd 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-se 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sgs 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-shn 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-shs 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-si 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sid 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sk 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sl 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sm 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-so 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sq 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sr 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ss 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-st 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sv 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-sw 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-szl 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ta 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-tcy 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-te 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-tg 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-th 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-the 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ti 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-tig 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-tk 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-tl 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-tn 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-to 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-tpi 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-tr 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ts 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-tt 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ug 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-uk 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-unm 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ur 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-uz 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-ve 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-vi 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-wa 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-wae 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-wal 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-wo 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-xh 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-yi 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-yo 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-yue 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-yuw 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-zh 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-langpack-zu 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+glibc-minimal-langpack 0:2.34-168.el9_6.24.x86_64 rhel-9-for-x86_64-baseos-rpms
+gmp 1:6.2.0-13.el9.i686 rhel-9-for-x86_64-baseos-rpms
+gmp 1:6.2.0-13.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+gnutls 0:3.8.3-6.el9_6.2.i686 rhel-9-for-x86_64-baseos-rpms
+gnutls 0:3.8.3-6.el9_6.2.x86_64 rhel-9-for-x86_64-baseos-rpms
+graphite2 0:1.3.14-9.el9.i686 rhel-9-for-x86_64-baseos-rpms
+graphite2 0:1.3.14-9.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+grep 0:3.6-5.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+gzip 0:1.12-1.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+harfbuzz 0:2.7.4-10.el9.i686 rhel-9-for-x86_64-baseos-rpms
+harfbuzz 0:2.7.4-10.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+httpd-filesystem 0:2.4.62-4.el9_6.4.noarch rhel-9-for-x86_64-appstream-rpms
+jbigkit-libs 0:2.1-23.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+json-c 0:0.14-11.el9.i686 rhel-9-for-x86_64-baseos-rpms
+json-c 0:0.14-11.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+keyutils-libs 0:1.6.3-1.el9.i686 rhel-9-for-x86_64-baseos-rpms
+keyutils-libs 0:1.6.3-1.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+kmod-libs 0:28-10.el9.i686 rhel-9-for-x86_64-baseos-rpms
+kmod-libs 0:28-10.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+krb5-libs 0:1.21.1-8.el9_6.x86_64 rhel-9-for-x86_64-baseos-rpms
+langpacks-core-font-en 0:3.0-16.el9.noarch rhel-9-for-x86_64-appstream-rpms
+libX11 0:1.7.0-11.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+libX11-common 0:1.7.0-11.el9.noarch rhel-9-for-x86_64-appstream-rpms
+libXau 0:1.0.9-8.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+libXpm 0:3.5.13-10.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+libacl 0:2.3.1-4.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libacl 0:2.3.1-4.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libarchive 0:3.5.3-6.el9_6.x86_64 rhel-9-for-x86_64-baseos-rpms
+libattr 0:2.5.1-3.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libattr 0:2.5.1-3.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libblkid 0:2.37.4-21.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libblkid 0:2.37.4-21.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libbrotli 0:1.0.9-7.el9_5.i686 rhel-9-for-x86_64-baseos-rpms
+libbrotli 0:1.0.9-7.el9_5.x86_64 rhel-9-for-x86_64-baseos-rpms
+libcap 0:2.48-9.el9_2.i686 rhel-9-for-x86_64-baseos-rpms
+libcap 0:2.48-9.el9_2.x86_64 rhel-9-for-x86_64-baseos-rpms
+libcap-ng 0:0.8.2-7.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libcap-ng 0:0.8.2-7.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libcom_err 0:1.46.5-7.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libcurl 0:7.76.1-31.el9_6.1.x86_64 rhel-9-for-x86_64-baseos-rpms
+libcurl-minimal 0:7.76.1-31.el9_6.1.x86_64 rhel-9-for-x86_64-baseos-rpms
+libdb 0:5.3.28-57.el9_6.i686 rhel-9-for-x86_64-baseos-rpms
+libdb 0:5.3.28-57.el9_6.x86_64 rhel-9-for-x86_64-baseos-rpms
+libeconf 0:0.4.1-4.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libeconf 0:0.4.1-4.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libevent 0:2.1.12-8.el9_4.x86_64 rhel-9-for-x86_64-baseos-rpms
+libfdisk 0:2.37.4-21.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libfdisk 0:2.37.4-21.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libffi 0:3.4.2-8.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libffi 0:3.4.2-8.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libgcc 0:11.5.0-5.el9_5.i686 rhel-9-for-x86_64-baseos-rpms
+libgcc 0:11.5.0-5.el9_5.x86_64 rhel-9-for-x86_64-baseos-rpms
+libgcrypt 0:1.10.0-11.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libgcrypt 0:1.10.0-11.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libgpg-error 0:1.42-5.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libgpg-error 0:1.42-5.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libidn2 0:2.3.0-7.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libidn2 0:2.3.0-7.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libjpeg-turbo 0:2.0.90-7.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+libmount 0:2.37.4-21.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libmount 0:2.37.4-21.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libnghttp2 0:1.43.0-6.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libpng 2:1.6.37-12.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libpng 2:1.6.37-12.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libpq 0:13.20-1.el9_5.x86_64 rhel-9-for-x86_64-appstream-rpms
+libpsl 0:0.21.1-5.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libpwquality 0:1.4.4-8.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libpwquality 0:1.4.4-8.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libseccomp 0:2.5.2-2.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libseccomp 0:2.5.2-2.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libselinux 0:3.6-3.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libselinux 0:3.6-3.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libselinux-utils 0:3.6-3.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libsemanage 0:3.6-5.el9_6.x86_64 rhel-9-for-x86_64-baseos-rpms
+libsepol 0:3.6-2.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libsepol 0:3.6-2.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libsigsegv 0:2.13-4.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libsmartcols 0:2.37.4-21.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libsmartcols 0:2.37.4-21.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libssh 0:0.10.4-15.el9_6.x86_64 rhel-9-for-x86_64-baseos-rpms
+libssh-config 0:0.10.4-15.el9_6.noarch rhel-9-for-x86_64-baseos-rpms
+libstdc++ 0:11.5.0-5.el9_5.i686 rhel-9-for-x86_64-baseos-rpms
+libstdc++ 0:11.5.0-5.el9_5.x86_64 rhel-9-for-x86_64-baseos-rpms
+libtasn1 0:4.16.0-9.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libtasn1 0:4.16.0-9.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libtiff 0:4.4.0-13.el9_6.2.x86_64 rhel-9-for-x86_64-appstream-rpms
+libtool-ltdl 0:2.4.6-46.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+libtool-ltdl 0:2.4.6-46.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libunistring 0:0.9.10-15.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libunistring 0:0.9.10-15.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libutempter 0:1.2.1-6.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libuuid 0:2.37.4-21.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libuuid 0:2.37.4-21.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libverto 0:0.3.2-3.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libwebp 0:1.2.0-8.el9_3.x86_64 rhel-9-for-x86_64-appstream-rpms
+libxcb 0:1.13.1-9.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+libxcrypt 0:4.4.18-3.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libxcrypt 0:4.4.18-3.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+libxml2 0:2.9.13-12.el9_6.i686 rhel-9-for-x86_64-baseos-rpms
+libxml2 0:2.9.13-12.el9_6.x86_64 rhel-9-for-x86_64-baseos-rpms
+libxslt 0:1.1.34-13.el9_6.x86_64 rhel-9-for-x86_64-appstream-rpms
+libzstd 0:1.5.5-1.el9.i686 rhel-9-for-x86_64-baseos-rpms
+libzstd 0:1.5.5-1.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+logrotate 0:3.18.0-9.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+lua-libs 0:5.4.4-4.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+lz4-libs 0:1.9.3-5.el9.i686 rhel-9-for-x86_64-baseos-rpms
+lz4-libs 0:1.9.3-5.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+mcstrans 0:3.6-1.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+mpfr 0:4.1.0-7.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+ncurses-base 0:6.2-10.20210508.el9_6.2.noarch rhel-9-for-x86_64-baseos-rpms
+ncurses-libs 0:6.2-10.20210508.el9_6.2.x86_64 rhel-9-for-x86_64-baseos-rpms
+net-snmp-libs 1:5.9.1-17.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+nettle 0:3.10.1-1.el9.i686 rhel-9-for-x86_64-baseos-rpms
+nettle 0:3.10.1-1.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+nginx 2:1.20.1-22.el9_6.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+nginx-core 2:1.20.1-22.el9_6.3.x86_64 rhel-9-for-x86_64-appstream-rpms
+nginx-filesystem 2:1.20.1-22.el9_6.3.noarch rhel-9-for-x86_64-appstream-rpms
+oniguruma 0:6.9.6-1.el9.6.x86_64 rhel-9-for-x86_64-baseos-rpms
+openldap 0:2.6.8-4.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+openldap-compat 0:2.6.8-4.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+openssl 1:3.2.2-6.el9_5.1.x86_64 rhel-9-for-x86_64-baseos-rpms
+openssl-fips-provider 0:3.0.7-6.el9_5.i686 rhel-9-for-x86_64-baseos-rpms
+openssl-fips-provider 0:3.0.7-6.el9_5.x86_64 rhel-9-for-x86_64-baseos-rpms
+openssl-fips-provider-so 0:3.0.7-6.el9_5.x86_64 rhel-9-for-x86_64-baseos-rpms
+openssl-libs 1:3.2.2-6.el9_5.1.i686 rhel-9-for-x86_64-baseos-rpms
+openssl-libs 1:3.2.2-6.el9_5.1.x86_64 rhel-9-for-x86_64-baseos-rpms
+p11-kit 0:0.25.3-3.el9_5.i686 rhel-9-for-x86_64-baseos-rpms
+p11-kit 0:0.25.3-3.el9_5.x86_64 rhel-9-for-x86_64-baseos-rpms
+p11-kit-trust 0:0.25.3-3.el9_5.i686 rhel-9-for-x86_64-baseos-rpms
+p11-kit-trust 0:0.25.3-3.el9_5.x86_64 rhel-9-for-x86_64-baseos-rpms
+pam 0:1.5.1-26.el9_6.i686 rhel-9-for-x86_64-baseos-rpms
+pam 0:1.5.1-26.el9_6.x86_64 rhel-9-for-x86_64-baseos-rpms
+pcre 0:8.44-4.el9.i686 rhel-9-for-x86_64-baseos-rpms
+pcre 0:8.44-4.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+pcre2 0:10.40-6.el9.i686 rhel-9-for-x86_64-baseos-rpms
+pcre2 0:10.40-6.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+pcre2-syntax 0:10.40-6.el9.noarch rhel-9-for-x86_64-baseos-rpms
+php-bcmath 0:8.0.30-3.el9_6.x86_64 rhel-9-for-x86_64-appstream-rpms
+php-common 0:8.0.30-3.el9_6.x86_64 rhel-9-for-x86_64-appstream-rpms
+php-fpm 0:8.0.30-3.el9_6.x86_64 rhel-9-for-x86_64-appstream-rpms
+php-gd 0:8.0.30-3.el9_6.x86_64 rhel-9-for-x86_64-appstream-rpms
+php-ldap 0:8.0.30-3.el9_6.x86_64 rhel-9-for-x86_64-appstream-rpms
+php-mbstring 0:8.0.30-3.el9_6.x86_64 rhel-9-for-x86_64-appstream-rpms
+php-mysqlnd 0:8.0.30-3.el9_6.x86_64 rhel-9-for-x86_64-appstream-rpms
+php-pdo 0:8.0.30-3.el9_6.x86_64 rhel-9-for-x86_64-appstream-rpms
+php-pgsql 0:8.0.30-3.el9_6.x86_64 rhel-9-for-x86_64-appstream-rpms
+php-xml 0:8.0.30-3.el9_6.x86_64 rhel-9-for-x86_64-appstream-rpms
+policycoreutils 0:3.6-2.1.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+policycoreutils-newrole 0:3.6-2.1.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+popt 0:1.18-8.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+publicsuffix-list-dafsa 0:20210518-3.el9.noarch rhel-9-for-x86_64-baseos-rpms
+readline 0:8.1-4.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+redhat-logos-httpd 0:90.5-1.el9_6.1.noarch rhel-9-for-x86_64-appstream-rpms
+redhat-release 0:9.6-0.1.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+rpm 0:4.16.1.3-37.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+rpm-libs 0:4.16.1.3-37.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+rpm-plugin-selinux 0:4.16.1.3-37.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+sed 0:4.8-9.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+selinux-policy 0:38.1.53-5.el9_6.noarch rhel-9-for-x86_64-baseos-rpms
+selinux-policy-mls 0:38.1.53-5.el9_6.noarch rhel-9-for-x86_64-baseos-rpms
+selinux-policy-targeted 0:38.1.53-5.el9_6.noarch rhel-9-for-x86_64-baseos-rpms
+setup 0:2.13.7-10.el9.noarch rhel-9-for-x86_64-baseos-rpms
+shadow-utils 2:4.9-12.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+sqlite-libs 0:3.34.1-8.el9_6.x86_64 rhel-9-for-x86_64-baseos-rpms
+systemd 0:252-51.el9_6.3.i686 rhel-9-for-x86_64-baseos-rpms
+systemd 0:252-51.el9_6.3.x86_64 rhel-9-for-x86_64-baseos-rpms
+systemd-libs 0:252-51.el9_6.3.i686 rhel-9-for-x86_64-baseos-rpms
+systemd-libs 0:252-51.el9_6.3.x86_64 rhel-9-for-x86_64-baseos-rpms
+systemd-pam 0:252-51.el9_6.3.x86_64 rhel-9-for-x86_64-baseos-rpms
+systemd-rpm-macros 0:252-51.el9_6.3.noarch rhel-9-for-x86_64-baseos-rpms
+tzdata 0:2025b-1.el9.noarch rhel-9-for-x86_64-baseos-rpms
+unixODBC 0:2.3.9-4.el9.x86_64 rhel-9-for-x86_64-appstream-rpms
+util-linux 0:2.37.4-21.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+util-linux-core 0:2.37.4-21.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+xml-common 0:0.6.3-58.el9.noarch rhel-9-for-x86_64-appstream-rpms
+xz-libs 0:5.2.5-8.el9_0.i686 rhel-9-for-x86_64-baseos-rpms
+xz-libs 0:5.2.5-8.el9_0.x86_64 rhel-9-for-x86_64-baseos-rpms
+zabbix-web 0:7.0.30-release1.el9.noarch m05-zabbix
+zabbix-web-deps 0:7.0.30-release1.el9.noarch m05-zabbix
+zabbix-web-mysql 0:7.0.30-release1.el9.noarch m05-zabbix
+zabbix-web-pgsql 0:7.0.30-release1.el9.noarch m05-zabbix
+zlib 0:1.2.11-40.el9.i686 rhel-9-for-x86_64-baseos-rpms
+zlib 0:1.2.11-40.el9.x86_64 rhel-9-for-x86_64-baseos-rpms
+COMMAND_EXIT=0
+
+===== CLEAN_RPMDB_COUNT_AFTER =====
+$ sudo -n sh -c rpm\ --dbpath\ \'/var/lib/zabbix-m05-root.aRGYvW/var/lib/rpm\'\ -qa\ \|\ wc\ -l
+0
+COMMAND_EXIT=0
+
+===== CLEAN_DOWNLOADED_RPM_COUNT =====
+$ sudo -n sh -c find\ \'/var/lib/zabbix-m05-root.aRGYvW\'\ -type\ f\ -name\ \'\*.rpm\'\ \|\ wc\ -l
+0
+COMMAND_EXIT=0
+HOST_RPMDB_SHA256_AFTER=005e82f902130c9ee18a0716b9f8d3fa09d4f7f4fedd75dae81a58ac5fc2a067
+HOST_MODULE_STATE_SHA256_AFTER=9ca84f282a92fea4083f0f467f9f86ce564e92769cb8c24a90bb84ecbffad083
+
+===== RELEASE_PIN_AFTER =====
+$ sudo -n subscription-manager release --show
+Release: 9.6
+COMMAND_EXIT=0
+
+===== SELINUX_AFTER =====
+$ getenforce
+Enforcing
+COMMAND_EXIT=0
+
+===== CLEAN_ROOT_CLEANUP =====
+$ sudo -n rm -rf -- /var/lib/zabbix-m05-root.aRGYvW
+COMMAND_EXIT=0
+CLEAN_ROOT_REMOVED=yes

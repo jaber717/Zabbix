@@ -1,0 +1,107 @@
+OBSERVED_DATE=2026-09-01
+TARGET=192.168.1.91
+OFFICIAL_REPOSITORY=https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/
+EXPECTED_VERSION=7.0.30
+MODE=HTTPS and query-only temporary repofrompath; no repository RPM installed; no packages downloaded or installed except metadata cache
+SIGNATURE_NOTE=gpgcheck configured for the temporary repository; package signature verification requires package download and remains an M1 responsibility
+
+
+===== ZABBIX_REPOMD_HEAD =====
+$ curl --fail --silent --show-error --location --head --max-time 20 https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/repodata/repomd.xml
+HTTP/2 200
+server: nginx
+date: Mon, 31 Aug 2026 22:45:02 GMT
+content-type: text/xml
+content-length: 3100
+last-modified: Tue, 25 Aug 2026 06:37:13 GMT
+etag: "6a8d3819-c1c"
+access-control-allow-origin: *
+vary: Origin
+x-xss-protection: 1; mode=block
+x-content-type-options: nosniff
+x-frame-options: DENY
+referrer-policy: strict-origin
+content-security-policy: frame-ancestors 'none'; upgrade-insecure-requests;
+strict-transport-security: max-age=31536000; includeSubDomains
+accept-ranges: bytes
+
+COMMAND_EXIT=0
+
+===== ZABBIX_REPOMD_SHA256 =====
+$ sh -c curl\ --fail\ --silent\ --show-error\ --location\ --max-time\ 30\ \'https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/repodata/repomd.xml\'\ \|\ sha256sum
+ebaaa5dc118861fcb8b2182eb8bbac2c65457d584cfc0b50705f504eba1e104e  -
+COMMAND_EXIT=0
+
+===== ZABBIX_SIGNING_KEY_HEAD =====
+$ curl --fail --silent --show-error --location --head --max-time 20 https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX-B5333005
+HTTP/2 200
+server: nginx
+date: Mon, 31 Aug 2026 22:45:04 GMT
+content-type: application/octet-stream
+content-length: 3163
+last-modified: Tue, 04 Jun 2024 12:11:03 GMT
+etag: "665f0457-c5b"
+access-control-allow-origin: *
+vary: Origin
+x-xss-protection: 1; mode=block
+x-content-type-options: nosniff
+x-frame-options: DENY
+referrer-policy: strict-origin
+content-security-policy: frame-ancestors 'none'; upgrade-insecure-requests;
+strict-transport-security: max-age=31536000; includeSubDomains
+accept-ranges: bytes
+
+COMMAND_EXIT=0
+
+===== ZABBIX_SIGNING_KEY_DOWNLOAD =====
+$ curl --fail --silent --show-error --location --max-time 20 --output /tmp/zabbix-m05-key.0QZHbk/RPM-GPG-KEY-ZABBIX-B5333005 https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX-B5333005
+COMMAND_EXIT=0
+
+===== ZABBIX_SIGNING_KEY_SHA256 =====
+$ sha256sum /tmp/zabbix-m05-key.0QZHbk/RPM-GPG-KEY-ZABBIX-B5333005
+501e584b5c868c3230538197ada3e1204cd7c91e899cc8af2db5ef6445399fc1  /tmp/zabbix-m05-key.0QZHbk/RPM-GPG-KEY-ZABBIX-B5333005
+COMMAND_EXIT=0
+
+===== ZABBIX_SIGNING_KEY_FINGERPRINT =====
+$ gpg --batch --show-keys --with-fingerprint /tmp/zabbix-m05-key.0QZHbk/RPM-GPG-KEY-ZABBIX-B5333005
+pub   rsa4096 2024-04-30 [SC] [expires: 2034-04-28]
+      4C3D 6F2C C75F 5146 754F  C374 D913 219A B533 3005
+uid                      Zabbix LLC (Apr 2024) <packager@zabbix.com>
+sub   rsa4096 2024-04-30 [E] [expires: 2034-04-28]
+
+COMMAND_EXIT=0
+
+===== ZABBIX_REPO_MAKECACHE =====
+$ sudo -n dnf --disablerepo=\* --repofrompath=m05-zabbix\,https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/ --enablerepo=m05-zabbix --setopt=m05-zabbix.gpgcheck=1 --setopt=m05-zabbix.gpgkey=https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX-B5333005 makecache
+gpg: directory '/home/jaber/.gnupg' created
+gpg: keybox '/home/jaber/.gnupg/pubring.kbx' created
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Added m05-zabbix repo from https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/
+m05-zabbix                                      181 kB/s | 581 kB     00:03
+Last metadata expiration check: 0:00:01 ago on Tue Sep  1 01:45:10 2026.
+Metadata cache created.
+COMMAND_EXIT=0
+
+===== ZABBIX_7030_PACKAGE_QUERY =====
+$ sudo -n dnf --disablerepo=\* --repofrompath=m05-zabbix\,https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/ --enablerepo=m05-zabbix --setopt=m05-zabbix.gpgcheck=1 --setopt=m05-zabbix.gpgkey=https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX-B5333005 repoquery --available --qf %\{name\}\ %\{epoch\}:%\{version\}-%\{release\}.%\{arch\}\ %\{repoid\}\ %\{location\} zabbix-server-pgsql-7.0.30\* zabbix-web-pgsql-7.0.30\* zabbix-nginx-conf-7.0.30\* zabbix-sql-scripts-7.0.30\* zabbix-agent2-7.0.30\* zabbix-web-service-7.0.30\* zabbix-sender-7.0.30\* zabbix-get-7.0.30\* zabbix-proxy-pgsql-7.0.30\* zabbix-proxy-sqlite3-7.0.30\* zabbix-proxy-mysql-7.0.30\*
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Added m05-zabbix repo from https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/
+Last metadata expiration check: 0:00:03 ago on Tue Sep  1 01:45:10 2026.
+zabbix-agent2 0:7.0.30-release1.el9.x86_64 m05-zabbix zabbix-agent2-7.0.30-release1.el9.x86_64.rpm
+zabbix-get 0:7.0.30-release1.el9.x86_64 m05-zabbix zabbix-get-7.0.30-release1.el9.x86_64.rpm
+zabbix-nginx-conf 0:7.0.30-release1.el9.noarch m05-zabbix zabbix-nginx-conf-7.0.30-release1.el9.noarch.rpm
+zabbix-proxy-mysql 0:7.0.30-release1.el9.x86_64 m05-zabbix zabbix-proxy-mysql-7.0.30-release1.el9.x86_64.rpm
+zabbix-proxy-pgsql 0:7.0.30-release1.el9.x86_64 m05-zabbix zabbix-proxy-pgsql-7.0.30-release1.el9.x86_64.rpm
+zabbix-proxy-sqlite3 0:7.0.30-release1.el9.x86_64 m05-zabbix zabbix-proxy-sqlite3-7.0.30-release1.el9.x86_64.rpm
+zabbix-sender 0:7.0.30-release1.el9.x86_64 m05-zabbix zabbix-sender-7.0.30-release1.el9.x86_64.rpm
+zabbix-server-pgsql 0:7.0.30-release1.el9.x86_64 m05-zabbix zabbix-server-pgsql-7.0.30-release1.el9.x86_64.rpm
+zabbix-sql-scripts 0:7.0.30-release1.el9.noarch m05-zabbix zabbix-sql-scripts-7.0.30-release1.el9.noarch.rpm
+zabbix-web-pgsql 0:7.0.30-release1.el9.noarch m05-zabbix zabbix-web-pgsql-7.0.30-release1.el9.noarch.rpm
+zabbix-web-service 0:7.0.30-release1.el9.x86_64 m05-zabbix zabbix-web-service-7.0.30-release1.el9.x86_64.rpm
+COMMAND_EXIT=0

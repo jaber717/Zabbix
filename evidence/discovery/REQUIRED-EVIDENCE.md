@@ -4,39 +4,18 @@ Save returned text exactly under `evidence/discovery/raw/`, removing only secret
 values. Never paste credentials or authorization headers. These items remain
 required because Milestone 0 could not obtain them safely.
 
-## RHEL source repository readiness
+## Resolved — RHEL source repository readiness
 
 **Already verified:** VM reachability/authenticated shell, RHEL 9.6 x86_64,
 storage, current module metadata, current Python view, subscription-manager read
 output, and current repository state. See `raw/rhel-build-baseline.txt` and
 `raw/rhel-build-repository-readiness.txt`.
 
-**Why still needed:** M1 requires usable, approved BaseOS/AppStream and other
-source repositories in a clean build context. Current DNF enables only the
-pre-existing NetBox offline repositories. Standard BaseOS/AppStream definitions
-are visible but disabled. This does not prove their permanent availability or
-unavailability.
-
-**Preconditions:** The system/subscription owner restores or verifies approved
-source access outside this M0 run and authorizes a subsequent read-only readiness
-check. Do not register, attach, enable, disable, refresh, or edit repositories as
-part of discovery.
-
-**Exact safe commands:**
-
-```bash
-sudo -n subscription-manager status
-sudo -n subscription-manager repos --list-enabled
-sudo -n subscription-manager release --show
-dnf repolist
-dnf repolist --all
-```
-
-**Expected output type:** Approved BaseOS/AppStream and required build source IDs
-shown usable for the intended build context. Do not save subscription identity,
-organization identifiers, credentials, or private entitlement data.
-
-**Save as:** `evidence/discovery/raw/rhel-source-readiness-revalidation.txt`
+M0.5 enabled and verified the standard BaseOS/AppStream repositories, verified
+the official Zabbix 7.0 source, and passed an isolated clean-installroot query and
+recursive-resolution test. Evidence is under `evidence/m0.5/`. No further source
+readiness evidence is required before M1 approval. Full payload closure, RPM
+signature verification, and offline metadata generation remain M1 deliverables.
 
 ## NetBox integration endpoints and permissions
 

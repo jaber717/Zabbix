@@ -1,0 +1,668 @@
+OBSERVED_DATE=2026-09-01
+TARGET=192.168.1.91
+REMOTE_HOSTNAME=netbox-dev
+ACCESS=OpenSSH public key as jaber; passwordless sudo for authorized read-only subscription and DNF inventory
+SANITIZATION=subscription identity and organization identifiers redacted
+
+
+===== SUBSCRIPTION_IDENTITY =====
+$ sudo -n subscription-manager identity
+system identity: [REDACTED_ACCOUNT_IDENTIFIER]
+name: [REDACTED_ACCOUNT_IDENTIFIER]
+org name: [REDACTED_ACCOUNT_IDENTIFIER]
+org ID: [REDACTED_ACCOUNT_IDENTIFIER]
+COMMAND_EXIT=0
+
+===== SUBSCRIPTION_RELEASE =====
+$ sudo -n subscription-manager release --show
+Release: 9.6
+COMMAND_EXIT=0
+
+===== SUBSCRIPTION_ENABLED_REPOS =====
+$ sudo -n subscription-manager repos --list-enabled
+There were no available repositories matching the specified criteria.
+COMMAND_EXIT=0
+
+===== DNF_REPOLIST =====
+$ sudo -n dnf repolist
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+repo id                         repo name
+netbox-offline-base             NetBox RHEL 9.6 offline base closure
+netbox-offline-modules          NetBox RHEL 9.6 offline modular content
+COMMAND_EXIT=0
+
+===== DNF_REPOLIST_ALL =====
+$ sudo -n dnf repolist --all
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+repo id                                                       repo name status
+amq-clients-3-for-rhel-9-x86_64-debug-rpms                    Red Hat A disabled
+amq-clients-3-for-rhel-9-x86_64-rpms                          Red Hat A disabled
+amq-clients-3-for-rhel-9-x86_64-source-rpms                   Red Hat A disabled
+amq-interconnect-textonly-1-for-middleware-rpms               Red Hat A disabled
+amq-textonly-1-for-middleware-rpms                            Red Hat J disabled
+ansible-automation-platform-2.2-for-rhel-9-x86_64-debug-rpms  Red Hat A disabled
+ansible-automation-platform-2.2-for-rhel-9-x86_64-rpms        Red Hat A disabled
+ansible-automation-platform-2.2-for-rhel-9-x86_64-source-rpms Red Hat A disabled
+ansible-automation-platform-2.3-for-rhel-9-x86_64-debug-rpms  Red Hat A disabled
+ansible-automation-platform-2.3-for-rhel-9-x86_64-rpms        Red Hat A disabled
+ansible-automation-platform-2.3-for-rhel-9-x86_64-source-rpms Red Hat A disabled
+ansible-automation-platform-2.4-for-rhel-9-x86_64-debug-rpms  Red Hat A disabled
+ansible-automation-platform-2.4-for-rhel-9-x86_64-rpms        Red Hat A disabled
+ansible-automation-platform-2.4-for-rhel-9-x86_64-source-rpms Red Hat A disabled
+ansible-automation-platform-2.5-for-rhel-9-x86_64-debug-rpms  Red Hat A disabled
+ansible-automation-platform-2.5-for-rhel-9-x86_64-rpms        Red Hat A disabled
+ansible-automation-platform-2.5-for-rhel-9-x86_64-source-rpms Red Hat A disabled
+ansible-automation-platform-2.6-for-rhel-9-x86_64-debug-rpms  Red Hat A disabled
+ansible-automation-platform-2.6-for-rhel-9-x86_64-rpms        Red Hat A disabled
+ansible-automation-platform-2.6-for-rhel-9-x86_64-source-rpms Red Hat A disabled
+ansible-automation-platform-2.7-for-rhel-9-x86_64-debug-rpms  Red Hat A disabled
+ansible-automation-platform-2.7-for-rhel-9-x86_64-rpms        Red Hat A disabled
+ansible-automation-platform-2.7-for-rhel-9-x86_64-source-rpms Red Hat A disabled
+application-interconnect-1-for-rhel-9-x86_64-debug-rpms       Red Hat A disabled
+application-interconnect-1-for-rhel-9-x86_64-rpms             Red Hat A disabled
+application-interconnect-1-for-rhel-9-x86_64-source-rpms      Red Hat A disabled
+cert-manager-1.10-for-rhel-9-x86_64-debug-rpms                Cert Mana disabled
+cert-manager-1.10-for-rhel-9-x86_64-rpms                      Cert Mana disabled
+cert-manager-1.10-for-rhel-9-x86_64-source-rpms               Cert Mana disabled
+cert-manager-1.11-for-rhel-9-x86_64-debug-rpms                Cert Mana disabled
+cert-manager-1.11-for-rhel-9-x86_64-rpms                      Cert Mana disabled
+cert-manager-1.11-for-rhel-9-x86_64-source-rpms               Cert Mana disabled
+cert-manager-1.12-for-rhel-9-x86_64-debug-rpms                Cert Mana disabled
+cert-manager-1.12-for-rhel-9-x86_64-rpms                      Cert Mana disabled
+cert-manager-1.12-for-rhel-9-x86_64-source-rpms               Cert Mana disabled
+cert-manager-1.13-for-rhel-9-x86_64-debug-rpms                Cert Mana disabled
+cert-manager-1.13-for-rhel-9-x86_64-rpms                      Cert Mana disabled
+cert-manager-1.13-for-rhel-9-x86_64-source-rpms               Cert Mana disabled
+cert-manager-1.14-for-rhel-9-x86_64-debug-rpms                Cert Mana disabled
+cert-manager-1.14-for-rhel-9-x86_64-rpms                      Cert Mana disabled
+cert-manager-1.14-for-rhel-9-x86_64-source-rpms               Cert Mana disabled
+cnv-4.13-for-rhel-9-x86_64-debug-rpms                         Red Hat C disabled
+cnv-4.13-for-rhel-9-x86_64-rpms                               Red Hat C disabled
+cnv-4.13-for-rhel-9-x86_64-source-rpms                        Red Hat C disabled
+cnv-4.14-for-rhel-9-x86_64-debug-rpms                         Red Hat C disabled
+cnv-4.14-for-rhel-9-x86_64-rpms                               Red Hat C disabled
+cnv-4.14-for-rhel-9-x86_64-source-rpms                        Red Hat C disabled
+cnv-4.15-for-rhel-9-x86_64-debug-rpms                         Red Hat C disabled
+cnv-4.15-for-rhel-9-x86_64-rpms                               Red Hat C disabled
+cnv-4.15-for-rhel-9-x86_64-source-rpms                        Red Hat C disabled
+cnv-4.16-for-rhel-9-x86_64-debug-rpms                         Red Hat C disabled
+cnv-4.16-for-rhel-9-x86_64-rpms                               Red Hat C disabled
+cnv-4.16-for-rhel-9-x86_64-source-rpms                        Red Hat C disabled
+cnv-4.17-for-rhel-9-x86_64-debug-rpms                         Red Hat C disabled
+cnv-4.17-for-rhel-9-x86_64-rpms                               Red Hat C disabled
+cnv-4.17-for-rhel-9-x86_64-source-rpms                        Red Hat C disabled
+cnv-4.18-for-rhel-9-x86_64-debug-rpms                         Red Hat C disabled
+cnv-4.18-for-rhel-9-x86_64-rpms                               Red Hat C disabled
+cnv-4.18-for-rhel-9-x86_64-source-rpms                        Red Hat C disabled
+cnv-4.19-for-rhel-9-x86_64-debug-rpms                         Red Hat C disabled
+cnv-4.19-for-rhel-9-x86_64-rpms                               Red Hat C disabled
+cnv-4.19-for-rhel-9-x86_64-source-rpms                        Red Hat C disabled
+cnv-4.20-for-rhel-9-x86_64-debug-rpms                         Red Hat C disabled
+cnv-4.20-for-rhel-9-x86_64-rpms                               Red Hat C disabled
+cnv-4.20-for-rhel-9-x86_64-source-rpms                        Red Hat C disabled
+cnv-4.21-for-rhel-9-x86_64-debug-rpms                         Red Hat C disabled
+cnv-4.21-for-rhel-9-x86_64-rpms                               Red Hat C disabled
+cnv-4.21-for-rhel-9-x86_64-source-rpms                        Red Hat C disabled
+codeready-builder-for-rhel-9-x86_64-debug-rpms                Red Hat C disabled
+codeready-builder-for-rhel-9-x86_64-eus-debug-rpms            Red Hat C disabled
+codeready-builder-for-rhel-9-x86_64-eus-rpms                  Red Hat C disabled
+codeready-builder-for-rhel-9-x86_64-eus-source-rpms           Red Hat C disabled
+codeready-builder-for-rhel-9-x86_64-rpms                      Red Hat C disabled
+codeready-builder-for-rhel-9-x86_64-source-rpms               Red Hat C disabled
+discovery-1-for-rhel-9-x86_64-debug-rpms                      Red Hat D disabled
+discovery-1-for-rhel-9-x86_64-rpms                            Red Hat D disabled
+discovery-1-for-rhel-9-x86_64-source-rpms                     Red Hat D disabled
+discovery-2-for-rhel-9-x86_64-debug-rpms                      Red Hat D disabled
+discovery-2-for-rhel-9-x86_64-rpms                            Red Hat D disabled
+discovery-2-for-rhel-9-x86_64-source-rpms                     Red Hat D disabled
+fast-datapath-for-rhel-9-x86_64-debug-rpms                    Fast Data disabled
+fast-datapath-for-rhel-9-x86_64-rpms                          Fast Data disabled
+fast-datapath-for-rhel-9-x86_64-source-rpms                   Fast Data disabled
+fsw-textonly-1-for-middleware-rpms                            Red Hat J disabled
+gitops-1.12-for-rhel-9-x86_64-debug-rpms                      Red Hat O disabled
+gitops-1.12-for-rhel-9-x86_64-rpms                            Red Hat O disabled
+gitops-1.12-for-rhel-9-x86_64-source-rpms                     Red Hat O disabled
+gitops-1.13-for-rhel-9-x86_64-debug-rpms                      Red Hat O disabled
+gitops-1.13-for-rhel-9-x86_64-rpms                            Red Hat O disabled
+gitops-1.13-for-rhel-9-x86_64-source-rpms                     Red Hat O disabled
+gitops-1.14-for-rhel-9-x86_64-debug-rpms                      Red Hat O disabled
+gitops-1.14-for-rhel-9-x86_64-rpms                            Red Hat O disabled
+gitops-1.14-for-rhel-9-x86_64-source-rpms                     Red Hat O disabled
+gitops-1.15-for-rhel-9-x86_64-debug-rpms                      Red Hat O disabled
+gitops-1.15-for-rhel-9-x86_64-rpms                            Red Hat O disabled
+gitops-1.15-for-rhel-9-x86_64-source-rpms                     Red Hat O disabled
+gitops-1.16-for-rhel-9-x86_64-debug-rpms                      Red Hat O disabled
+gitops-1.16-for-rhel-9-x86_64-rpms                            Red Hat O disabled
+gitops-1.16-for-rhel-9-x86_64-source-rpms                     Red Hat O disabled
+gitops-1.17-for-rhel-9-x86_64-debug-rpms                      Red Hat O disabled
+gitops-1.17-for-rhel-9-x86_64-rpms                            Red Hat O disabled
+gitops-1.17-for-rhel-9-x86_64-source-rpms                     Red Hat O disabled
+gitops-1.18-for-rhel-9-x86_64-debug-rpms                      Red Hat O disabled
+gitops-1.18-for-rhel-9-x86_64-rpms                            Red Hat O disabled
+gitops-1.18-for-rhel-9-x86_64-source-rpms                     Red Hat O disabled
+gitops-1.19-for-rhel-9-x86_64-debug-rpms                      Red Hat O disabled
+gitops-1.19-for-rhel-9-x86_64-rpms                            Red Hat O disabled
+gitops-1.19-for-rhel-9-x86_64-source-rpms                     Red Hat O disabled
+gitops-1.20-for-rhel-9-x86_64-debug-rpms                      Red Hat O disabled
+gitops-1.20-for-rhel-9-x86_64-rpms                            Red Hat O disabled
+gitops-1.20-for-rhel-9-x86_64-source-rpms                     Red Hat O disabled
+gitops-1.21-for-rhel-9-x86_64-debug-rpms                      Red Hat O disabled
+gitops-1.21-for-rhel-9-x86_64-rpms                            Red Hat O disabled
+gitops-1.21-for-rhel-9-x86_64-source-rpms                     Red Hat O disabled
+insights-proxy-1-tech-preview-for-rhel-9-x86_64-debug-rpms    Red Hat I disabled
+insights-proxy-1-tech-preview-for-rhel-9-x86_64-rpms          Red Hat I disabled
+insights-proxy-1-tech-preview-for-rhel-9-x86_64-source-rpms   Red Hat I disabled
+insights-proxy-for-rhel-9-x86_64-debug-rpms                   Red Hat I disabled
+insights-proxy-for-rhel-9-x86_64-rpms                         Red Hat I disabled
+insights-proxy-for-rhel-9-x86_64-source-rpms                  Red Hat I disabled
+jb-coreservices-textonly-1-for-middleware-rhui-rpms           Red Hat J disabled
+jb-coreservices-textonly-1-for-middleware-rpms                Red Hat J disabled
+jb-datagrid-8.4-for-rhel-9-x86_64-debug-rpms                  Red Hat J disabled
+jb-datagrid-8.4-for-rhel-9-x86_64-rpms                        Red Hat J disabled
+jb-datagrid-8.4-for-rhel-9-x86_64-source-rpms                 Red Hat J disabled
+jb-datagrid-textonly-1-for-middleware-rpms                    Red Hat J disabled
+jb-datagrid-textonly-8-for-middleware-rpms                    Red Hat J disabled
+jb-eap-7.4-for-rhel-9-x86_64-debug-rpms                       JBoss Ent disabled
+jb-eap-7.4-for-rhel-9-x86_64-rpms                             JBoss Ent disabled
+jb-eap-7.4-for-rhel-9-x86_64-source-rpms                      JBoss Ent disabled
+jb-eap-8.0-for-rhel-9-x86_64-debug-rpms                       JBoss Ent disabled
+jb-eap-8.0-for-rhel-9-x86_64-rhui-debug-rpms                  JBoss Ent disabled
+jb-eap-8.0-for-rhel-9-x86_64-rhui-rpms                        JBoss Ent disabled
+jb-eap-8.0-for-rhel-9-x86_64-rhui-source-rpms                 JBoss Ent disabled
+jb-eap-8.0-for-rhel-9-x86_64-rpms                             JBoss Ent disabled
+jb-eap-8.0-for-rhel-9-x86_64-source-rpms                      JBoss Ent disabled
+jb-eap-8.1-for-rhel-9-x86_64-debug-rpms                       JBoss Ent disabled
+jb-eap-8.1-for-rhel-9-x86_64-rhui-debug-rpms                  JBoss Ent disabled
+jb-eap-8.1-for-rhel-9-x86_64-rhui-rpms                        JBoss Ent disabled
+jb-eap-8.1-for-rhel-9-x86_64-rhui-source-rpms                 JBoss Ent disabled
+jb-eap-8.1-for-rhel-9-x86_64-rpms                             JBoss Ent disabled
+jb-eap-8.1-for-rhel-9-x86_64-source-rpms                      JBoss Ent disabled
+jb-eap-textonly-1-for-middleware-rpms                         Red Hat J disabled
+jdv-textonly-1-for-middleware-rpms                            Red Hat J disabled
+jon-textonly-1-for-middleware-rpms                            Red Hat J disabled
+jpp-textonly-1-for-middleware-rpms                            Red Hat J disabled
+kmm-1-for-rhel-9-x86_64-debug-rpms                            Kernel Mo disabled
+kmm-1-for-rhel-9-x86_64-rpms                                  Kernel Mo disabled
+kmm-1-for-rhel-9-x86_64-source-rpms                           Kernel Mo disabled
+kmm-2-for-rhel-9-x86_64-debug-rpms                            Kernel Mo disabled
+kmm-2-for-rhel-9-x86_64-rpms                                  Kernel Mo disabled
+kmm-2-for-rhel-9-x86_64-source-rpms                           Kernel Mo disabled
+lvms-4.14-for-rhel-9-x86_64-debug-rpms                        Logical V disabled
+lvms-4.14-for-rhel-9-x86_64-rpms                              Logical V disabled
+lvms-4.14-for-rhel-9-x86_64-source-rpms                       Logical V disabled
+lvms-4.15-for-rhel-9-x86_64-debug-rpms                        Logical V disabled
+lvms-4.15-for-rhel-9-x86_64-rpms                              Logical V disabled
+lvms-4.15-for-rhel-9-x86_64-source-rpms                       Logical V disabled
+lvms-4.16-for-rhel-9-x86_64-debug-rpms                        Logical V disabled
+lvms-4.16-for-rhel-9-x86_64-rpms                              Logical V disabled
+lvms-4.16-for-rhel-9-x86_64-source-rpms                       Logical V disabled
+lvms-4.17-for-rhel-9-x86_64-debug-rpms                        Logical V disabled
+lvms-4.17-for-rhel-9-x86_64-rpms                              Logical V disabled
+lvms-4.17-for-rhel-9-x86_64-source-rpms                       Logical V disabled
+lvms-4.18-for-rhel-9-x86_64-debug-rpms                        Logical V disabled
+lvms-4.18-for-rhel-9-x86_64-rpms                              Logical V disabled
+lvms-4.18-for-rhel-9-x86_64-source-rpms                       Logical V disabled
+lvms-4.19-for-rhel-9-x86_64-debug-rpms                        Logical V disabled
+lvms-4.19-for-rhel-9-x86_64-rpms                              Logical V disabled
+lvms-4.19-for-rhel-9-x86_64-source-rpms                       Logical V disabled
+lvms-4.20-for-rhel-9-x86_64-debug-rpms                        Logical V disabled
+lvms-4.20-for-rhel-9-x86_64-rpms                              Logical V disabled
+lvms-4.20-for-rhel-9-x86_64-source-rpms                       Logical V disabled
+lvms-4.21-for-rhel-9-x86_64-debug-rpms                        Logical V disabled
+lvms-4.21-for-rhel-9-x86_64-rpms                              Logical V disabled
+lvms-4.21-for-rhel-9-x86_64-source-rpms                       Logical V disabled
+netbox-offline-base                                           NetBox RH enabled
+netbox-offline-modules                                        NetBox RH enabled
+network-observability-1-for-rhel-9-x86_64-debug-rpms          Network O disabled
+network-observability-1-for-rhel-9-x86_64-rpms                Network O disabled
+network-observability-1-for-rhel-9-x86_64-source-rpms         Network O disabled
+ocp-tools-4.15-for-rhel-9-x86_64-debug-rpms                   OpenShift disabled
+ocp-tools-4.15-for-rhel-9-x86_64-rpms                         OpenShift disabled
+ocp-tools-4.15-for-rhel-9-x86_64-source-rpms                  OpenShift disabled
+ocp-tools-4.16-for-rhel-9-x86_64-debug-rpms                   OpenShift disabled
+ocp-tools-4.16-for-rhel-9-x86_64-rpms                         OpenShift disabled
+ocp-tools-4.16-for-rhel-9-x86_64-source-rpms                  OpenShift disabled
+ocp-tools-4.17-for-rhel-9-x86_64-debug-rpms                   OpenShift disabled
+ocp-tools-4.17-for-rhel-9-x86_64-rpms                         OpenShift disabled
+ocp-tools-4.17-for-rhel-9-x86_64-source-rpms                  OpenShift disabled
+ocp-tools-4.18-for-rhel-9-x86_64-debug-rpms                   OpenShift disabled
+ocp-tools-4.18-for-rhel-9-x86_64-rpms                         OpenShift disabled
+ocp-tools-4.18-for-rhel-9-x86_64-source-rpms                  OpenShift disabled
+ocp-tools-4.19-for-rhel-9-x86_64-debug-rpms                   OpenShift disabled
+ocp-tools-4.19-for-rhel-9-x86_64-rpms                         OpenShift disabled
+ocp-tools-4.19-for-rhel-9-x86_64-source-rpms                  OpenShift disabled
+ocp-tools-4.22-for-rhel-9-x86_64-debug-rpms                   OpenShift disabled
+ocp-tools-4.22-for-rhel-9-x86_64-rpms                         OpenShift disabled
+ocp-tools-4.22-for-rhel-9-x86_64-source-rpms                  OpenShift disabled
+openjdk-textonly-1-for-middleware-rpms                        OpenJDK T disabled
+openliberty-textonly-1-for-middleware-rpms                    Open Libe disabled
+openshift-builds-1.4-for-rhel-9-x86_64-debug-rpms             Red Hat O disabled
+openshift-builds-1.4-for-rhel-9-x86_64-rpms                   Red Hat O disabled
+openshift-builds-1.4-for-rhel-9-x86_64-source-rpms            Red Hat O disabled
+openshift-builds-1.5-for-rhel-9-x86_64-debug-rpms             Red Hat O disabled
+openshift-builds-1.5-for-rhel-9-x86_64-rpms                   Red Hat O disabled
+openshift-builds-1.5-for-rhel-9-x86_64-source-rpms            Red Hat O disabled
+openshift-serverless-1-for-rhel-9-x86_64-debug-rpms           Red Hat O disabled
+openshift-serverless-1-for-rhel-9-x86_64-rpms                 Red Hat O disabled
+openshift-serverless-1-for-rhel-9-x86_64-source-rpms          Red Hat O disabled
+openstack-17-tools-for-rhel-9-x86_64-debug-rpms               Red Hat O disabled
+openstack-17-tools-for-rhel-9-x86_64-rpms                     Red Hat O disabled
+openstack-17-tools-for-rhel-9-x86_64-source-rpms              Red Hat O disabled
+osso-1-for-rhel-9-x86_64-debug-rpms                           Secondary disabled
+osso-1-for-rhel-9-x86_64-rpms                                 Secondary disabled
+osso-1-for-rhel-9-x86_64-source-rpms                          Secondary disabled
+pipelines-1.18-for-rhel-9-x86_64-debug-rpms                   Red Hat O disabled
+pipelines-1.18-for-rhel-9-x86_64-rpms                         Red Hat O disabled
+pipelines-1.18-for-rhel-9-x86_64-source-rpms                  Red Hat O disabled
+pipelines-1.19-for-rhel-9-x86_64-debug-rpms                   Red Hat O disabled
+pipelines-1.19-for-rhel-9-x86_64-rpms                         Red Hat O disabled
+pipelines-1.19-for-rhel-9-x86_64-source-rpms                  Red Hat O disabled
+pipelines-1.20-for-rhel-9-x86_64-debug-rpms                   Red Hat O disabled
+pipelines-1.20-for-rhel-9-x86_64-rpms                         Red Hat O disabled
+pipelines-1.20-for-rhel-9-x86_64-source-rpms                  Red Hat O disabled
+pipelines-1.21-for-rhel-9-x86_64-debug-rpms                   Red Hat O disabled
+pipelines-1.21-for-rhel-9-x86_64-rpms                         Red Hat O disabled
+pipelines-1.21-for-rhel-9-x86_64-source-rpms                  Red Hat O disabled
+pipelines-1.22-for-rhel-9-x86_64-debug-rpms                   Red Hat O disabled
+pipelines-1.22-for-rhel-9-x86_64-rpms                         Red Hat O disabled
+pipelines-1.22-for-rhel-9-x86_64-source-rpms                  Red Hat O disabled
+quarkus-3-for-rhel-9-x86_64-debug-rpms                        Red Hat b disabled
+quarkus-3-for-rhel-9-x86_64-rpms                              Red Hat b disabled
+quarkus-3-for-rhel-9-x86_64-source-rpms                       Red Hat b disabled
+quarkus-textonly-1-for-middleware-rpms                        Red Hat b disabled
+rhbop-textonly-1-for-middleware-rpms                          Red Hat B disabled
+rhceph-5-tools-for-rhel-9-x86_64-debug-rpms                   Red Hat C disabled
+rhceph-5-tools-for-rhel-9-x86_64-rpms                         Red Hat C disabled
+rhceph-5-tools-for-rhel-9-x86_64-source-rpms                  Red Hat C disabled
+rhceph-6-tools-for-rhel-9-x86_64-debug-rpms                   Red Hat C disabled
+rhceph-6-tools-for-rhel-9-x86_64-rpms                         Red Hat C disabled
+rhceph-6-tools-for-rhel-9-x86_64-source-rpms                  Red Hat C disabled
+rhceph-7-tools-for-rhel-9-x86_64-debug-rpms                   Red Hat C disabled
+rhceph-7-tools-for-rhel-9-x86_64-rpms                         Red Hat C disabled
+rhceph-7-tools-for-rhel-9-x86_64-source-rpms                  Red Hat C disabled
+rhceph-8-tools-for-rhel-9-x86_64-debug-rpms                   Red Hat C disabled
+rhceph-8-tools-for-rhel-9-x86_64-rpms                         Red Hat C disabled
+rhceph-8-tools-for-rhel-9-x86_64-source-rpms                  Red Hat C disabled
+rhceph-9-tools-for-rhel-9-x86_64-debug-rpms                   Red Hat C disabled
+rhceph-9-tools-for-rhel-9-x86_64-rpms                         Red Hat C disabled
+rhceph-9-tools-for-rhel-9-x86_64-source-rpms                  Red Hat C disabled
+rhdh-1-for-rhel-9-x86_64-debug-rpms                           Red Hat D disabled
+rhdh-1-for-rhel-9-x86_64-rpms                                 Red Hat D disabled
+rhdh-1-for-rhel-9-x86_64-source-rpms                          Red Hat D disabled
+rhel-9-for-x86_64-appstream-debug-rpms                        Red Hat E disabled
+rhel-9-for-x86_64-appstream-e4s-debug-rpms                    Red Hat E disabled
+rhel-9-for-x86_64-appstream-e4s-rpms                          Red Hat E disabled
+rhel-9-for-x86_64-appstream-e4s-source-rpms                   Red Hat E disabled
+rhel-9-for-x86_64-appstream-eus-debug-rpms                    Red Hat E disabled
+rhel-9-for-x86_64-appstream-eus-rpms                          Red Hat E disabled
+rhel-9-for-x86_64-appstream-eus-source-rpms                   Red Hat E disabled
+rhel-9-for-x86_64-appstream-rpms                              Red Hat E disabled
+rhel-9-for-x86_64-appstream-source-rpms                       Red Hat E disabled
+rhel-9-for-x86_64-baseos-debug-rpms                           Red Hat E disabled
+rhel-9-for-x86_64-baseos-e4s-debug-rpms                       Red Hat E disabled
+rhel-9-for-x86_64-baseos-e4s-rpms                             Red Hat E disabled
+rhel-9-for-x86_64-baseos-e4s-source-rpms                      Red Hat E disabled
+rhel-9-for-x86_64-baseos-eus-debug-rpms                       Red Hat E disabled
+rhel-9-for-x86_64-baseos-eus-rpms                             Red Hat E disabled
+rhel-9-for-x86_64-baseos-eus-source-rpms                      Red Hat E disabled
+rhel-9-for-x86_64-baseos-rpms                                 Red Hat E disabled
+rhel-9-for-x86_64-baseos-source-rpms                          Red Hat E disabled
+rhel-9-for-x86_64-extensions-debug-rpms                       Red Hat E disabled
+rhel-9-for-x86_64-extensions-rpms                             Red Hat E disabled
+rhel-9-for-x86_64-extensions-source-rpms                      Red Hat E disabled
+rhel-9-for-x86_64-highavailability-debug-rpms                 Red Hat E disabled
+rhel-9-for-x86_64-highavailability-e4s-debug-rpms             Red Hat E disabled
+rhel-9-for-x86_64-highavailability-e4s-rpms                   Red Hat E disabled
+rhel-9-for-x86_64-highavailability-e4s-source-rpms            Red Hat E disabled
+rhel-9-for-x86_64-highavailability-eus-debug-rpms             Red Hat E disabled
+rhel-9-for-x86_64-highavailability-eus-rpms                   Red Hat E disabled
+rhel-9-for-x86_64-highavailability-eus-source-rpms            Red Hat E disabled
+rhel-9-for-x86_64-highavailability-rpms                       Red Hat E disabled
+rhel-9-for-x86_64-highavailability-source-rpms                Red Hat E disabled
+rhel-9-for-x86_64-nfv-debug-rpms                              Red Hat E disabled
+rhel-9-for-x86_64-nfv-e4s-debug-rpms                          Red Hat E disabled
+rhel-9-for-x86_64-nfv-e4s-rpms                                Red Hat E disabled
+rhel-9-for-x86_64-nfv-e4s-source-rpms                         Red Hat E disabled
+rhel-9-for-x86_64-nfv-eus-debug-rpms                          Red Hat E disabled
+rhel-9-for-x86_64-nfv-eus-rpms                                Red Hat E disabled
+rhel-9-for-x86_64-nfv-eus-source-rpms                         Red Hat E disabled
+rhel-9-for-x86_64-nfv-rpms                                    Red Hat E disabled
+rhel-9-for-x86_64-nfv-source-rpms                             Red Hat E disabled
+rhel-9-for-x86_64-resilientstorage-debug-rpms                 Red Hat E disabled
+rhel-9-for-x86_64-resilientstorage-eus-debug-rpms             Red Hat E disabled
+rhel-9-for-x86_64-resilientstorage-eus-rpms                   Red Hat E disabled
+rhel-9-for-x86_64-resilientstorage-eus-source-rpms            Red Hat E disabled
+rhel-9-for-x86_64-resilientstorage-rpms                       Red Hat E disabled
+rhel-9-for-x86_64-resilientstorage-source-rpms                Red Hat E disabled
+rhel-9-for-x86_64-rt-debug-rpms                               Red Hat E disabled
+rhel-9-for-x86_64-rt-e4s-debug-rpms                           Red Hat E disabled
+rhel-9-for-x86_64-rt-e4s-rpms                                 Red Hat E disabled
+rhel-9-for-x86_64-rt-e4s-source-rpms                          Red Hat E disabled
+rhel-9-for-x86_64-rt-eus-debug-rpms                           Red Hat E disabled
+rhel-9-for-x86_64-rt-eus-rpms                                 Red Hat E disabled
+rhel-9-for-x86_64-rt-eus-source-rpms                          Red Hat E disabled
+rhel-9-for-x86_64-rt-rpms                                     Red Hat E disabled
+rhel-9-for-x86_64-rt-source-rpms                              Red Hat E disabled
+rhel-9-for-x86_64-sap-netweaver-debug-rpms                    Red Hat E disabled
+rhel-9-for-x86_64-sap-netweaver-e4s-debug-rpms                Red Hat E disabled
+rhel-9-for-x86_64-sap-netweaver-e4s-rpms                      Red Hat E disabled
+rhel-9-for-x86_64-sap-netweaver-e4s-source-rpms               Red Hat E disabled
+rhel-9-for-x86_64-sap-netweaver-eus-debug-rpms                Red Hat E disabled
+rhel-9-for-x86_64-sap-netweaver-eus-rpms                      Red Hat E disabled
+rhel-9-for-x86_64-sap-netweaver-eus-source-rpms               Red Hat E disabled
+rhel-9-for-x86_64-sap-netweaver-rpms                          Red Hat E disabled
+rhel-9-for-x86_64-sap-netweaver-source-rpms                   Red Hat E disabled
+rhel-9-for-x86_64-sap-solutions-debug-rpms                    Red Hat E disabled
+rhel-9-for-x86_64-sap-solutions-e4s-debug-rpms                Red Hat E disabled
+rhel-9-for-x86_64-sap-solutions-e4s-rpms                      Red Hat E disabled
+rhel-9-for-x86_64-sap-solutions-e4s-source-rpms               Red Hat E disabled
+rhel-9-for-x86_64-sap-solutions-eus-debug-rpms                Red Hat E disabled
+rhel-9-for-x86_64-sap-solutions-eus-rpms                      Red Hat E disabled
+rhel-9-for-x86_64-sap-solutions-eus-source-rpms               Red Hat E disabled
+rhel-9-for-x86_64-sap-solutions-rpms                          Red Hat E disabled
+rhel-9-for-x86_64-sap-solutions-source-rpms                   Red Hat E disabled
+rhel-9-for-x86_64-supplementary-debug-rpms                    Red Hat E disabled
+rhel-9-for-x86_64-supplementary-eus-debug-rpms                Red Hat E disabled
+rhel-9-for-x86_64-supplementary-eus-rpms                      Red Hat E disabled
+rhel-9-for-x86_64-supplementary-eus-source-rpms               Red Hat E disabled
+rhel-9-for-x86_64-supplementary-rpms                          Red Hat E disabled
+rhel-9-for-x86_64-supplementary-source-rpms                   Red Hat E disabled
+rhel-atomic-7-cdk-2.3-debug-rpms                              Red Hat C disabled
+rhel-atomic-7-cdk-2.3-rpms                                    Red Hat C disabled
+rhel-atomic-7-cdk-2.3-source-rpms                             Red Hat C disabled
+rhel-atomic-7-cdk-3.10-rpms                                   Red Hat C disabled
+rhel-atomic-7-cdk-3.11-rpms                                   Red Hat C disabled
+rhel-atomic-7-cdk-3.12-rpms                                   Red Hat C disabled
+rhel-atomic-7-cdk-3.13-rpms                                   Red Hat C disabled
+rhel-atomic-7-cdk-3.14-rpms                                   Red Hat C disabled
+rhel-atomic-7-cdk-3.15-rpms                                   Red Hat C disabled
+rhel-atomic-7-cdk-3.16-rpms                                   Red Hat C disabled
+rhel-atomic-7-cdk-3.17-rpms                                   Red Hat C disabled
+rhel-atomic-7-cdk-3.3-debug-rpms                              Red Hat C disabled
+rhel-atomic-7-cdk-3.3-rpms                                    Red Hat C disabled
+rhel-atomic-7-cdk-3.3-source-rpms                             Red Hat C disabled
+rhel-atomic-7-cdk-3.4-debug-rpms                              Red Hat C disabled
+rhel-atomic-7-cdk-3.4-rpms                                    Red Hat C disabled
+rhel-atomic-7-cdk-3.4-source-rpms                             Red Hat C disabled
+rhel-atomic-7-cdk-3.5-debug-rpms                              Red Hat C disabled
+rhel-atomic-7-cdk-3.5-rpms                                    Red Hat C disabled
+rhel-atomic-7-cdk-3.5-source-rpms                             Red Hat C disabled
+rhel-atomic-7-cdk-3.6-debug-rpms                              Red Hat C disabled
+rhel-atomic-7-cdk-3.6-rpms                                    Red Hat C disabled
+rhel-atomic-7-cdk-3.6-source-rpms                             Red Hat C disabled
+rhel-atomic-7-cdk-3.7-rpms                                    Red Hat C disabled
+rhel-atomic-7-cdk-3.8-rpms                                    Red Hat C disabled
+rhel-atomic-7-cdk-3.9-rpms                                    Red Hat C disabled
+rhelai-1.1-for-rhel-9-x86_64-debug-rpms                       Red Hat E disabled
+rhelai-1.1-for-rhel-9-x86_64-rpms                             Red Hat E disabled
+rhelai-1.1-for-rhel-9-x86_64-source-rpms                      Red Hat E disabled
+rhelai-1.2-for-rhel-9-x86_64-debug-rpms                       Red Hat E disabled
+rhelai-1.2-for-rhel-9-x86_64-rpms                             Red Hat E disabled
+rhelai-1.2-for-rhel-9-x86_64-source-rpms                      Red Hat E disabled
+rhelai-1.2-gaudi-for-rhel-9-x86_64-debug-rpms                 Red Hat E disabled
+rhelai-1.2-gaudi-for-rhel-9-x86_64-rpms                       Red Hat E disabled
+rhelai-1.2-gaudi-for-rhel-9-x86_64-source-rpms                Red Hat E disabled
+rhelai-1.3-cuda-for-rhel-9-x86_64-debug-rpms                  Red Hat E disabled
+rhelai-1.3-cuda-for-rhel-9-x86_64-rpms                        Red Hat E disabled
+rhelai-1.3-cuda-for-rhel-9-x86_64-source-rpms                 Red Hat E disabled
+rhelai-1.3-for-rhel-9-x86_64-debug-rpms                       Red Hat E disabled
+rhelai-1.3-for-rhel-9-x86_64-rpms                             Red Hat E disabled
+rhelai-1.3-for-rhel-9-x86_64-source-rpms                      Red Hat E disabled
+rhelai-1.3-gaudi-for-rhel-9-x86_64-debug-rpms                 Red Hat E disabled
+rhelai-1.3-gaudi-for-rhel-9-x86_64-rpms                       Red Hat E disabled
+rhelai-1.3-gaudi-for-rhel-9-x86_64-source-rpms                Red Hat E disabled
+rhelai-1.4-cuda-for-rhel-9-x86_64-debug-rpms                  Red Hat E disabled
+rhelai-1.4-cuda-for-rhel-9-x86_64-rpms                        Red Hat E disabled
+rhelai-1.4-cuda-for-rhel-9-x86_64-source-rpms                 Red Hat E disabled
+rhelai-1.4-for-rhel-9-x86_64-debug-rpms                       Red Hat E disabled
+rhelai-1.4-for-rhel-9-x86_64-rpms                             Red Hat E disabled
+rhelai-1.4-for-rhel-9-x86_64-source-rpms                      Red Hat E disabled
+rhelai-1.4-gaudi-for-rhel-9-x86_64-debug-rpms                 Red Hat E disabled
+rhelai-1.4-gaudi-for-rhel-9-x86_64-rpms                       Red Hat E disabled
+rhelai-1.4-gaudi-for-rhel-9-x86_64-source-rpms                Red Hat E disabled
+rhelai-1.5-cuda-for-rhel-9-x86_64-debug-rpms                  Red Hat E disabled
+rhelai-1.5-cuda-for-rhel-9-x86_64-rpms                        Red Hat E disabled
+rhelai-1.5-cuda-for-rhel-9-x86_64-source-rpms                 Red Hat E disabled
+rhelai-1.5-for-rhel-9-x86_64-debug-rpms                       Red Hat E disabled
+rhelai-1.5-for-rhel-9-x86_64-rpms                             Red Hat E disabled
+rhelai-1.5-for-rhel-9-x86_64-source-rpms                      Red Hat E disabled
+rhelai-1.5-gaudi-for-rhel-9-x86_64-debug-rpms                 Red Hat E disabled
+rhelai-1.5-gaudi-for-rhel-9-x86_64-rpms                       Red Hat E disabled
+rhelai-1.5-gaudi-for-rhel-9-x86_64-source-rpms                Red Hat E disabled
+rhelai-3.0-cuda-for-rhel-9-x86_64-debug-rpms                  Red Hat E disabled
+rhelai-3.0-cuda-for-rhel-9-x86_64-rpms                        Red Hat E disabled
+rhelai-3.0-cuda-for-rhel-9-x86_64-source-rpms                 Red Hat E disabled
+rhelai-3.0-for-rhel-9-x86_64-debug-rpms                       Red Hat E disabled
+rhelai-3.0-for-rhel-9-x86_64-rpms                             Red Hat E disabled
+rhelai-3.0-for-rhel-9-x86_64-source-rpms                      Red Hat E disabled
+rhelai-3.0-gaudi-for-rhel-9-x86_64-debug-rpms                 Red Hat E disabled
+rhelai-3.0-gaudi-for-rhel-9-x86_64-rpms                       Red Hat E disabled
+rhelai-3.0-gaudi-for-rhel-9-x86_64-source-rpms                Red Hat E disabled
+rhelai-3.2-cuda-for-rhel-9-x86_64-debug-rpms                  Red Hat E disabled
+rhelai-3.2-cuda-for-rhel-9-x86_64-rpms                        Red Hat E disabled
+rhelai-3.2-cuda-for-rhel-9-x86_64-source-rpms                 Red Hat E disabled
+rhelai-3.2-for-rhel-9-x86_64-debug-rpms                       Red Hat E disabled
+rhelai-3.2-for-rhel-9-x86_64-rpms                             Red Hat E disabled
+rhelai-3.2-for-rhel-9-x86_64-source-rpms                      Red Hat E disabled
+rhelai-3.2-gaudi-for-rhel-9-x86_64-debug-rpms                 Red Hat E disabled
+rhelai-3.2-gaudi-for-rhel-9-x86_64-rpms                       Red Hat E disabled
+rhelai-3.2-gaudi-for-rhel-9-x86_64-source-rpms                Red Hat E disabled
+rhelai-3.3-cuda-for-rhel-9-x86_64-debug-rpms                  Red Hat E disabled
+rhelai-3.3-cuda-for-rhel-9-x86_64-rpms                        Red Hat E disabled
+rhelai-3.3-cuda-for-rhel-9-x86_64-source-rpms                 Red Hat E disabled
+rhelai-3.3-for-rhel-9-x86_64-debug-rpms                       Red Hat E disabled
+rhelai-3.3-for-rhel-9-x86_64-rpms                             Red Hat E disabled
+rhelai-3.3-for-rhel-9-x86_64-source-rpms                      Red Hat E disabled
+rhelai-3.3-gaudi-for-rhel-9-x86_64-debug-rpms                 Red Hat E disabled
+rhelai-3.3-gaudi-for-rhel-9-x86_64-rpms                       Red Hat E disabled
+rhelai-3.3-gaudi-for-rhel-9-x86_64-source-rpms                Red Hat E disabled
+rhelai-3.4-cuda-for-rhel-9-x86_64-debug-rpms                  Red Hat E disabled
+rhelai-3.4-cuda-for-rhel-9-x86_64-rpms                        Red Hat E disabled
+rhelai-3.4-cuda-for-rhel-9-x86_64-source-rpms                 Red Hat E disabled
+rhelai-3.4-for-rhel-9-x86_64-debug-rpms                       Red Hat E disabled
+rhelai-3.4-for-rhel-9-x86_64-rpms                             Red Hat E disabled
+rhelai-3.4-for-rhel-9-x86_64-source-rpms                      Red Hat E disabled
+rhelai-3.4-gaudi-for-rhel-9-x86_64-debug-rpms                 Red Hat E disabled
+rhelai-3.4-gaudi-for-rhel-9-x86_64-rpms                       Red Hat E disabled
+rhelai-3.4-gaudi-for-rhel-9-x86_64-source-rpms                Red Hat E disabled
+rhelai-3.5-cuda-for-rhel-9-x86_64-debug-rpms                  Red Hat E disabled
+rhelai-3.5-cuda-for-rhel-9-x86_64-rpms                        Red Hat E disabled
+rhelai-3.5-cuda-for-rhel-9-x86_64-source-rpms                 Red Hat E disabled
+rhelai-3.5-for-rhel-9-x86_64-debug-rpms                       Red Hat E disabled
+rhelai-3.5-for-rhel-9-x86_64-rpms                             Red Hat E disabled
+rhelai-3.5-for-rhel-9-x86_64-source-rpms                      Red Hat E disabled
+rhelai-3.5-gaudi-for-rhel-9-x86_64-debug-rpms                 Red Hat E disabled
+rhelai-3.5-gaudi-for-rhel-9-x86_64-rpms                       Red Hat E disabled
+rhelai-3.5-gaudi-for-rhel-9-x86_64-source-rpms                Red Hat E disabled
+rhelai-3.6-cuda-for-rhel-9-x86_64-debug-rpms                  Red Hat E disabled
+rhelai-3.6-cuda-for-rhel-9-x86_64-rpms                        Red Hat E disabled
+rhelai-3.6-cuda-for-rhel-9-x86_64-source-rpms                 Red Hat E disabled
+rhelai-3.6-for-rhel-9-x86_64-debug-rpms                       Red Hat E disabled
+rhelai-3.6-for-rhel-9-x86_64-rpms                             Red Hat E disabled
+rhelai-3.6-for-rhel-9-x86_64-source-rpms                      Red Hat E disabled
+rhelai-3.6-gaudi-for-rhel-9-x86_64-debug-rpms                 Red Hat E disabled
+rhelai-3.6-gaudi-for-rhel-9-x86_64-rpms                       Red Hat E disabled
+rhelai-3.6-gaudi-for-rhel-9-x86_64-source-rpms                Red Hat E disabled
+rhocp-4.12-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhocp-4.12-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhocp-4.12-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhocp-4.13-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhocp-4.13-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhocp-4.13-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhocp-4.14-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhocp-4.14-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhocp-4.14-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhocp-4.15-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhocp-4.15-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhocp-4.15-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhocp-4.16-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhocp-4.16-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhocp-4.16-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhocp-4.17-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhocp-4.17-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhocp-4.17-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhocp-4.18-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhocp-4.18-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhocp-4.18-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhocp-4.19-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhocp-4.19-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhocp-4.19-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhocp-4.20-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhocp-4.20-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhocp-4.20-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhocp-4.21-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhocp-4.21-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhocp-4.21-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhocp-4.22-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhocp-4.22-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhocp-4.22-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhocp-4.23-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhocp-4.23-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhocp-4.23-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhocp-5.0-for-rhel-9-x86_64-debug-rpms                        Red Hat O disabled
+rhocp-5.0-for-rhel-9-x86_64-rpms                              Red Hat O disabled
+rhocp-5.0-for-rhel-9-x86_64-source-rpms                       Red Hat O disabled
+rhocp-ironic-4.12-for-rhel-9-x86_64-debug-rpms                Ironic co disabled
+rhocp-ironic-4.12-for-rhel-9-x86_64-rpms                      Ironic co disabled
+rhocp-ironic-4.12-for-rhel-9-x86_64-source-rpms               Ironic co disabled
+rhocp-ironic-4.13-for-rhel-9-x86_64-debug-rpms                Ironic co disabled
+rhocp-ironic-4.13-for-rhel-9-x86_64-rpms                      Ironic co disabled
+rhocp-ironic-4.13-for-rhel-9-x86_64-source-rpms               Ironic co disabled
+rhocp-ironic-4.14-for-rhel-9-x86_64-debug-rpms                Ironic co disabled
+rhocp-ironic-4.14-for-rhel-9-x86_64-rpms                      Ironic co disabled
+rhocp-ironic-4.14-for-rhel-9-x86_64-source-rpms               Ironic co disabled
+rhocp-ironic-4.15-for-rhel-9-x86_64-debug-rpms                Ironic co disabled
+rhocp-ironic-4.15-for-rhel-9-x86_64-rpms                      Ironic co disabled
+rhocp-ironic-4.15-for-rhel-9-x86_64-source-rpms               Ironic co disabled
+rhocp-ironic-4.16-for-rhel-9-x86_64-debug-rpms                Ironic co disabled
+rhocp-ironic-4.16-for-rhel-9-x86_64-rpms                      Ironic co disabled
+rhocp-ironic-4.16-for-rhel-9-x86_64-source-rpms               Ironic co disabled
+rhocp-ironic-4.17-for-rhel-9-x86_64-debug-rpms                Ironic co disabled
+rhocp-ironic-4.17-for-rhel-9-x86_64-rpms                      Ironic co disabled
+rhocp-ironic-4.17-for-rhel-9-x86_64-source-rpms               Ironic co disabled
+rhocp-ironic-4.18-for-rhel-9-x86_64-debug-rpms                Ironic co disabled
+rhocp-ironic-4.18-for-rhel-9-x86_64-rpms                      Ironic co disabled
+rhocp-ironic-4.18-for-rhel-9-x86_64-source-rpms               Ironic co disabled
+rhocp-ironic-4.19-for-rhel-9-x86_64-debug-rpms                Ironic co disabled
+rhocp-ironic-4.19-for-rhel-9-x86_64-rpms                      Ironic co disabled
+rhocp-ironic-4.19-for-rhel-9-x86_64-source-rpms               Ironic co disabled
+rhocp-ironic-4.20-for-rhel-9-x86_64-debug-rpms                Ironic co disabled
+rhocp-ironic-4.20-for-rhel-9-x86_64-rpms                      Ironic co disabled
+rhocp-ironic-4.20-for-rhel-9-x86_64-source-rpms               Ironic co disabled
+rhocp-ironic-4.21-for-rhel-9-x86_64-debug-rpms                Ironic co disabled
+rhocp-ironic-4.21-for-rhel-9-x86_64-rpms                      Ironic co disabled
+rhocp-ironic-4.21-for-rhel-9-x86_64-source-rpms               Ironic co disabled
+rhocp-ironic-4.22-for-rhel-9-x86_64-debug-rpms                Ironic co disabled
+rhocp-ironic-4.22-for-rhel-9-x86_64-rpms                      Ironic co disabled
+rhocp-ironic-4.22-for-rhel-9-x86_64-source-rpms               Ironic co disabled
+rhocp-ironic-4.23-for-rhel-9-x86_64-debug-rpms                Ironic co disabled
+rhocp-ironic-4.23-for-rhel-9-x86_64-rpms                      Ironic co disabled
+rhocp-ironic-4.23-for-rhel-9-x86_64-source-rpms               Ironic co disabled
+rhocp-ironic-5.0-for-rhel-9-x86_64-debug-rpms                 Ironic co disabled
+rhocp-ironic-5.0-for-rhel-9-x86_64-rpms                       Ironic co disabled
+rhocp-ironic-5.0-for-rhel-9-x86_64-source-rpms                Ironic co disabled
+rhosds-textonly-3-for-middleware-rpms                         Red Hat O disabled
+rhose-textonly-1-for-middleware-rpms                          Red Hat M disabled
+rhoso-tools-18-beta-for-rhel-9-x86_64-debug-rpms              Red Hat O disabled
+rhoso-tools-18-beta-for-rhel-9-x86_64-rpms                    Red Hat O disabled
+rhoso-tools-18-beta-for-rhel-9-x86_64-source-rpms             Red Hat O disabled
+rhoso-tools-18-for-rhel-9-x86_64-debug-rpms                   Red Hat O disabled
+rhoso-tools-18-for-rhel-9-x86_64-rpms                         Red Hat O disabled
+rhoso-tools-18-for-rhel-9-x86_64-source-rpms                  Red Hat O disabled
+rhpm-1-for-rhel-9-x86_64-textonly-debug-rpms                  Power mon disabled
+rhpm-1-for-rhel-9-x86_64-textonly-rpms                        Power mon disabled
+rhpm-1-for-rhel-9-x86_64-textonly-source-rpms                 Power mon disabled
+rhsi-textonly-1-for-middleware-rpms                           Red Hat S disabled
+rhv-4-tools-for-rhel-9-x86_64-debug-rpms                      Red Hat V disabled
+rhv-4-tools-for-rhel-9-x86_64-rpms                            Red Hat V disabled
+rhv-4-tools-for-rhel-9-x86_64-source-rpms                     Red Hat V disabled
+rhwa-far-1-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhwa-far-1-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhwa-far-1-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhwa-mdr-1-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhwa-mdr-1-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhwa-mdr-1-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhwa-nhc-1-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhwa-nhc-1-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhwa-nhc-1-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhwa-nmo-1-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhwa-nmo-1-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhwa-nmo-1-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rhwa-snr-1-for-rhel-9-x86_64-debug-rpms                       Red Hat O disabled
+rhwa-snr-1-for-rhel-9-x86_64-rpms                             Red Hat O disabled
+rhwa-snr-1-for-rhel-9-x86_64-source-rpms                      Red Hat O disabled
+rodoo-1-for-rhel-9-x86_64-debug-rpms                          Run Once  disabled
+rodoo-1-for-rhel-9-x86_64-rpms                                Run Once  disabled
+rodoo-1-for-rhel-9-x86_64-source-rpms                         Run Once  disabled
+satellite-client-6-for-rhel-9-x86_64-debug-rpms               Red Hat S disabled
+satellite-client-6-for-rhel-9-x86_64-e4s-debug-rpms           Red Hat S disabled
+satellite-client-6-for-rhel-9-x86_64-e4s-rpms                 Red Hat S disabled
+satellite-client-6-for-rhel-9-x86_64-e4s-source-rpms          Red Hat S disabled
+satellite-client-6-for-rhel-9-x86_64-eus-debug-rpms           Red Hat S disabled
+satellite-client-6-for-rhel-9-x86_64-eus-rpms                 Red Hat S disabled
+satellite-client-6-for-rhel-9-x86_64-eus-source-rpms          Red Hat S disabled
+satellite-client-6-for-rhel-9-x86_64-rpms                     Red Hat S disabled
+satellite-client-6-for-rhel-9-x86_64-source-rpms              Red Hat S disabled
+satellite-client-openvox-for-rhel-9-x86_64-debug-rpms         Red Hat S disabled
+satellite-client-openvox-for-rhel-9-x86_64-e4s-debug-rpms     Red Hat S disabled
+satellite-client-openvox-for-rhel-9-x86_64-e4s-rpms           Red Hat S disabled
+satellite-client-openvox-for-rhel-9-x86_64-e4s-source-rpms    Red Hat S disabled
+satellite-client-openvox-for-rhel-9-x86_64-eus-debug-rpms     Red Hat S disabled
+satellite-client-openvox-for-rhel-9-x86_64-eus-rpms           Red Hat S disabled
+satellite-client-openvox-for-rhel-9-x86_64-eus-source-rpms    Red Hat S disabled
+satellite-client-openvox-for-rhel-9-x86_64-rpms               Red Hat S disabled
+satellite-client-openvox-for-rhel-9-x86_64-source-rpms        Red Hat S disabled
+satellite-maintenance-6.16-eus-for-rhel-9-x86_64-debug-rpms   Red Hat S disabled
+satellite-maintenance-6.16-eus-for-rhel-9-x86_64-rpms         Red Hat S disabled
+satellite-maintenance-6.16-eus-for-rhel-9-x86_64-source-rpms  Red Hat S disabled
+satellite-maintenance-6.16-for-rhel-9-x86_64-debug-rpms       Red Hat S disabled
+satellite-maintenance-6.16-for-rhel-9-x86_64-rpms             Red Hat S disabled
+satellite-maintenance-6.16-for-rhel-9-x86_64-source-rpms      Red Hat S disabled
+satellite-maintenance-6.17-for-rhel-9-x86_64-debug-rpms       Red Hat S disabled
+satellite-maintenance-6.17-for-rhel-9-x86_64-rpms             Red Hat S disabled
+satellite-maintenance-6.17-for-rhel-9-x86_64-source-rpms      Red Hat S disabled
+satellite-maintenance-6.18-for-rhel-9-x86_64-debug-rpms       Red Hat S disabled
+satellite-maintenance-6.18-for-rhel-9-x86_64-rpms             Red Hat S disabled
+satellite-maintenance-6.18-for-rhel-9-x86_64-source-rpms      Red Hat S disabled
+satellite-maintenance-6.19-for-rhel-9-x86_64-debug-rpms       Red Hat S disabled
+satellite-maintenance-6.19-for-rhel-9-x86_64-rpms             Red Hat S disabled
+satellite-maintenance-6.19-for-rhel-9-x86_64-source-rpms      Red Hat S disabled
+satellite-utils-6.16-eus-for-rhel-9-x86_64-debug-rpms         Red Hat S disabled
+satellite-utils-6.16-eus-for-rhel-9-x86_64-rpms               Red Hat S disabled
+satellite-utils-6.16-eus-for-rhel-9-x86_64-source-rpms        Red Hat S disabled
+satellite-utils-6.16-for-rhel-9-x86_64-debug-rpms             Red Hat S disabled
+satellite-utils-6.16-for-rhel-9-x86_64-rpms                   Red Hat S disabled
+satellite-utils-6.16-for-rhel-9-x86_64-source-rpms            Red Hat S disabled
+satellite-utils-6.17-for-rhel-9-x86_64-debug-rpms             Red Hat S disabled
+satellite-utils-6.17-for-rhel-9-x86_64-rpms                   Red Hat S disabled
+satellite-utils-6.17-for-rhel-9-x86_64-source-rpms            Red Hat S disabled
+satellite-utils-6.18-for-rhel-9-x86_64-debug-rpms             Red Hat S disabled
+satellite-utils-6.18-for-rhel-9-x86_64-rpms                   Red Hat S disabled
+satellite-utils-6.18-for-rhel-9-x86_64-source-rpms            Red Hat S disabled
+satellite-utils-6.19-for-rhel-9-x86_64-debug-rpms             Red Hat S disabled
+satellite-utils-6.19-for-rhel-9-x86_64-rpms                   Red Hat S disabled
+satellite-utils-6.19-for-rhel-9-x86_64-source-rpms            Red Hat S disabled
+service-interconnect-1-for-rhel-9-x86_64-debug-rpms           Red Hat S disabled
+service-interconnect-1-for-rhel-9-x86_64-rpms                 Red Hat S disabled
+service-interconnect-1-for-rhel-9-x86_64-source-rpms          Red Hat S disabled
+service-interconnect-1.4-for-rhel-9-x86_64-debug-rpms         Red Hat S disabled
+service-interconnect-1.4-for-rhel-9-x86_64-rpms               Red Hat S disabled
+service-interconnect-1.4-for-rhel-9-x86_64-source-rpms        Red Hat S disabled
+service-interconnect-1.8-for-rhel-9-x86_64-debug-rpms         Red Hat S disabled
+service-interconnect-1.8-for-rhel-9-x86_64-rpms               Red Hat S disabled
+service-interconnect-1.8-for-rhel-9-x86_64-source-rpms        Red Hat S disabled
+service-interconnect-2-for-rhel-9-x86_64-debug-rpms           Red Hat S disabled
+service-interconnect-2-for-rhel-9-x86_64-rpms                 Red Hat S disabled
+service-interconnect-2-for-rhel-9-x86_64-source-rpms          Red Hat S disabled
+service-interconnect-2.2-for-rhel-9-x86_64-debug-rpms         Red Hat S disabled
+service-interconnect-2.2-for-rhel-9-x86_64-rpms               Red Hat S disabled
+service-interconnect-2.2-for-rhel-9-x86_64-source-rpms        Red Hat S disabled
+soa-textonly-1-for-middleware-rpms                            Red Hat J disabled
+wfk-textonly-1-for-middleware-rpms                            Red Hat J disabled
+COMMAND_EXIT=0
