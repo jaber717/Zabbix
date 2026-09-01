@@ -22,4 +22,7 @@
 | M1/M2/M3 evidence changed | PASS (no change) | Git path audit |
 | External push | PASS (none) | Git audit |
 
+Implementation and raw evidence are committed at
+`936a3ef3b1cb81fa1016eebb44f080c674426f81`.
+
 Final milestone verdict: **M4 BLOCKED — NETBOX READ PERMISSIONS**.

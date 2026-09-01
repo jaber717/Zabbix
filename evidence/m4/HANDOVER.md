@@ -58,8 +58,9 @@
 23. **Documentation/evidence:** operations runbook plus preflight, tests,
     dry-run, blocked apply, blocker, audit, handover, raw transcripts, and
     checksums under `evidence/m4/`.
-24. **Git:** M4 start commit `e389a51`; closeout commit is recorded after this
-    handover is staged and audited. Nothing is pushed externally.
+24. **Git:** M4 start commit `e389a51`; implementation/evidence commit
+    `936a3ef3b1cb81fa1016eebb44f080c674426f81`; final handover is committed
+    separately. Nothing is pushed externally.
 25. **Remaining blockers:** exact NetBox reads above, then a dedicated minimally
     scoped Zabbix apply credential, mapping review for any eligible unmapped
     objects, safe dry-run review, apply, and post-apply second reconcile.

@@ -43,6 +43,8 @@ M3 closeout commit: `e0e417131b707c3760d7775ed33913fd8b2ffa28`
 
 M4 start commit: `e389a51`
 
+M4 implementation/evidence commit: `936a3ef3b1cb81fa1016eebb44f080c674426f81`
+
 ## M4 result
 
 - Actual NetBox is 4.6.9 with API 4.6; Django is 6.0.8. The existing portal
