@@ -150,6 +150,18 @@ class LockAndPortTests(unittest.TestCase):
                 database.index(probe),
             )
 
+    def test_backup_streams_through_root_owned_files(self):
+        backup = (
+            ROOT / "installer/roles/backup/files/zabbix-offline-backup"
+        ).read_text(encoding="utf-8")
+        verify = (
+            ROOT / "installer/roles/backup/files/zabbix-offline-verify-backup"
+        ).read_text(encoding="utf-8")
+        self.assertIn('pg_dump --format=custom "$DB_NAME" >"$partial/database.dump"', backup)
+        self.assertIn('pg_restore --list <"$partial/database.dump"', backup)
+        self.assertIn("pg_restore --list <database.dump", verify)
+        self.assertNotIn('pg_dump --format=custom --file="$partial/database.dump"', backup)
+
     def test_database_role_installs_schema_payload_before_import(self):
         defaults = (
             ROOT / "installer/roles/postgresql/defaults/main.yml"

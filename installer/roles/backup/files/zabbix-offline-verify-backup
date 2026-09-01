@@ -18,7 +18,7 @@ root=$(readlink -f -- "$BACKUP_ROOT")
   sha256sum --quiet -c SHA256SUMS
   tar --list --gzip --file configuration.tar.gz >/dev/null
   if [[ -f database.dump ]]; then
-    runuser -u postgres -- pg_restore --list database.dump >/dev/null
+    runuser -u postgres -- pg_restore --list <database.dump >/dev/null
   fi
 )
 printf 'BACKUP=%s\nRESULT=PASS\n' "$candidate"

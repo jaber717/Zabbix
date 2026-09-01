@@ -52,8 +52,8 @@ tar --create --gzip --file "$partial/configuration.tar.gz" --directory / \
   --files-from "$paths_file"
 
 if [[ $mode == full ]]; then
-  runuser -u postgres -- pg_dump --format=custom --file="$partial/database.dump" "$DB_NAME"
-  runuser -u postgres -- pg_restore --list "$partial/database.dump" >/dev/null
+  runuser -u postgres -- pg_dump --format=custom "$DB_NAME" >"$partial/database.dump"
+  runuser -u postgres -- pg_restore --list <"$partial/database.dump" >/dev/null
 fi
 
 cat >"$partial/backup-info.txt" <<EOF
