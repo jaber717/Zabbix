@@ -1,0 +1,26 @@
+SERVICE
+Result=exit-code
+ExecMainStatus=3
+User=nbzsync
+Group=nbzsync
+ActiveState=failed
+SubState=failed
+TIMER
+ActiveState=active
+SubState=waiting
+UnitFileState=enabled
+NEXT                        LEFT       LAST                        PASSED    UNIT                     ACTIVATES
+Tue 2026-09-01 19:41:24 +03 10min left Tue 2026-09-01 19:20:34 +03 10min ago netbox-zabbix-sync.timer netbox-zabbix-sync.service
+
+1 timers listed.
+JOURNAL
+2026-09-01T19:20:34+0300 netbox-dev systemd[1]: Starting Dry-run NetBox to Zabbix reconciliation...
+2026-09-01T19:20:43+0300 netbox-dev python3[32232]: {"action_counts":{"AMBIGUOUS":0,"CREATE":0,"GROUP_DRIFT":0,"IP_CHANGE_REVIEW":0,"NEEDS_REVIEW":24,"ORPHAN":null,"SKIPPED":0,"TEMPLATE_DRIFT":0,"UNCHANGED":0,"UNMAPPED":57,"UPDATE":0},"apply_result":{"created":0,"status":"NOT_EXECUTED","updated":0},"candidate_counts":{"actionable":0,"ambiguous":0,"blocked_due_permission":81,"duplicate_ip":0,"eligibility_unknown":81,"eligible":0,"ineligible":0,"mapped":24,"missing_or_unsafe_ip":41,"needs_review":0,"resolved":24,"unmapped":57},"change_budget":0.1,"change_ratio":0.0,"endpoint_access":{"custom_fields":"DENIED","device_roles":"PASS","devices":"PASS","interfaces":"PASS","ip_addresses":"PASS","platforms":"PASS","sites":"PASS","tags":"DENIED","tenants":"PASS","virtual_machines":"DENIED","virtualization_interfaces":"DENIED"},"errors":[],"gates":{"candidate_resolution":"BLOCKED","change_budget":"PASS","destructive_operations":"PASS_REPORT_ONLY","duplicate_identity":"PASS","mapping_targets":"PASS","orphan_evaluation":"BLOCKED_INCOMPLETE_SOURCE","required_netbox_reads":"BLOCKED","zabbix_credential_scope":"BLOCKED"},"mode":"DRY_RUN","schema":"netbox-zabbix-sync-report-v1","source_complete":false,"source_counts":{"custom_fields":null,"device_roles":10,"devices":81,"interfaces":1105,"ip_addresses":116,"platforms":4,"sites":3,"tags":null,"tenants":3,"virtual_machines":null,"virtualization_interfaces":null}}
+2026-09-01T19:20:43+0300 netbox-dev systemd[1]: netbox-zabbix-sync.service: Main process exited, code=exited, status=3/NOTIMPLEMENTED
+2026-09-01T19:20:43+0300 netbox-dev systemd[1]: netbox-zabbix-sync.service: Failed with result 'exit-code'.
+2026-09-01T19:20:43+0300 netbox-dev systemd[1]: Failed to start Dry-run NetBox to Zabbix reconciliation.
+2026-09-01T19:30:38+0300 netbox-dev systemd[1]: Starting Dry-run NetBox to Zabbix reconciliation...
+2026-09-01T19:30:45+0300 netbox-dev python3[32355]: {"action_counts":{"AMBIGUOUS":0,"CREATE":0,"GROUP_DRIFT":0,"IP_CHANGE_REVIEW":0,"NEEDS_REVIEW":24,"ORPHAN":null,"SKIPPED":0,"TEMPLATE_DRIFT":0,"UNCHANGED":0,"UNMAPPED":57,"UPDATE":0},"apply_result":{"created":0,"status":"NOT_EXECUTED","updated":0},"candidate_counts":{"actionable":0,"ambiguous":0,"blocked_due_permission":81,"duplicate_ip":0,"eligibility_unknown":81,"eligible":0,"ineligible":0,"mapped":24,"missing_or_unsafe_ip":41,"needs_review":0,"resolved":24,"unmapped":57},"change_budget":0.1,"change_ratio":0.0,"endpoint_access":{"custom_fields":"DENIED","device_roles":"PASS","devices":"PASS","interfaces":"PASS","ip_addresses":"PASS","platforms":"PASS","sites":"PASS","tags":"DENIED","tenants":"PASS","virtual_machines":"DENIED","virtualization_interfaces":"DENIED"},"errors":[],"gates":{"candidate_resolution":"BLOCKED","change_budget":"PASS","destructive_operations":"PASS_REPORT_ONLY","duplicate_identity":"PASS","mapping_targets":"PASS","orphan_evaluation":"BLOCKED_INCOMPLETE_SOURCE","required_netbox_reads":"BLOCKED","zabbix_credential_scope":"BLOCKED"},"mode":"DRY_RUN","schema":"netbox-zabbix-sync-report-v1","source_complete":false,"source_counts":{"custom_fields":null,"device_roles":10,"devices":81,"interfaces":1105,"ip_addresses":116,"platforms":4,"sites":3,"tags":null,"tenants":3,"virtual_machines":null,"virtualization_interfaces":null}}
+2026-09-01T19:30:45+0300 netbox-dev systemd[1]: netbox-zabbix-sync.service: Main process exited, code=exited, status=3/NOTIMPLEMENTED
+2026-09-01T19:30:45+0300 netbox-dev systemd[1]: netbox-zabbix-sync.service: Failed with result 'exit-code'.
+2026-09-01T19:30:45+0300 netbox-dev systemd[1]: Failed to start Dry-run NetBox to Zabbix reconciliation.

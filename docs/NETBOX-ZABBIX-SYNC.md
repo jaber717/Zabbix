@@ -17,6 +17,13 @@ virtual machines, virtual-machine interfaces, tags, and custom-field metadata.
 The installed service remains dry-run only and reports this state with exit code
 3. It does not interpret denied collections as empty.
 
+On 2026-09-01, a bounded resumption revalidated an operator-reported grant of
+the four exact view permissions. The credential used by the installed service
+still received the same four HTTP 403 responses; already-readable endpoints
+continued to pass. This proves only that the views are not effective for the
+credential actually presented. It does not identify whether principal
+attachment, object constraints, or another permission rule is responsible.
+
 ## Components
 
 - `/usr/libexec/netbox-zabbix-sync/netbox_zabbix_sync/`: Python 3.9-compatible,

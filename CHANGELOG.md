@@ -4,6 +4,11 @@
 
 ### Added
 
+- Revalidated M4 after the reported four-permission NetBox grant. The installed
+  service credential still received HTTP 403 for VMs, VM interfaces, tags, and
+  custom fields; existing device/DCIM/IP/schema reads still passed. A fresh
+  dry-run kept all 81 device eligibility decisions UNKNOWN, proposed no changes,
+  and stopped before Zabbix credential creation, apply, or second reconcile.
 - Implemented and deployed M4's fail-closed `netbox-zabbix-sync` engine with
   GET-only NetBox access, stable device/VM identity, explicit mappings,
   deterministic primary-IP resolution, guarded planning/apply, 10% change

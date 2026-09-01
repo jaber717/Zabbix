@@ -20,10 +20,13 @@ M4 implemented and deployed the fail-closed sync engine in dry-run mode. Live
 GET-only preflight proved NetBox 4.6.9/API 4.6 and corrected the earlier
 misclassification of Django 6.0.8 as a NetBox version. Devices, DCIM interfaces,
 IP addresses, roles, platforms, sites, and tenants are readable; VMs, VM
-interfaces, tags, and custom-field metadata return HTTP 403. The live plan made
-zero Zabbix changes and did not infer denied datasets as empty. M4 cannot be
-accepted until the exact read permissions, a scoped Zabbix apply credential,
-safe apply, and second reconciliation pass. M5 is not ready.
+interfaces, tags, and custom-field metadata return HTTP 403. A 2026-09-01
+resumption revalidated the operator-reported four-permission grant against the
+credential used by the installed service; all four endpoints still returned
+403 while the already-readable endpoints still passed. The fresh plan made zero
+Zabbix changes and did not infer denied datasets as empty. M4 cannot be accepted
+until the exact read permissions are effective, then a scoped Zabbix apply
+credential, safe apply, and second reconciliation pass. M5 is not ready.
 
 M1 pipeline source commit: `fbf3573`
 
@@ -44,6 +47,10 @@ M3 closeout commit: `e0e417131b707c3760d7775ed33913fd8b2ffa28`
 M4 start commit: `e389a51`
 
 M4 implementation/evidence commit: `936a3ef3b1cb81fa1016eebb44f080c674426f81`
+
+M4 original blocked handover commit: `54df4e87fb10683e2dddce6313680754b0c55947`
+
+M4 permission-resumption start commit: `262acb8bcfc8d8ccefb7aa5c4c4be461acdd8771`
 
 ## M4 result
 
@@ -67,7 +74,12 @@ M4 implementation/evidence commit: `936a3ef3b1cb81fa1016eebb44f080c674426f81`
 - Apply and post-apply second reconciliation are `NOT-EXECUTED`. Zabbix remained
   at one enabled host, 12 unsupported items, zero queue values, active core
   services, and zero boot-scoped server error entries.
-- See `evidence/m4/HANDOVER.md`, `evidence/m4/BLOCKED.md`, and
+- A bounded resumption after the reported grant produced the same four 403s.
+  All 81 device eligibility decisions remain UNKNOWN; VM count and orphan count
+  remain UNKNOWN. The least-privilege Zabbix credential gate was not attempted
+  because the required source-read gate failed first.
+- See `evidence/m4/resume/HANDOVER.md`,
+  `evidence/m4/resume/PERMISSION-REVALIDATION.md`, and
   `docs/NETBOX-ZABBIX-SYNC.md`.
 
 ## M3 result
@@ -130,7 +142,7 @@ M4 implementation/evidence commit: `936a3ef3b1cb81fa1016eebb44f080c674426f81`
 |---|---|---|
 | RHEL source repository readiness | BaseOS/AppStream and official Zabbix 7.0 sources passed host and isolated clean-installroot metadata/query tests. | RESOLVED; M1 COMPLETE |
 | `fping` source for Zabbix Server | The non-supported source contributed only `fping-0:5.1-1.el9.x86_64`; repository metadata, SHA256, key fingerprint, signature, and provenance passed. | RESOLVED; M1 COMPLETE |
-| NetBox VM/interface/tag/custom-field permission | Existing credential returns 403 for four exact endpoints. | BLOCKS M4; exact minimum view permissions recorded |
+| NetBox VM/interface/tag/custom-field permission | Existing service credential still returns 403 for four exact endpoints after the operator-reported grant. | BLOCKS M4; make the four minimum view permissions effective for the actual credential principal/object scope |
 | NetBox/portal version mismatch | RESOLVED: NetBox/API status and portal health report NetBox 4.6.9; 6.0.8 is Django. | No M4 version blocker; portal feature work remains M6 |
 | Zabbix integration apply credential | Existing Admin credential is encrypted and hard-gated to dry-run only. | BLOCKS M4 apply until a dedicated minimally scoped credential exists |
 | PNETLab/EVE stopped | QEMU 110 and 120 were stopped and left unchanged. | Prerequisite only for M8 |
