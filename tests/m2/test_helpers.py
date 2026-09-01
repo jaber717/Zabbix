@@ -110,6 +110,16 @@ class LockAndPortTests(unittest.TestCase):
         resolver = resolver[: resolver.index("Install the exact accepted firewalld NEVRA")]
         self.assertIn("check_mode: false", resolver)
 
+    def test_firewall_cidr_validation_runs_in_check_mode(self):
+        firewall_tasks = (
+            ROOT / "installer/roles/firewall/tasks/main.yml"
+        ).read_text(encoding="utf-8")
+        validation = firewall_tasks[
+            firewall_tasks.index("Validate source CIDRs using the Python standard library") :
+        ]
+        validation = validation[: validation.index("Resolve the exact accepted firewalld NEVRA")]
+        self.assertIn("check_mode: false", validation)
+
     def test_runtime_handlers_are_applied_before_verification(self):
         verification = (
             ROOT / "installer/roles/verification/tasks/main.yml"

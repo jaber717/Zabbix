@@ -17,6 +17,7 @@
       - "{{ item }}"
   loop: "{{ (zabbix_firewall_web_sources + zabbix_firewall_server_sources + zabbix_firewall_agent_sources) | unique }}"
   changed_when: false
+  check_mode: false
 
 - name: Resolve the exact accepted firewalld NEVRA
   ansible.builtin.script:
