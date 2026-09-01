@@ -7,12 +7,18 @@
     enablerepo: "{{ offline_repo_id }}"
     install_weak_deps: false
 
+- name: Inspect the Apache vendor unit for nginx-only enforcement
+  ansible.builtin.stat:
+    path: /usr/lib/systemd/system/httpd.service
+  register: zabbix_web_httpd_unit
+
 - name: Keep Apache inactive on the selected nginx architecture
   ansible.builtin.systemd:
     name: httpd.service
     state: stopped
     enabled: false
     masked: true
+  when: zabbix_web_httpd_unit.stat.exists
 
 - name: Configure the dedicated Zabbix PHP-FPM pool
   ansible.builtin.template:
