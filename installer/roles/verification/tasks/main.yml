@@ -1,4 +1,7 @@
 ---
+- name: Apply notified service configuration before runtime verification
+  ansible.builtin.meta: flush_handlers
+
 - name: Verify installed package versions against the M1 lock
   ansible.builtin.script:
     cmd: >-

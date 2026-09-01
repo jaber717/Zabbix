@@ -95,6 +95,27 @@
     - not ansible_check_mode
     - item.rc == 1
 
+- name: Query desired rich rules in the active runtime
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/firewall-cmd
+      - "--zone={{ zabbix_firewall_zone }}"
+      - "--query-rich-rule=rule family=\"{{ 'ipv6' if ':' in item.source else 'ipv4' }}\" source address=\"{{ item.source }}\" port port=\"{{ item.port }}\" protocol=\"tcp\" accept"
+  loop: "{{ zabbix_firewall_rules }}"
+  register: firewall_runtime_rule_queries
+  changed_when: false
+  failed_when: firewall_runtime_rule_queries.rc not in [0, 1]
+  when: not ansible_check_mode
+
+- name: Request a reload when permanent rules are absent from the runtime
+  ansible.builtin.command: /usr/bin/true
+  loop: "{{ firewall_runtime_rule_queries.results }}"
+  changed_when: true
+  notify: Reload firewalld
+  when:
+    - not ansible_check_mode
+    - item.rc == 1
+
 - name: Validate permanent firewalld configuration
   ansible.builtin.command:
     argv:

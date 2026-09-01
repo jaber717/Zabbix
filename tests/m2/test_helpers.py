@@ -104,6 +104,16 @@ class LockAndPortTests(unittest.TestCase):
             "firewalld-0:1.3.4-15.el9_6.noarch",
         )
 
+    def test_runtime_handlers_are_applied_before_verification(self):
+        verification = (
+            ROOT / "installer/roles/verification/tasks/main.yml"
+        ).read_text(encoding="utf-8")
+        firewall = (
+            ROOT / "installer/roles/firewall/tasks/main.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("ansible.builtin.meta: flush_handlers", verification)
+        self.assertIn("Query desired rich rules in the active runtime", firewall)
+
     def test_database_role_installs_schema_payload_before_import(self):
         defaults = (
             ROOT / "installer/roles/postgresql/defaults/main.yml"
