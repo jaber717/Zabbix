@@ -1,0 +1,46 @@
+---
+# M3-only home-lab values for the dual-purpose host at 192.168.1.91.
+# Secrets and TLS private material are injected from root-only files outside Git.
+zabbix_server_hostname: ZABBIX-01
+zabbix_server_listen_ip: "0.0.0.0"
+zabbix_server_listen_port: 10051
+zabbix_web_server_name: zabbix-01.lab
+
+zabbix_db_mode: local
+zabbix_db_manage: true
+zabbix_db_host: "127.0.0.1"
+zabbix_db_port: 5432
+zabbix_db_name: zabbix
+zabbix_db_user: zabbix
+# Preserve the existing NetBox PostgreSQL listener exactly.
+zabbix_db_listen_addresses: "127.0.0.1"
+zabbix_db_tls: false
+
+zabbix_agent_listen_ip: "0.0.0.0"
+zabbix_agent_listen_port: 10050
+zabbix_agent_allowed_servers:
+  - "127.0.0.1"
+zabbix_agent_active_servers:
+  - "127.0.0.1:10051"
+
+zabbix_tls_enabled: true
+zabbix_tls_certificate_source: /root/zabbix-m3-inputs/zabbix-01.lab.crt
+zabbix_tls_private_key_source: /root/zabbix-m3-inputs/zabbix-01.lab.key
+zabbix_tls_minimum_validity_seconds: 2592000
+# NetBox retains 80/443. Zabbix uses a separate source-restricted listener.
+zabbix_web_https_port: 8443
+zabbix_web_http_redirect: false
+
+zabbix_firewall_zone: public
+zabbix_firewall_web_sources:
+  - 192.168.1.0/24
+zabbix_firewall_server_sources:
+  - 192.168.1.0/24
+zabbix_firewall_agent_sources:
+  - 192.168.1.0/24
+
+zabbix_backup_root: /var/backups/zabbix-offline
+zabbix_backup_on_calendar: "*-*-* 02:15:00"
+zabbix_backup_retention_days: 14
+
+m2_run_verification: true
