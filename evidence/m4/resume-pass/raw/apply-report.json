@@ -1,0 +1,76 @@
+{
+  "action_counts": {
+    "AMBIGUOUS": 0,
+    "CREATE": 0,
+    "GROUP_DRIFT": 0,
+    "IP_CHANGE_REVIEW": 0,
+    "NEEDS_REVIEW": 0,
+    "ORPHAN": 0,
+    "SKIPPED": 24,
+    "TEMPLATE_DRIFT": 0,
+    "UNCHANGED": 0,
+    "UNMAPPED": 57,
+    "UPDATE": 0
+  },
+  "apply_result": {
+    "created": 0,
+    "status": "PASS",
+    "updated": 0
+  },
+  "candidate_counts": {
+    "actionable": 0,
+    "ambiguous": 0,
+    "blocked_due_permission": 0,
+    "duplicate_ip": 0,
+    "eligibility_unknown": 0,
+    "eligible": 0,
+    "ineligible": 81,
+    "mapped": 24,
+    "missing_or_unsafe_ip": 41,
+    "needs_review": 0,
+    "resolved": 24,
+    "unmapped": 57
+  },
+  "change_budget": 0.1,
+  "change_ratio": 0.0,
+  "endpoint_access": {
+    "custom_fields": "PASS",
+    "device_roles": "PASS",
+    "devices": "PASS",
+    "interfaces": "PASS",
+    "ip_addresses": "PASS",
+    "platforms": "PASS",
+    "sites": "PASS",
+    "tags": "PASS",
+    "tenants": "PASS",
+    "virtual_machines": "PASS",
+    "virtualization_interfaces": "PASS"
+  },
+  "errors": [],
+  "gates": {
+    "candidate_resolution": "PASS",
+    "change_budget": "PASS",
+    "destructive_operations": "PASS_REPORT_ONLY",
+    "duplicate_identity": "PASS",
+    "mapping_targets": "PASS",
+    "orphan_evaluation": "PASS",
+    "required_netbox_reads": "PASS",
+    "zabbix_credential_scope": "PASS"
+  },
+  "mode": "APPLY",
+  "schema": "netbox-zabbix-sync-report-v1",
+  "source_complete": true,
+  "source_counts": {
+    "custom_fields": 1,
+    "device_roles": 10,
+    "devices": 81,
+    "interfaces": 1105,
+    "ip_addresses": 116,
+    "platforms": 4,
+    "sites": 3,
+    "tags": 0,
+    "tenants": 3,
+    "virtual_machines": 0,
+    "virtualization_interfaces": 0
+  }
+}

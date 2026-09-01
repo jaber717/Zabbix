@@ -12,3 +12,4 @@ evidence/m1/final-build*/raw/** -text -diff
 evidence/m3/raw/** -text -diff
 evidence/m4/raw/** -text -diff
 evidence/m4/resume/raw/** -text -diff
+evidence/m4/resume-pass/raw/** -text -diff

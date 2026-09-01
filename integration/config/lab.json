@@ -2,8 +2,8 @@
   "schema": "netbox-zabbix-sync-runtime-v1",
   "netbox_url": "http://192.168.1.89",
   "zabbix_url": "https://192.168.1.91:8443/api_jsonrpc.php",
-  "zabbix_user": "Admin",
-  "zabbix_credential_scope": "existing-admin-read-only-dry-run",
+  "zabbix_user": "nbzsync",
+  "zabbix_credential_scope": "dedicated-api-allow-list-and-mapped-group-scope",
   "timeout_seconds": 10,
   "retries": 2,
   "tls": {
@@ -13,7 +13,7 @@
   },
   "policy": {
     "change_budget": 0.10,
-    "allow_apply_with_current_zabbix_credential": false,
+    "allow_apply_with_current_zabbix_credential": true,
     "required_endpoints": [
       "devices",
       "interfaces",

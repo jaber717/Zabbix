@@ -1,0 +1,34 @@
+test_auth_failure_is_denied (test_m4_sync.ClientTests) ... ok
+test_cross_origin_pagination_fails_closed (test_m4_sync.ClientTests) ... ok
+test_denied_endpoint_is_not_empty (test_m4_sync.ClientTests) ... ok
+test_http_error_is_unavailable (test_m4_sync.ClientTests) ... ok
+test_netbox_write_method_refused (test_m4_sync.ClientTests) ... ok
+test_pagination (test_m4_sync.ClientTests) ... ok
+test_template_addition_uses_massadd_not_replace (test_m4_sync.ClientTests) ... ok
+test_timeout_is_unavailable (test_m4_sync.ClientTests) ... ok
+test_ambiguous_mapping (test_m4_sync.IdentityAndMappingTests) ... ok
+test_denied_metadata_is_unknown_not_false (test_m4_sync.IdentityAndMappingTests) ... ok
+test_device_and_vm_identity_do_not_collide (test_m4_sync.IdentityAndMappingTests) ... ok
+test_duplicate_management_ip (test_m4_sync.IdentityAndMappingTests) ... ok
+test_mapped_role_platform_and_site (test_m4_sync.IdentityAndMappingTests) ... ok
+test_missing_attribute_needs_no_guess (test_m4_sync.IdentityAndMappingTests) ... ok
+test_missing_primary_ip (test_m4_sync.IdentityAndMappingTests) ... ok
+test_unmapped_platform (test_m4_sync.IdentityAndMappingTests) ... ok
+test_apply_requires_complete_reads (test_m4_sync.ReconciliationTests) ... ok
+test_change_budget_breaker (test_m4_sync.ReconciliationTests) ... ok
+test_create (test_m4_sync.ReconciliationTests) ... ok
+test_group_removal_is_report_only_and_preserved (test_m4_sync.ReconciliationTests) ... ok
+test_ip_change_does_not_create_or_blindly_update_ip (test_m4_sync.ReconciliationTests) ... ok
+test_orphan_evaluation_blocked_with_denied_vm_source (test_m4_sync.ReconciliationTests) ... ok
+test_orphan_is_report_only (test_m4_sync.ReconciliationTests) ... ok
+test_rename_updates_same_identity (test_m4_sync.ReconciliationTests) ... ok
+test_template_removal_is_report_only (test_m4_sync.ReconciliationTests) ... ok
+test_unchanged (test_m4_sync.ReconciliationTests) ... ok
+test_dry_run_is_default_and_apply_explicit (test_m4_sync.StaticSafetyTests) ... ok
+test_no_delete_or_template_unlink_api_path (test_m4_sync.StaticSafetyTests) ... ok
+test_secret_not_in_report (test_m4_sync.StaticSafetyTests) ... ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 0.012s
+
+OK

@@ -4,6 +4,12 @@
 
 ### Added
 
+- Accepted M4 after the NetBox read grant became effective for
+  `topology-portal`: all required collections pass, 81 devices are
+  deterministically not opted in, and the plan contains zero modifications.
+  Added a dedicated allow-listed Zabbix `nbzsync` identity, ran a passing
+  zero-change explicit apply and second reconciliation, and verified timer,
+  method audit, safety negatives, target tests, and unchanged Zabbix health.
 - Revalidated M4 after the reported four-permission NetBox grant. The installed
   service credential still received HTTP 403 for VMs, VM interfaces, tags, and
   custom fields; existing device/DCIM/IP/schema reads still passed. A fresh

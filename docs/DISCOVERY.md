@@ -18,7 +18,7 @@ request it rather than inferring it from this report or memory.
 | Direct unauthenticated `/api/` returned HTTP 403. The existing topology portal successfully used a credential through a GET/HEAD-only client. | VERIFIED FACT | `raw/netbox-read-only.txt`, `raw/portal-source-inventory.txt` |
 | The read-only portal view observed 3 sites, 4 locations, 11 racks, 81 devices, 84 cables, 2 circuits, 43 prefixes, and 116 IP addresses. | VERIFIED FACT | `raw/netbox-read-only.txt` |
 | Direct read-only endpoint audit observed 81 devices (active/planned), 10 roles, 4 platforms, 8 manufacturers, and 40 devices with a primary IP. | VERIFIED FACT | `raw/netbox-read-only.txt` |
-| The existing credential was insufficient for virtual machines, virtual-machine interfaces, tags, and custom fields. M4 reconfirmed exact HTTP 403 results. | VERIFIED FACT | `raw/netbox-read-only.txt`, `evidence/m4/raw/netbox-api-preflight.txt` |
+| The existing credential was initially insufficient for virtual machines, virtual-machine interfaces, tags, and custom fields. M4 preserved those HTTP 403 results; its 2026-09-02 resumption later verified HTTP 200 for all four. | VERIFIED HISTORICAL FACT, LATER RESOLVED | `raw/netbox-read-only.txt`, `evidence/m4/raw/netbox-api-preflight.txt`, `evidence/m4/resume-pass/raw/permission-revalidation.txt` |
 | A local topology portal source tree is present and exposes read-only graph/summary routes; it was not detected as its own Git repository. | VERIFIED FACT | `raw/portal-source-inventory.txt` |
 | The build VM became reachable at `192.168.1.91`; public-key SSH authenticated as unprivileged user `jaber`, and `hostname -f` returned `netbox-dev`. | VERIFIED FACT | `raw/rhel-build-baseline.txt` |
 | The build VM runs Red Hat Enterprise Linux 9.6 (Plow), x86_64, kernel `5.14.0-570.12.1.el9_6.x86_64`, under KVM/QEMU. The `redhat-release` package is `9.6-0.1.el9.x86_64`. | VERIFIED FACT | `raw/rhel-build-baseline.txt`, `raw/rhel-build-repository-readiness.txt` |
@@ -97,9 +97,9 @@ Assumptions are not build inputs until verified.
 
 - UNKNOWN: approved Python minor/ABI for the integration service. Approved RHEL
   sources expose 3.9, 3.11, and 3.12 package families, but M0.5 did not select one.
-- UNKNOWN: NetBox VM inventory, VM statuses/primary IP coverage, monitoring-related
-  tags, and monitoring-related custom fields because the available credential was
-  denied.
+- RESOLVED AFTER M0: M4 read 0 VMs, 0 VM interfaces, 0 tags, and 1 custom field;
+  all 81 devices were deterministically not opted in. See
+  `evidence/m4/resume-pass/PLAN-REVIEW.md`.
 - UNKNOWN: PNETLab/EVE guest versions and management reachability; both guests
   were stopped and deliberately not started.
 - UNKNOWN: complete M1 dependency closure, RPM signature results, and offline
@@ -114,7 +114,7 @@ Assumptions are not build inputs until verified.
 | Item | Gate impact |
 |---|---|
 | RHEL source repository readiness | RESOLVED; M1 source gate READY |
-| NetBox VM/VM-interface/tag/custom-field read permission | BLOCKER FOR M4; four exact view permissions remain |
+| NetBox VM/VM-interface/tag/custom-field read permission | RESOLVED; all four reads pass and M4 is COMPLETE |
 | NetBox/Django/portal version classification | RESOLVED by M4: NetBox 4.6.9, API 4.6, Django 6.0.8 |
 | PNETLab/EVE stopped | Prerequisite only for M8; not an M1 blocker |
 
@@ -132,19 +132,18 @@ Assumptions are not build inputs until verified.
 - RECOMMENDATION: Use authenticated NetBox status/API fields for product version
   evidence and label framework versions separately.
 
-### Required integration reads are denied
+### Required integration reads — resolved by M4
 
 - EXPECTED: Future integration discovery must inspect devices and virtual
   machines and evaluate monitoring-related tags/custom fields.
-- ACTUAL: Devices, DCIM interfaces, IP addresses, roles, platforms, sites, and
-  tenants are readable. VM, VM-interface, tag, and custom-field endpoints return
-  HTTP 403 through the available credential.
-- IMPACT: A device-only design would violate the architecture, and eligibility
-  mapping cannot be approved from current evidence.
-- RECOMMENDATION: Add only `virtualization.view_virtualmachine`,
-  `virtualization.view_vminterface`, `extras.view_tag`, and
-  `extras.view_customfield` view actions to the constrained credential user. Do
-  not grant add/change/delete or broad administrator permission.
+- ACTUAL: The original and first resumed checks returned HTTP 403 and remain
+  preserved. On 2026-09-02 the same installed credential for principal
+  `topology-portal` returned HTTP 200 for all four resources. Full candidate
+  collection and explicit reconciliation gates then passed.
+- IMPACT: The M4 permission blocker is resolved without granting NetBox write
+  actions. M4 is accepted; M5 is ready but not started.
+- RECOMMENDATION: Retain the four view actions and existing empty constraints;
+  do not add NetBox add/change/delete/sync permissions.
 
 ### RHEL source repository readiness — resolved by M0.5
 

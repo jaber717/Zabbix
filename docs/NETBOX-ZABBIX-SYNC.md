@@ -12,10 +12,11 @@ exception. Zabbix API traffic uses HTTPS 8443 with the installed lab public
 certificate. Corporate configuration must replace endpoints, mappings,
 credentials, and certificates without changing Python source.
 
-M4 is currently blocked. The existing NetBox credential receives HTTP 403 for
-virtual machines, virtual-machine interfaces, tags, and custom-field metadata.
-The installed service remains dry-run only and reports this state with exit code
-3. It does not interpret denied collections as empty.
+M4 is accepted as of 2026-09-02. The existing NetBox credential for principal
+`topology-portal` returns HTTP 200 for virtual machines, VM interfaces, tags,
+and custom-field metadata as well as every previously working collection. The
+installed timer service remains dry-run by default and exits successfully when
+all gates pass.
 
 On 2026-09-01, a bounded resumption revalidated an operator-reported grant of
 the four exact view permissions. The credential used by the installed service
@@ -23,6 +24,9 @@ still received the same four HTTP 403 responses; already-readable endpoints
 continued to pass. This proves only that the views are not effective for the
 credential actually presented. It does not identify whether principal
 attachment, object constraints, or another permission rule is responsible.
+That failed resumption remains historical evidence. A later operator correction
+made all four views effective; the successful validation and closeout are under
+`evidence/m4/resume-pass/`.
 
 ## Components
 
@@ -40,18 +44,17 @@ needs no third-party YAML package. Mapping logic is not embedded in Python.
 
 ## Required NetBox permissions
 
-The credential needs only view access for data consumed by Phase 1. Current
-403s require these four minimum Django/NetBox view permissions:
+The credential needs only view access for data consumed by Phase 1. These four
+minimum Django/NetBox view permissions are now effective:
 
 - `virtualization.view_virtualmachine`
 - `virtualization.view_vminterface`
 - `extras.view_tag`
 - `extras.view_customfield`
 
-Grant the matching `view` actions through the credential user's constrained
-NetBox object permissions. Do not grant add, change, or delete actions. Existing
-view access for devices, DCIM interfaces, IP addresses, roles, platforms, sites,
-and tenants already passes and should not be broadened.
+Do not add change, delete, or sync actions. Existing view access for devices,
+DCIM interfaces, IP addresses, roles, platforms, sites, and tenants passes and
+should not be broadened.
 
 ## Identity and eligibility
 
@@ -100,11 +103,13 @@ replacement semantics. Existing group and template removals, IP changes, and
 orphans are report-only. There is no automatic host deletion, template unlink,
 group removal, or management-IP mutation path.
 
-The current encrypted Zabbix Admin credential is authorized only for discovery
-and dry-run. `allow_apply_with_current_zabbix_credential` is false, which makes
-apply fail closed. Before a future apply, provision a dedicated minimally scoped
-Zabbix service credential, replace the encrypted credential, review mappings,
-and explicitly change that gate under a separately authorized resumption.
+The runtime now uses dedicated Zabbix user `nbzsync`. Its Admin-type role is
+restricted to the six API methods required by the implementation, has no
+frontend/UI/module/action access, has read-write access only to `Discovered
+hosts` and `Virtual machines`, and read-only access only to the required network
+and operating-system template groups. `host.delete`, `template.massremove`, and
+`user.get` are denied. The regular timer remains dry-run; explicit apply still
+requires the command-line flag and every runtime gate.
 
 ## Credentials
 
@@ -137,18 +142,19 @@ sudo systemctl reset-failed netbox-zabbix-sync.service
 sudo systemctl start netbox-zabbix-sync.service
 ```
 
-Exit 3 with `required_netbox_reads=BLOCKED` is the expected current state. Exit
-2 is a fail-safe runtime/configuration/API failure. Check endpoint status,
+Exit 0 with all gates `PASS` is the expected current state. Exit 3 indicates a
+blocked planning gate, and exit 2 is a fail-safe runtime/configuration/API
+failure. Check endpoint status,
 certificate validity, credential rotation, mapping validation, and duplicate
 identity/IP gates; never work around failure by widening NetBox write access.
 
 ## Rollback and manual remediation
 
 Stopping or disabling the timer prevents future plans and does not alter either
-system. Because the current run made no Zabbix changes, M4 runtime rollback is
-limited to disabling the timer and removing the role-owned unit/code/config
-through an approved configuration-management change. Preserve the last report
-and encrypted credentials until the operator confirms recovery ownership.
+system. The former Admin credential remains encrypted, root-only, and retired
+outside the loaded credential path for controlled rollback. Do not restore it
+to unattended use; use it only for an approved recovery action. Preserve the
+last reports and credential ownership records.
 
 If a later authorized apply creates or updates an incorrect host, disable the
 timer first, retain the report, and remediate Zabbix manually by stable NetBox
@@ -159,10 +165,12 @@ unlink, host deletion, and IP changes require separate explicit operator review.
 
 - Current NetBox HTTP transport is a lab exception; the LXC has no HTTPS
   listener. A production design requires protected transport.
-- VM/interface/tag/custom-field reads are denied, so live classification and
-  orphan evaluation are incomplete.
-- The runtime credential for Zabbix is discovery-only, not least-privilege
-  apply authorization.
+- The current NetBox source has no virtual machines or eligibility tag and no
+  truthy `monitoring_enabled` values, so there are presently no opted-in hosts.
+- Fifty-seven ineligible records are unmapped and 41 lack a primary IP. These
+  remain visible plan facts; either condition fails closed if a record is later
+  opted in.
 - SNMP credentials and optional reachability/sysName confirmation are not part
   of M4; IP changes remain report-only.
-- No live apply or post-apply second reconciliation was executed.
+- The accepted live apply was a zero-change reconciliation because no source
+  object is opted in; it does not claim a host-create mutation was exercised.

@@ -1,0 +1,15 @@
+2026-09-02T01:33:32+03:00
+LastTriggerUSec=Wed 2026-09-02 01:33:06 +03
+ActiveState=active
+SubState=waiting
+UnitFileState=enabled
+Result=success
+ExecMainStatus=0
+ServiceActiveState=inactive
+ServiceSubState=dead
+REPORT_MODE=DRY_RUN
+REPORT_CREATE=0
+REPORT_UPDATE=0
+REPORT_REQUIRED_READS=PASS
+REPORT_CHANGE_BUDGET=PASS
+REPORT_ZABBIX_SCOPE=PASS
