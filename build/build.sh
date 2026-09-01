@@ -163,8 +163,10 @@ cp "${RPM_FILES[@]}" "$REPO_DIR/rpm/"
 cp "$KEY_DIR"/* "$REPO_DIR/gpg/"
 touch -d "@$SOURCE_DATE_EPOCH" "$REPO_DIR"/rpm/*.rpm
 createrepo_c --revision="$SOURCE_DATE_EPOCH" --set-timestamp-to-revision "$REPO_DIR"
-modifyrepo_c --revision="$SOURCE_DATE_EPOCH" --set-timestamp-to-revision \
-  --mdtype=modules "$MODULE_DIR/validated-modules.yaml" "$REPO_DIR/repodata"
+modifyrepo_c --mdtype=modules "$MODULE_DIR/validated-modules.yaml" "$REPO_DIR/repodata"
+python3 "$PROJECT_ROOT/build/lib/normalize_repomd_timestamp.py" \
+  "$REPO_DIR/repodata/repomd.xml" "$SOURCE_DATE_EPOCH"
+touch -d "@$SOURCE_DATE_EPOCH" "$REPO_DIR"/repodata/*
 
 sudo -n rpm --dbpath="$SIGDB" --initdb
 sudo -n rpm --dbpath="$SIGDB" --import "$KEY_DIR/RPM-GPG-KEY-redhat-release"

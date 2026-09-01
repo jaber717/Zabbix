@@ -81,9 +81,11 @@ so alternative providers outside the PostgreSQL/nginx target do not enter the
 locked runtime closure.
 
 Before repository generation, staged RPM mtimes are normalized to
-`SOURCE_DATE_EPOCH`. Both `createrepo_c` and `modifyrepo_c` use that value for
-their revision and metadata timestamps, preventing download time from changing
-primary or module repodata filenames between otherwise identical builds.
+`SOURCE_DATE_EPOCH`. `createrepo_c` uses that value for its revision and
+timestamps. Because the RHEL 9.6 `modifyrepo_c` build has no equivalent option,
+a validated helper replaces exactly the module entry timestamp in `repomd.xml`;
+repodata mtimes are then normalized. This prevents download/build time from
+changing primary metadata or the artifact allow-list between identical builds.
 
 ## Supply-chain and repository policy
 
