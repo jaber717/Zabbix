@@ -1,0 +1,34 @@
+ANSIBLE_CORE=ansible-core-2.14.18-1.el9.x86_64
+FILES_SCANNED=61
+STRUCTURE=PASS
+PYTHON_SYNTAX=PASS
+SOURCE_POLICY=PASS
+OFFLINE_DNF_POLICY=PASS
+RESULT=PASS
+test_m1_lock_contains_exact_fping (tests.m2.test_helpers.LockAndPortTests) ... ok
+test_proc_port_parser (tests.m2.test_helpers.LockAndPortTests) ... ok
+test_fresh_and_converged (tests.m2.test_helpers.ReleaseStateTests) ... ok
+test_upgrade_and_downgrade_are_distinct (tests.m2.test_helpers.ReleaseStateTests) ... ok
+test_safe_secret_and_rendering (tests.m2.test_helpers.RuntimeSecretTests) ... ok
+test_unsafe_secret_is_rejected (tests.m2.test_helpers.RuntimeSecretTests) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.004s
+
+OK
+BASH_SYNTAX=PASS
+INSTALLER_MANIFEST=PASS
+RESULT=PASS
+
+playbook: installer/playbooks/site.yml
+SYNTAX_site=PASS
+
+playbook: installer/playbooks/verify.yml
+SYNTAX_verify=PASS
+
+playbook: installer/playbooks/backup.yml
+SYNTAX_backup=PASS
+
+playbook: installer/playbooks/upgrade-preflight.yml
+SYNTAX_upgrade-preflight=PASS
+COEXISTENCE_AMENDMENT_VALIDATION=PASS

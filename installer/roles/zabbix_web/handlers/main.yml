@@ -26,8 +26,8 @@
   changed_when: false
   when: not ansible_check_mode
 
-- name: Restart nginx web service
+- name: Reload nginx web service
   ansible.builtin.systemd:
     name: nginx.service
-    state: restarted
+    state: reloaded
   when: not ansible_check_mode

@@ -34,7 +34,7 @@
     mode: "0644"
   notify:
     - Validate nginx configuration
-    - Restart nginx web service
+    - Reload nginx web service
 
 - name: Create the PHP-FPM systemd drop-in directory
   ansible.builtin.file:

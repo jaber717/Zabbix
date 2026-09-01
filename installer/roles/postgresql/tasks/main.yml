@@ -59,20 +59,22 @@
     owner: postgres
     group: postgres
     mode: "0600"
-  notify: Restart PostgreSQL
+  notify: Reload PostgreSQL
   when:
     - zabbix_db_mode == 'local'
     - postgresql_cluster.stat.exists or postgresql_init is changed
     - not ansible_check_mode or postgresql_cluster.stat.exists
 
-- name: Install the bounded PostgreSQL client authentication policy
-  ansible.builtin.template:
-    src: pg_hba.conf.j2
-    dest: "{{ postgresql_data_directory }}/pg_hba.conf"
+- name: Add bounded Zabbix authentication without replacing existing policy
+  ansible.builtin.blockinfile:
+    path: "{{ postgresql_data_directory }}/pg_hba.conf"
+    block: "{{ lookup('ansible.builtin.template', 'pg_hba.conf.j2') | trim }}"
+    insertbefore: BOF
+    marker: "# {mark} zabbix-platform managed access"
     owner: postgres
     group: postgres
     mode: "0600"
-  notify: Restart PostgreSQL
+  notify: Reload PostgreSQL
   when:
     - zabbix_db_mode == 'local'
     - postgresql_cluster.stat.exists or postgresql_init is changed

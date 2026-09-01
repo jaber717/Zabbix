@@ -1,6 +1,6 @@
 ---
-- name: Restart nginx
+- name: Reload nginx
   ansible.builtin.systemd:
     name: nginx.service
-    state: restarted
+    state: reloaded
   when: not ansible_check_mode

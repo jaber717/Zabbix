@@ -1,0 +1,163 @@
+
+===== IDENTITY_CAPACITY =====
+2026-09-01T04:41:59+03:00
+netbox-dev
+Red Hat Enterprise Linux release 9.6 (Plow)
+x86_64
+Enforcing
+CPU_COUNT=4
+               total        used        free      shared  buff/cache   available
+Mem:            11Gi       1.5Gi       6.0Gi        40Mi       4.3Gi         9Gi
+Swap:          5.9Gi          0B       5.9Gi
+Filesystem            Type  Size  Used Avail Use% Mounted on
+/dev/mapper/rhel-root xfs    50G  3.7G   46G   8% /
+Filesystem            Type  Size  Used Avail Use% Mounted on
+/dev/mapper/rhel-home xfs    24G  3.4G   21G  14% /home
+NAME          TYPE FSTYPE       SIZE FSAVAIL MOUNTPOINTS
+sda           disk               80G
+├─sda1        part xfs            1G  719.3M /boot
+└─sda2        part LVM2_member   79G
+  ├─rhel-root lvm  xfs         49.1G   45.4G /
+  ├─rhel-swap lvm  swap         5.9G         [SWAP]
+  └─rhel-home lvm  xfs           24G   20.6G /home
+sr0           rom  iso9660     11.9G
+
+===== REPOSITORIES =====
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+repo id                          repo name
+netbox-offline-base              NetBox RHEL 9.6 offline base closure
+netbox-offline-modules           NetBox RHEL 9.6 offline modular content
+rhel-9-for-x86_64-appstream-rpms Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)
+rhel-9-for-x86_64-baseos-rpms    Red Hat Enterprise Linux 9 for x86_64 - BaseOS (RPMs)
+nginx      1.24 [e] common [d]         nginx webserver
+postgresql 16 [e]   client, server [d] PostgreSQL server and client module
+nginx      1.24 [e] common [d]         nginx webserver
+postgresql 16 [e]   client, server [d] PostgreSQL server and client module
+
+===== RPM_STATE =====
+RPM_HASH=853a74a7907d1a0f660ca4693bba4664ab2d2e12bd1e3d5a8d3422388468ccb8
+firewalld-0:1.3.4-9.el9_5.noarch
+firewalld-filesystem-0:1.3.4-9.el9_5.noarch
+nginx-1:1.24.0-4.module+el9.5.0+22954+e2d70a1c.1.x86_64
+nginx-core-1:1.24.0-4.module+el9.5.0+22954+e2d70a1c.1.x86_64
+nginx-filesystem-1:1.24.0-4.module+el9.5.0+22954+e2d70a1c.1.noarch
+postgresql-0:16.10-1.module+el9.6.0+23420+848a4539.x86_64
+postgresql-contrib-0:16.10-1.module+el9.6.0+23420+848a4539.x86_64
+postgresql-private-libs-0:16.10-1.module+el9.6.0+23420+848a4539.x86_64
+postgresql-server-0:16.10-1.module+el9.6.0+23420+848a4539.x86_64
+
+===== SERVICES =====
+postgresql.service enabled=enabled
+postgresql.service active=active
+nginx.service enabled=enabled
+nginx.service active=active
+httpd.service enabled=httpd.service active=inactive
+php-fpm.service enabled=php-fpm.service active=inactive
+zabbix-server.service enabled=zabbix-server.service active=inactive
+zabbix-agent2.service enabled=zabbix-agent2.service active=inactive
+firewalld.service enabled=enabled
+firewalld.service active=active
+firewalld.service                  enabled enabled
+netbox-rq.service                  enabled disabled
+netbox.service                     enabled disabled
+nginx.service                      enabled disabled
+postgresql.service                 enabled disabled
+redis.service                      enabled disabled
+netbox-backup.timer                enabled disabled
+RUNNING_RELEVANT
+  firewalld.service         loaded active running firewalld - dynamic firewall daemon
+  netbox-rq.service         loaded active running NetBox Request Queue Worker
+  netbox.service            loaded active running NetBox WSGI Service
+  nginx.service             loaded active running The nginx HTTP and reverse proxy server
+  postgresql.service        loaded active running PostgreSQL database server
+  redis.service             loaded active running Redis persistent key-value database
+
+===== PORTS =====
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess
+LISTEN 0      200        127.0.0.1:5432      0.0.0.0:*    users:(("postgres",pid=847,fd=7))
+LISTEN 0      511          0.0.0.0:80        0.0.0.0:*    users:(("nginx",pid=889,fd=6),("nginx",pid=888,fd=6),("nginx",pid=887,fd=6),("nginx",pid=886,fd=6),("nginx",pid=885,fd=6))
+LISTEN 0      511          0.0.0.0:443       0.0.0.0:*    users:(("nginx",pid=889,fd=8),("nginx",pid=888,fd=8),("nginx",pid=887,fd=8),("nginx",pid=886,fd=8),("nginx",pid=885,fd=8))
+LISTEN 0      511             [::]:80           [::]:*    users:(("nginx",pid=889,fd=7),("nginx",pid=888,fd=7),("nginx",pid=887,fd=7),("nginx",pid=886,fd=7),("nginx",pid=885,fd=7))
+LISTEN 0      511             [::]:443          [::]:*    users:(("nginx",pid=889,fd=9),("nginx",pid=888,fd=9),("nginx",pid=887,fd=9),("nginx",pid=886,fd=9),("nginx",pid=885,fd=9))
+
+===== POSTGRESQL =====
+PG_VERSION_FILE=16
+PG_DATA_BYTES=102738723
+7ab9bd605e38379dd2453eaa791b6644c9bae8072947e12ce9ebaad11295bc4c  /var/lib/pgsql/data/postgresql.conf
+33fab0fb5a6fdac2e4dd4e2976037dc6d012d8b86d85a002fd296e88338d6e04  /var/lib/pgsql/data/pg_hba.conf
+16.10
+/var/lib/pgsql/data
+5432
+127.0.0.1
+DATABASES
+netbox|bytes=28619235
+postgres|bytes=7688675
+template0|bytes=7520783
+template1|bytes=7602703
+ROLES
+netbox|superuser=false|login=true
+pg_checkpoint|superuser=false|login=false
+pg_create_subscription|superuser=false|login=false
+pg_database_owner|superuser=false|login=false
+pg_execute_server_program|superuser=false|login=false
+pg_monitor|superuser=false|login=false
+pg_read_all_data|superuser=false|login=false
+pg_read_all_settings|superuser=false|login=false
+pg_read_all_stats|superuser=false|login=false
+pg_read_server_files|superuser=false|login=false
+pg_signal_backend|superuser=false|login=false
+pg_stat_scan_tables|superuser=false|login=false
+pg_use_reserved_connections|superuser=false|login=false
+pg_write_all_data|superuser=false|login=false
+pg_write_server_files|superuser=false|login=false
+postgres|superuser=true|login=true
+NETBOX_USER_TABLES=198
+ACTIVE_DATABASE_CONNECTIONS
+postgres|connections=1
+POSTGRESQL_EFFECTIVE_CONFIG
+listen_addresses = '127.0.0.1'
+PG_HBA_EFFECTIVE
+local   all             all                                     peer
+host    all             all             127.0.0.1/32          scram-sha-256
+host    all             all             ::1/128                 ident
+local   replication     all                                     peer
+host    replication     all             127.0.0.1/32            ident
+host    replication     all             ::1/128                 ident
+
+===== WEB_PHP =====
+nginx: [warn] conflicting server name "netbox-dev" on 0.0.0.0:80, ignored
+nginx: [warn] conflicting server name "netbox-dev" on [::]:80, ignored
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+-rw-r--r-- root:root 1072 /etc/nginx/conf.d/netbox.conf
+/etc/nginx/conf.d/netbox.conf:    listen 80;
+/etc/nginx/conf.d/netbox.conf:    listen [::]:80;
+/etc/nginx/conf.d/netbox.conf:    server_name netbox-dev netbox-dev 192.168.1.91;
+/etc/nginx/conf.d/netbox.conf:    listen 443 ssl http2;
+/etc/nginx/conf.d/netbox.conf:    listen [::]:443 ssl http2;
+/etc/nginx/conf.d/netbox.conf:    server_name netbox-dev netbox-dev 192.168.1.91;
+
+===== FIREWALL =====
+running
+public
+  interfaces: ens18
+public (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: ens18
+  sources:
+  services: cockpit dhcpv6-client ssh
+  ports: 443/tcp 80/tcp
+  protocols:
+  forward: yes
+  masquerade: no
+  forward-ports:
+  source-ports:
+  icmp-blocks:
+  rich rules:
+
+===== PREFLIGHT_RESULT =====
+PREFLIGHT_READ_ONLY=PASS

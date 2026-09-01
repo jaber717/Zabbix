@@ -122,7 +122,7 @@
     owner: root
     group: root
     mode: "0644"
-  notify: Restart nginx
+  notify: Reload nginx
   when: zabbix_tls_enabled | bool
 
 - name: Install the TLS private key without logging content
@@ -134,5 +134,5 @@
     group: root
     mode: "0600"
   no_log: true
-  notify: Restart nginx
+  notify: Reload nginx
   when: zabbix_tls_enabled | bool
