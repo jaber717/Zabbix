@@ -125,6 +125,10 @@ class LockAndPortTests(unittest.TestCase):
         probe = baseline[baseline.index("Read current SELinux enforcement") :]
         probe = probe[: probe.index("Require SELinux Enforcing")]
         self.assertIn("check_mode: false", probe)
+        selinux = (
+            ROOT / "installer/roles/selinux/tasks/main.yml"
+        ).read_text(encoding="utf-8")
+        self.assertEqual(selinux.count("check_mode: false"), 2)
 
     def test_check_mode_guards_precede_skipped_database_probe_results(self):
         database = (
