@@ -1,8 +1,9 @@
 # Implementation Plan
 
-M0, M0.5, M1, and M2 are complete. M2 was explicitly authorized and accepted on
-2026-09-01. M3 has not started and is not authorized. Every milestone ends with
-a stop/review gate.
+M0, M0.5, M1, and M2 are complete. M3 was explicitly authorized on 2026-09-01
+for the existing RHEL 9.6 VM at `192.168.1.91`; the prior plan to create a
+dedicated VM is superseded for this home-lab milestone. Every milestone ends
+with a stop/review gate.
 
 ## M0 — Discovery + Specifications
 
@@ -95,17 +96,22 @@ a stop/review gate.
 
 ## M3 — Zabbix Lab Deployment
 
-- **Scope:** Provision/deploy dedicated `ZABBIX-01`; validate platform and
-  self-monitoring.
-- **Inputs:** Approved VM plan/resources/network values and M2 installer.
+- **State:** IN-PROGRESS (authorized 2026-09-01); M4 is not authorized.
+- **Scope:** Deploy logical `ZABBIX-01` to the existing RHEL 9.6 VM at
+  `192.168.1.91`; validate platform and self-monitoring without renaming the OS
+  host unless required.
+- **Inputs:** Accepted M1 artifact, M2 installer, read-only coexistence preflight,
+  isolated lab variables, ephemeral secrets, and lab TLS material.
 - **Deliverables:** Lab deployment, configuration inventory, operational and
   idempotency evidence.
 - **Tests:** Install/converge, services/UI/API, database, Agent 2, TLS/firewall,
   SELinux Enforcing, reboot, backup/restore checkpoint, self-monitoring.
-- **Permissions:** Explicit permission to create/change only `ZABBIX-01`.
+- **Permissions:** Explicit permission to install/configure only
+  `192.168.1.91`; no other VM/LXC, Proxmox, or NetBox changes.
 - **Risks:** Network collision, resource pressure, downtime, certificate/secret
   mishandling.
-- **Stop condition:** Stable dedicated lab instance; no NetBox integration.
+- **Stop condition:** Stable dual-purpose home-lab instance; record that it is no
+  longer a pristine runtime-free Build VM; no NetBox integration or M4 work.
 
 ## M4 — NetBox Integration
 

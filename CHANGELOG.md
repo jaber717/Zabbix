@@ -4,6 +4,10 @@
 
 ### Added
 
+- Began M3 under the approved home-lab architecture amendment: deploy and
+  runtime-validate logical `ZABBIX-01` only on the existing RHEL 9.6 VM at
+  `192.168.1.91`, after a mandatory read-only database/service coexistence
+  preflight. No new VM, NetBox integration, M4 work, or external push is allowed.
 - Completed M2 offline installer and configuration automation against the
   immutable accepted M1 artifact: checksum-verifying bootstrap, separated
   Ansible roles, protected runtime credentials, TLS/SELinux/firewalld controls,

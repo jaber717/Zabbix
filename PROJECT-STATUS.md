@@ -2,18 +2,23 @@
 
 ## Current gate
 
-Milestone: **M2 — Offline Installer and Configuration Automation**
+Milestone: **M3 — Zabbix Lab Deployment and Runtime Validation**
 
-State: **ACCEPTED / CLOSED**
+State: **IN-PROGRESS**
 
 Milestone baseline commit: `62ba3275a3f016b2f07d333684286b59c1188cfa`
 
 M0.5 source-readiness commit: `b2180c00d0a6029a65996055ae7becbcddc5f0b7`
 
-M0.5 source readiness, M1, and M2 are complete. M2 was explicitly authorized
-and completed on 2026-09-01. It built and statically/offline validated the
-installer; no ZABBIX-01 deployment, NetBox change, synchronization work, or M3
-activity occurred.
+M0.5 source readiness, M1, and M2 are complete. M3 was explicitly authorized on
+2026-09-01 with an architecture amendment: deploy only to the existing RHEL 9.6
+VM at `192.168.1.91`; do not create another VM. The host may retain the OS
+hostname `netbox-dev` while using logical Zabbix identity `ZABBIX-01`.
+
+The mandatory read-only coexistence preflight must prove that existing
+PostgreSQL and unrelated application state can be preserved before convergence.
+NetBox access/integration, another guest, Proxmox networking/storage, M4, and
+external Git push remain prohibited.
 
 M1 pipeline source commit: `fbf3573`
 
