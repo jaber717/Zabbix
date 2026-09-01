@@ -51,6 +51,12 @@ def render(mode: str, secret: str, db: dict[str, str]) -> str:
     raise ValueError(f"unsupported render mode: {mode}")
 
 
+def render_server_config(base: str, secret: str) -> str:
+    if any(line.strip().startswith("DBPassword=") for line in base.splitlines()):
+        raise ValueError("persistent server configuration must not contain DBPassword")
+    return base.rstrip("\r\n") + "\n" + render("zabbix-server", secret, {})
+
+
 def atomic_write(path: Path, content: str, group_name: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     group_id = None
@@ -90,12 +96,15 @@ def main() -> int:
         "server_name": os.environ.get("ZABBIX_SERVER_NAME", "Zabbix"),
     }
     if args.mode == "zabbix-server":
-        output = args.output or Path("/run/zabbix-server-credentials/db.conf")
+        output = args.output or Path("/run/zabbix-server-credentials/zabbix_server.conf")
         group_name = "zabbix"
+        base_path = Path(os.environ.get("ZABBIX_SERVER_BASE_CONFIG", "/etc/zabbix/zabbix_server.conf"))
+        content = render_server_config(base_path.read_text(encoding="utf-8"), secret)
     else:
         output = args.output or Path("/run/zabbix-web/zabbix.conf.php")
         group_name = "apache"
-    atomic_write(output, render(args.mode, secret, db), group_name)
+        content = render(args.mode, secret, db)
+    atomic_write(output, content, group_name)
     return 0
 
 

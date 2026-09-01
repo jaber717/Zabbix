@@ -58,6 +58,11 @@ class RuntimeSecretTests(unittest.TestCase):
         secret = runtime_secret.validate_secret("Abcdefghijklmnop12345678\n")
         server = runtime_secret.render("zabbix-server", secret, {})
         self.assertEqual(server, "DBPassword=Abcdefghijklmnop12345678\n")
+        server_config = runtime_secret.render_server_config("DBName=zabbix\n", secret)
+        self.assertEqual(
+            server_config,
+            "DBName=zabbix\nDBPassword=Abcdefghijklmnop12345678\n",
+        )
         web = runtime_secret.render(
             "zabbix-web",
             secret,
@@ -79,6 +84,8 @@ class RuntimeSecretTests(unittest.TestCase):
             runtime_secret.validate_secret("short")
         with self.assertRaises(ValueError):
             runtime_secret.validate_secret("Abcdefghijklmnop12345678\nsecond-line")
+        with self.assertRaises(ValueError):
+            runtime_secret.render_server_config("DBPassword=persistent\n", "safe")
 
     def test_runtime_directory_is_group_traversable(self):
         source = inspect.getsource(runtime_secret.atomic_write)
