@@ -25,6 +25,10 @@ M1 accepted build source commit: `91947c3`
 
 M1 closeout commit: `9f764ec8e019e1ac4ed57e9b4f87dea9d6345f28`
 
+M2 baseline commit: `7f7ff2676456fd3fc54337456c158ed54e496331`
+
+M2 implementation commit: `16886c1d6251e699cbf2d10c00e158fb938d5ebd`
+
 ## M2 scope
 
 - Consume the accepted M1 repository and lockfile as immutable inputs.

@@ -5,6 +5,10 @@ Date: 2026-09-01
 Scope: offline installer and configuration automation only. No ZABBIX-01 VM was
 created or changed, M3 was not started, and NetBox was not accessed.
 
+M2 baseline commit: `7f7ff2676456fd3fc54337456c158ed54e496331`
+
+M2 implementation commit: `16886c1d6251e699cbf2d10c00e158fb938d5ebd`
+
 ## Executed gates
 
 | Gate | Status | Evidence |
