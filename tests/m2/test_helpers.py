@@ -106,6 +106,8 @@ class LockAndPortTests(unittest.TestCase):
             tasks.index("Install PostgreSQL 16 from the offline repository"),
             tasks.index("Import the accepted Zabbix schema only when absent"),
         )
+        self.assertIn("--username {{ zabbix_db_user | quote }}", tasks)
+        self.assertIn('PGPASSWORD: "{{ zabbix_db_password }}"', tasks)
 
     def test_systemd_host_key_is_initialized_before_secret_encryption(self):
         tasks = (

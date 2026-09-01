@@ -213,10 +213,16 @@
   ansible.builtin.shell: >-
     set -o pipefail &&
     gzip -dc -- {{ postgresql_schema_path | quote }} |
-    psql --no-psqlrc --set ON_ERROR_STOP=1 --dbname {{ zabbix_db_name | quote }}
+    psql --no-psqlrc --set ON_ERROR_STOP=1
+    --host {{ zabbix_db_host | quote }}
+    --port {{ zabbix_db_port | string | quote }}
+    --username {{ zabbix_db_user | quote }}
+    --dbname {{ zabbix_db_name | quote }}
   args:
     executable: /bin/bash
-  become_user: postgres
+  environment:
+    PGPASSWORD: "{{ zabbix_db_password }}"
+  no_log: true
   changed_when: true
   when:
     - zabbix_db_mode == 'local'
