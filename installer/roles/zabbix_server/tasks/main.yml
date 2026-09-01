@@ -64,11 +64,8 @@
       - encrypt
       - --name=db-password
       - --with-key=host
-      - -
+      - "{{ zabbix_db_secret_input_file }}"
       - "{{ zabbix_db_credential_path }}"
-  args:
-    stdin: "{{ zabbix_db_password }}"
-    stdin_add_newline: true
   no_log: true
   changed_when: true
   notify: Restart Zabbix Server
