@@ -80,6 +80,11 @@ Weak dependencies are disabled, and MySQL frontend/proxy variants are excluded,
 so alternative providers outside the PostgreSQL/nginx target do not enter the
 locked runtime closure.
 
+Before repository generation, staged RPM mtimes are normalized to
+`SOURCE_DATE_EPOCH`. Both `createrepo_c` and `modifyrepo_c` use that value for
+their revision and metadata timestamps, preventing download time from changing
+primary or module repodata filenames between otherwise identical builds.
+
 ## Supply-chain and repository policy
 
 Every RPM is verified in a temporary RPM database containing only the Build

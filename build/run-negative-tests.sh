@@ -37,7 +37,7 @@ awk -F '\t' -v OFS='\t' -v repo="$NON_SUPPORTED_REPO" '
 ' "$LOCK" > "$NEG_ROOT/non-supported-scope.lock"
 if (assert_lock_source_policy "$NEG_ROOT/non-supported-scope.lock") >/dev/null 2>&1; then record NON_SUPPORTED_SCOPE FAIL; exit 1; else record NON_SUPPORTED_SCOPE PASS; fi
 
-cp -al "$REPO" "$NEG_ROOT/missing-repo"
+cp -a --reflink=auto "$REPO" "$NEG_ROOT/missing-repo"
 missing=$(find "$NEG_ROOT/missing-repo/rpm" -name "zabbix-server-pgsql-$ZABBIX_VERSION-$ZABBIX_RELEASE.*.rpm" -print -quit)
 [[ -n "$missing" ]] || die "negative missing-RPM fixture absent"
 rm -f -- "$missing"
@@ -51,14 +51,21 @@ if ((rc == 0)); then record MISSING_RPM FAIL; exit 1; else record MISSING_RPM PA
 
 good_rpm=$(find "$REPO/rpm" -type f -name '*.rpm' -print -quit)
 cp "$good_rpm" "$NEG_ROOT/corrupted.rpm"
-printf '\000' | dd of="$NEG_ROOT/corrupted.rpm" bs=1 seek=8192 conv=notrunc status=none
+rpm_size=$(stat -c %s "$NEG_ROOT/corrupted.rpm")
+((rpm_size > 128)) || die "negative corruption fixture is unexpectedly small"
+corrupt_offset=$((rpm_size - 64))
+original_byte=$(od -An -tu1 -j "$corrupt_offset" -N1 "$NEG_ROOT/corrupted.rpm" | tr -d '[:space:]')
+replacement_byte=$((original_byte ^ 1))
+printf -v replacement_escape '\\%03o' "$replacement_byte"
+printf '%b' "$replacement_escape" \
+  | dd of="$NEG_ROOT/corrupted.rpm" bs=1 seek="$corrupt_offset" conv=notrunc status=none
 set +e
 rpmkeys --checksig "$NEG_ROOT/corrupted.rpm" > "$NEG_ROOT/corrupt-signature.log" 2>&1
 rc=$?
 set -e
 if ((rc == 0)); then record CORRUPTED_RPM FAIL; exit 1; else record CORRUPTED_RPM PASS; fi
 
-cp -al "$REPO" "$NEG_ROOT/no-module-repo"
+cp -a --reflink=auto "$REPO" "$NEG_ROOT/no-module-repo"
 rm -rf -- "$NEG_ROOT/no-module-repo/repodata"
 createrepo_c "$NEG_ROOT/no-module-repo" > "$NEG_ROOT/no-module-createrepo.log" 2>&1
 sudo -n install -d -m 0755 "$NEG_ROOT/no-module-root/var/lib/rpm"
@@ -66,7 +73,7 @@ sudo -n rpm --root "$NEG_ROOT/no-module-root" --initdb
 local_dnf "$NEG_ROOT/no-module-root" "$NEG_ROOT/no-module-repo" module list postgresql > "$NEG_ROOT/no-module-query.log" 2>&1 || true
 if grep -Eq "postgresql[[:space:]]+$POSTGRESQL_STREAM([[:space:]]|$)" "$NEG_ROOT/no-module-query.log"; then record MISSING_MODULE_METADATA FAIL; exit 1; else record MISSING_MODULE_METADATA PASS; fi
 
-cp -al "$RELEASE" "$NEG_ROOT/forbidden-release"
+cp -a --reflink=auto "$RELEASE" "$NEG_ROOT/forbidden-release"
 mkdir -p "$NEG_ROOT/forbidden-release/.git"
 printf 'fixture\n' > "$NEG_ROOT/forbidden-release/.git/config"
 set +e
@@ -75,7 +82,7 @@ rc=$?
 set -e
 if ((rc == 0)); then record FORBIDDEN_FILE FAIL; exit 1; else record FORBIDDEN_FILE PASS; fi
 
-cp -al "$RELEASE" "$NEG_ROOT/leak-release"
+cp -a --reflink=auto "$RELEASE" "$NEG_ROOT/leak-release"
 printf 'ENDPOINT=192.168.1.10\n' > "$NEG_ROOT/leak-release/compat/runtime.conf"
 set +e
 "$PROJECT_ROOT/build/verify-build.sh" "$NEG_ROOT/leak-release" "$LOCK" > "$NEG_ROOT/lab-leakage.log" 2>&1

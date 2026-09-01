@@ -20,6 +20,8 @@
 - Split mutually exclusive PostgreSQL/SQLite proxy installation checks into
   separate disposable roots and narrowed closure generation to required
   dependencies for the PostgreSQL/nginx target.
+- Normalized RPM and repository-metadata timestamps to the source-date epoch so
+  meaningful reproducibility includes a stable artifact file allow-list.
 - Milestone 0 repository scaffold and durable specifications.
 - Capability, Proxmox, NetBox, portal-source, Internet, and build-VM discovery
   evidence.
