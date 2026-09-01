@@ -119,6 +119,12 @@ class LockAndPortTests(unittest.TestCase):
         )
         self.assertIn("- --with-key=host", tasks)
 
+    def test_server_config_matches_vendor_pid_contract(self):
+        config = (
+            ROOT / "installer/roles/zabbix_server/templates/zabbix_server.conf.j2"
+        ).read_text(encoding="utf-8")
+        self.assertIn("PidFile=/run/zabbix/zabbix_server.pid", config)
+
     def test_m1_lock_contains_exact_fping(self):
         locked = locked_packages.read_locked_nevras(ROOT / "rpm-lockfile.txt")
         self.assertIn("fping-0:5.1-1.el9.x86_64", locked)
