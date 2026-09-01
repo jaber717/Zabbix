@@ -94,6 +94,16 @@ class LockAndPortTests(unittest.TestCase):
             tasks.index("Import the accepted Zabbix schema only when absent"),
         )
 
+    def test_systemd_host_key_is_initialized_before_secret_encryption(self):
+        tasks = (
+            ROOT / "installer/roles/zabbix_server/tasks/main.yml"
+        ).read_text(encoding="utf-8")
+        self.assertLess(
+            tasks.index("Initialize the systemd host credential key when absent"),
+            tasks.index("Encrypt the operator-provided database credential for systemd"),
+        )
+        self.assertIn("- --with-key=host", tasks)
+
     def test_m1_lock_contains_exact_fping(self):
         locked = locked_packages.read_locked_nevras(ROOT / "rpm-lockfile.txt")
         self.assertIn("fping-0:5.1-1.el9.x86_64", locked)

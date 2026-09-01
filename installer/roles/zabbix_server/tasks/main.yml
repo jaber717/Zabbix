@@ -24,6 +24,33 @@
     mode: "0755"
   notify: Restart Zabbix Server
 
+- name: Inspect the systemd host credential key
+  ansible.builtin.stat:
+    path: /var/lib/systemd/credential.secret
+  register: zabbix_server_host_credential_key
+
+- name: Initialize the systemd host credential key when absent
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/systemd-creds
+      - setup
+  changed_when: not zabbix_server_host_credential_key.stat.exists
+  when: not zabbix_server_host_credential_key.stat.exists
+
+- name: Verify the protected systemd host credential key
+  ansible.builtin.stat:
+    path: /var/lib/systemd/credential.secret
+  register: zabbix_server_host_credential_key_ready
+
+- name: Require a root-only systemd host credential key
+  ansible.builtin.assert:
+    that:
+      - zabbix_server_host_credential_key_ready.stat.exists
+      - zabbix_server_host_credential_key_ready.stat.isreg
+      - zabbix_server_host_credential_key_ready.stat.pw_name == 'root'
+      - zabbix_server_host_credential_key_ready.stat.mode == '0400'
+    fail_msg: A protected systemd host credential key is required.
+
 - name: Inspect the encrypted database credential
   ansible.builtin.stat:
     path: "{{ zabbix_db_credential_path }}"
@@ -36,6 +63,7 @@
       - /usr/bin/systemd-creds
       - encrypt
       - --name=db-password
+      - --with-key=host
       - -
       - "{{ zabbix_db_credential_path }}"
   args:

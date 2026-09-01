@@ -1,0 +1,94 @@
+ATTEMPT2_LOG_BYTES=47709
+ATTEMPT2_LOG_SHA256=0e971f54f8dabb8668511c27eea05de46858e9a4a56c0d596d1e733f43c7265f
+ATTEMPT2_TASK_SUMMARY
+TASK [Gathering Facts] *********************************************************
+TASK [offline_repo : Validate immutable offline input paths] *******************
+TASK [offline_repo : Check required M1 release files] **************************
+TASK [offline_repo : Require every immutable M1 input] *************************
+TASK [offline_repo : Read the accepted compatibility profile] ******************
+TASK [offline_repo : Decode the compatibility profile] *************************
+TASK [offline_repo : Enforce accepted target and component versions] ***********
+TASK [offline_repo : Configure the file-only repository] ***********************
+TASK [offline_repo : Enable required streams from local metadata only] *********
+TASK [offline_repo : Prove the isolated repository is readable] ****************
+TASK [offline_repo : Reject unexpected repository visibility] ******************
+TASK [os_baseline : Enforce the accepted target platform] **********************
+TASK [os_baseline : Read current SELinux enforcement] **************************
+TASK [os_baseline : Require SELinux Enforcing before any installation] *********
+TASK [os_baseline : Locate required target commands] ***************************
+TASK [os_baseline : Require baseline command availability] *********************
+TASK [os_baseline : Create controlled platform directories] ********************
+TASK [os_baseline : Install the release-state helper] **************************
+TASK [os_baseline : Validate database password input metadata] *****************
+TASK [os_baseline : Require a root-only database password input] ***************
+TASK [os_baseline : Read the ephemeral database password input] ****************
+TASK [os_baseline : Hold the database password only in protected Ansible memory] ***
+TASK [os_baseline : Validate database password transport safety] ***************
+TASK [os_baseline : Inspect existing release state] ****************************
+TASK [os_baseline : Decode release state] **************************************
+TASK [os_baseline : Allow only fresh installation or same-release convergence] ***
+TASK [postgresql : Validate PostgreSQL operating mode and identifiers] *********
+TASK [postgresql : Install PostgreSQL 16 from the offline repository] **********
+changed: [zabbix-target]
+TASK [postgresql : Detect an initialized PostgreSQL cluster] *******************
+TASK [postgresql : Initialize PostgreSQL only when no cluster exists] **********
+skipping: [zabbix-target]
+TASK [postgresql : Configure local PostgreSQL listen addresses] ****************
+TASK [postgresql : Require SCRAM password storage] *****************************
+TASK [postgresql : Add bounded Zabbix authentication without replacing existing policy] ***
+TASK [postgresql : Enable and start PostgreSQL] ********************************
+TASK [postgresql : Apply pending PostgreSQL configuration before database work] ***
+TASK [postgresql : Check whether the Zabbix database role exists] **************
+TASK [postgresql : Create the least-privilege Zabbix database role once] *******
+skipping: [zabbix-target]
+TASK [postgresql : Check whether the Zabbix database exists] *******************
+TASK [postgresql : Create the Zabbix database once] ****************************
+skipping: [zabbix-target]
+TASK [postgresql : Verify the supplied credential against the managed database] ***
+TASK [postgresql : Check for an existing Zabbix schema] ************************
+TASK [postgresql : Import the accepted Zabbix schema only when absent] *********
+changed: [zabbix-target]
+TASK [postgresql : Verify schema presence after initialization] ****************
+TASK [tls : Validate TLS and server-name inputs] *******************************
+TASK [tls : Inspect operator-provided TLS inputs] ******************************
+TASK [tls : Require certificate and protected private-key inputs] **************
+TASK [tls : Validate certificate lifetime] *************************************
+TASK [tls : Validate certificate identity] *************************************
+TASK [tls : Validate private-key structure] ************************************
+TASK [tls : Calculate certificate public-key identity] *************************
+TASK [tls : Calculate private-key public identity] *****************************
+TASK [tls : Require matching TLS key material] *********************************
+TASK [tls : Create TLS destination directories] ********************************
+changed: [zabbix-target] => (item={'path': '/etc/pki/tls/private', 'mode': '0700'})
+TASK [tls : Install the TLS certificate] ***************************************
+changed: [zabbix-target]
+TASK [tls : Install the TLS private key without logging content] ***************
+changed: [zabbix-target]
+TASK [zabbix_server : Validate Zabbix Server inputs] ***************************
+TASK [zabbix_server : Install Zabbix Server from the offline repository] *******
+changed: [zabbix-target]
+TASK [zabbix_server : Install the runtime secret renderer] *********************
+changed: [zabbix-target]
+TASK [zabbix_server : Inspect the encrypted database credential] ***************
+TASK [zabbix_server : Encrypt the operator-provided database credential for systemd] ***
+fatal: [zabbix-target]: FAILED! => {"censored": "the output has been hidden due to the fact that 'no_log: true' was specified for this result", "changed": true}
+PLAY RECAP *********************************************************************
+zabbix-target              : ok=55   changed=7    unreachable=0    failed=1    skipped=3    rescued=0    ignored=0
+SYSTEMD_CREDS_VERSION=systemd 252 (252-51.el9)
+SYSTEMD_CREDS_HAS_TPM2=partial
+-firmware
+-driver
++system
++subsystem
+HOST_KEY=/var/lib/systemd/credential.secret OWNER=root:root MODE=400 BYTES=4112
+DISPOSABLE_HOST_KEY_PROBE=PASS
+ZABBIX_SCHEMA_USER_TABLES=203
+netbox.service=active
+netbox-rq.service=active
+postgresql.service=active
+nginx.service=active
+redis.service=active
+NETBOX_HTTP=200
+ATTEMPT2_RESULT=FAIL
+FAILURE_REASON=systemd host credential key had not been initialized before encryption
+PLAINTEXT_FALLBACK=NOT-USED
