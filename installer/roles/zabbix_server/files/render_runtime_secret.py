@@ -53,6 +53,11 @@ def render(mode: str, secret: str, db: dict[str, str]) -> str:
 
 def atomic_write(path: Path, content: str, group_name: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    group_id = None
+    if grp is not None:
+        group_id = grp.getgrnam(group_name).gr_gid
+        os.chown(path.parent, 0, group_id)
+    os.chmod(path.parent, 0o750)
     fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
@@ -60,8 +65,8 @@ def atomic_write(path: Path, content: str, group_name: str) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         os.chmod(temporary, 0o640)
-        if grp is not None:
-            os.chown(temporary, 0, grp.getgrnam(group_name).gr_gid)
+        if group_id is not None:
+            os.chown(temporary, 0, group_id)
         os.replace(temporary, path)
     finally:
         if os.path.exists(temporary):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 from pathlib import Path
 import tempfile
 import unittest
@@ -78,6 +79,11 @@ class RuntimeSecretTests(unittest.TestCase):
             runtime_secret.validate_secret("short")
         with self.assertRaises(ValueError):
             runtime_secret.validate_secret("Abcdefghijklmnop12345678\nsecond-line")
+
+    def test_runtime_directory_is_group_traversable(self):
+        source = inspect.getsource(runtime_secret.atomic_write)
+        self.assertIn("os.chown(path.parent, 0, group_id)", source)
+        self.assertIn("os.chmod(path.parent, 0o750)", source)
 
 
 class LockAndPortTests(unittest.TestCase):
