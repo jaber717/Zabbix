@@ -35,6 +35,10 @@ listening_ports = load_module(
     "listening_ports",
     ROOT / "installer/roles/verification/files/verify_listening_ports.py",
 )
+firewall_lock = load_module(
+    "firewall_lock",
+    ROOT / "installer/roles/firewall/files/locked_nevra.py",
+)
 
 
 class ReleaseStateTests(unittest.TestCase):
@@ -94,6 +98,12 @@ class RuntimeSecretTests(unittest.TestCase):
 
 
 class LockAndPortTests(unittest.TestCase):
+    def test_firewall_role_resolves_exact_accepted_nevra(self):
+        self.assertEqual(
+            firewall_lock.locked_nevra(ROOT / "rpm-lockfile.txt", "firewalld"),
+            "firewalld-0:1.3.4-15.el9_6.noarch",
+        )
+
     def test_database_role_installs_schema_payload_before_import(self):
         defaults = (
             ROOT / "installer/roles/postgresql/defaults/main.yml"

@@ -18,9 +18,18 @@
   loop: "{{ (zabbix_firewall_web_sources + zabbix_firewall_server_sources + zabbix_firewall_agent_sources) | unique }}"
   changed_when: false
 
-- name: Install firewalld from the offline repository
+- name: Resolve the exact accepted firewalld NEVRA
+  ansible.builtin.script:
+    cmd: >-
+      locked_nevra.py --lock {{ offline_lockfile_path | quote }}
+      --package firewalld
+    executable: /usr/bin/python3
+  register: firewall_locked_nevra
+  changed_when: false
+
+- name: Install the exact accepted firewalld NEVRA from the offline repository
   ansible.builtin.dnf:
-    name: firewalld
+    name: "{{ firewall_locked_nevra.stdout | trim }}"
     state: present
     disablerepo: "*"
     enablerepo: "{{ offline_repo_id }}"
