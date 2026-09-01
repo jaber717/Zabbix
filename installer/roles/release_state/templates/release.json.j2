@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "release": {{ offline_release_version | to_json }},
+  "zabbix": {{ offline_compat_profile.zabbix.version | to_json }},
+  "rhel": {{ offline_compat_profile.target.release | to_json }},
+  "architecture": {{ offline_compat_profile.target.arch | to_json }},
+  "profile": "zabbix-7.0",
+  "repository": {{ offline_repo_id | to_json }},
+  "database_mode": {{ zabbix_db_mode | to_json }}
+}

@@ -1,0 +1,11 @@
+---
+- name: Reload systemd for Zabbix Server
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: not ansible_check_mode
+
+- name: Restart Zabbix Server
+  ansible.builtin.systemd:
+    name: zabbix-server.service
+    state: restarted
+  when: not ansible_check_mode

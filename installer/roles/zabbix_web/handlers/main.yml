@@ -1,0 +1,33 @@
+---
+- name: Reload systemd for the web stack
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: not ansible_check_mode
+
+- name: Validate PHP-FPM configuration
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/php-fpm
+      - --test
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Restart PHP-FPM
+  ansible.builtin.systemd:
+    name: php-fpm.service
+    state: restarted
+  when: not ansible_check_mode
+
+- name: Validate nginx configuration
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/nginx
+      - -t
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Restart nginx web service
+  ansible.builtin.systemd:
+    name: nginx.service
+    state: restarted
+  when: not ansible_check_mode

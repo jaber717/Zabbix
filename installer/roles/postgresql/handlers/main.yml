@@ -1,0 +1,6 @@
+---
+- name: Restart PostgreSQL
+  ansible.builtin.systemd:
+    name: postgresql.service
+    state: restarted
+  when: not ansible_check_mode

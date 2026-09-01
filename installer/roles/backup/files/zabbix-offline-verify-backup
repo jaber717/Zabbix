@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly CONFIG=/etc/zabbix-offline/backup.env
+[[ $# -eq 1 ]] || { printf 'Usage: %s BACKUP_DIRECTORY\n' "$0" >&2; exit 2; }
+[[ -r $CONFIG ]] || { printf 'ERROR: missing %s\n' "$CONFIG" >&2; exit 1; }
+# shellcheck disable=SC1091
+source "$CONFIG"
+
+candidate=$(readlink -f -- "$1")
+root=$(readlink -f -- "$BACKUP_ROOT")
+[[ -d $candidate && $candidate == "$root"/* && $candidate != "$root"/.partial.* ]] || {
+  printf 'ERROR: backup path is outside the controlled backup root\n' >&2
+  exit 1
+}
+(
+  cd -- "$candidate"
+  sha256sum --quiet -c SHA256SUMS
+  tar --list --gzip --file configuration.tar.gz >/dev/null
+  if [[ -f database.dump ]]; then
+    runuser -u postgres -- pg_restore --list database.dump >/dev/null
+  fi
+)
+printf 'BACKUP=%s\nRESULT=PASS\n' "$candidate"

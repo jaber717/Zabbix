@@ -4,8 +4,12 @@
 
 ### Added
 
-- Began M2 offline installer and configuration automation against the immutable
-  accepted M1 artifact; M3 deployment and NetBox integration remain excluded.
+- Completed M2 offline installer and configuration automation against the
+  immutable accepted M1 artifact: checksum-verifying bootstrap, separated
+  Ansible roles, protected runtime credentials, TLS/SELinux/firewalld controls,
+  backup and upgrade tooling, installed-state verification, and operational
+  runbooks. Static/offline gates passed; dedicated-target runtime tests remain
+  explicitly assigned to M3, which was not started.
 - Began M1 with the RHEL 9.6/Zabbix 7.0.30 compatibility profile and selected
   PostgreSQL 16, PHP 8.3, nginx 1.24, and CPython 3.11.
 - Added the isolated RPM resolver, upstream modular-metadata preservation,

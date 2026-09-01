@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule verified full Zabbix backups
+
+[Timer]
+OnCalendar={{ zabbix_backup_on_calendar }}
+Persistent=true
+RandomizedDelaySec=15m
+Unit=zabbix-offline-backup.service
+
+[Install]
+WantedBy=timers.target

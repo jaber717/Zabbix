@@ -1,0 +1,21 @@
+---
+- name: Create and verify a full Zabbix backup
+  hosts: zabbix
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+
+  tasks:
+    - name: Run an explicitly requested full backup
+      ansible.builtin.command:
+        argv:
+          - /usr/local/sbin/zabbix-offline-backup
+          - full
+      register: backup_result
+      changed_when: true
+      when: not ansible_check_mode
+
+    - name: Report check-mode behavior
+      ansible.builtin.debug:
+        msg: Full backup is not executed in check mode.
+      when: ansible_check_mode

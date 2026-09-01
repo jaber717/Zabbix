@@ -1,8 +1,8 @@
 # Implementation Plan
 
-M0, M0.5, and M1 are complete. M2 was explicitly authorized on 2026-09-01 and
-is in progress. M3 has not started and is not authorized. Every milestone ends
-with a stop/review gate.
+M0, M0.5, M1, and M2 are complete. M2 was explicitly authorized and accepted on
+2026-09-01. M3 has not started and is not authorized. Every milestone ends with
+a stop/review gate.
 
 ## M0 — Discovery + Specifications
 
@@ -72,7 +72,7 @@ with a stop/review gate.
 
 ## M2 — Installer
 
-- **State:** IN-PROGRESS (authorized 2026-09-01); M3 is not authorized.
+- **State:** COMPLETE (accepted 2026-09-01); M3 was not started.
 
 - **Scope:** Bootstrap/Ansible for PostgreSQL, Zabbix, nginx/PHP, TLS, SELinux,
   firewalld, systemd, backup, upgrade skeleton, and state model.
@@ -86,6 +86,12 @@ with a stop/review gate.
 - **Risks:** Reinitialization, unsafe downgrade, hidden Internet dependency,
   SELinux workaround, non-idempotent services.
 - **Stop condition:** Installer verified on disposable target; do not deploy lab.
+- **Result:** The bootstrap, separated roles, runtime secret model, backup and
+  upgrade preflights, verification, and operational runbooks are complete.
+  Authored-source checks, helper negatives, manifest validation, RHEL Ansible
+  syntax, and fresh local-repository-only controller resolution passed. Runtime
+  converge, idempotency, security-control behavior, and restore remain
+  `NOT-EXECUTED` for the dedicated M3 target as required by the M2 boundary.
 
 ## M3 — Zabbix Lab Deployment
 

@@ -1,0 +1,202 @@
+---
+- name: Verify installed package versions against the M1 lock
+  ansible.builtin.script:
+    cmd: >-
+      verify_locked_packages.py --lock {{ offline_lockfile_path | quote }}
+      {{ verification_required_packages | map('quote') | join(' ') }}
+    executable: /usr/bin/python3
+  register: verification_packages
+  changed_when: false
+
+- name: Verify enabled module streams from local metadata only
+  ansible.builtin.command:
+    argv:
+      - dnf
+      - --disablerepo=*
+      - "--enablerepo={{ offline_repo_id }}"
+      - module
+      - list
+      - --enabled
+  register: verification_modules
+  changed_when: false
+
+- name: Require selected module streams
+  ansible.builtin.assert:
+    that:
+      - verification_modules.stdout is search('postgresql\s+16')
+      - verification_modules.stdout is search('php\s+8.3')
+      - verification_modules.stdout is search('nginx\s+1.24')
+
+- name: Verify required services are enabled
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/systemctl
+      - is-enabled
+      - "{{ item }}"
+  loop: "{{ verification_required_services }}"
+  changed_when: false
+
+- name: Verify required services are active
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/systemctl
+      - is-active
+      - "{{ item }}"
+  loop: "{{ verification_required_services }}"
+  changed_when: false
+
+- name: Verify local PostgreSQL connectivity and schema
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/psql
+      - --no-psqlrc
+      - --dbname
+      - "{{ zabbix_db_name }}"
+      - --tuples-only
+      - --no-align
+      - --command
+      - "SELECT CASE WHEN to_regclass('public.dbversion') IS NULL THEN 0 ELSE 1 END"
+  become_user: postgres
+  register: verification_database
+  changed_when: false
+  failed_when: verification_database.stdout | trim != '1'
+  when: zabbix_db_mode == 'local'
+
+- name: Verify external PostgreSQL connectivity and schema
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/psql
+      - --no-psqlrc
+      - --host
+      - "{{ zabbix_db_host }}"
+      - --port
+      - "{{ zabbix_db_port | string }}"
+      - --username
+      - "{{ zabbix_db_user }}"
+      - --dbname
+      - "{{ zabbix_db_name }}"
+      - --tuples-only
+      - --no-align
+      - --command
+      - "SELECT CASE WHEN to_regclass('public.dbversion') IS NULL THEN 0 ELSE 1 END"
+  environment:
+    PGPASSWORD: "{{ zabbix_db_password }}"
+  no_log: true
+  register: verification_external_database
+  changed_when: false
+  failed_when: verification_external_database.stdout | trim != '1'
+  when: zabbix_db_mode == 'external'
+
+- name: Validate nginx configuration
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/nginx
+      - -t
+  changed_when: false
+
+- name: Validate Agent 2 configuration
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/zabbix_agent2
+      - -T
+      - -c
+      - /etc/zabbix/zabbix_agent2.conf
+  changed_when: false
+
+- name: Probe the local HTTPS frontend
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/curl
+      - --fail
+      - --silent
+      - --show-error
+      - --noproxy
+      - "*"
+      - --resolve
+      - "{{ zabbix_web_server_name }}:{{ zabbix_web_https_port }}:127.0.0.1"
+      - --cacert
+      - "{{ zabbix_tls_certificate_path }}"
+      - --output
+      - /dev/null
+      - --write-out
+      - "%{http_code}"
+      - "https://{{ zabbix_web_server_name }}:{{ zabbix_web_https_port }}/"
+  register: verification_frontend_tls
+  changed_when: false
+  failed_when: verification_frontend_tls.stdout != '200'
+  when: zabbix_tls_enabled | bool
+
+- name: Probe the local HTTP frontend
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/curl
+      - --fail
+      - --silent
+      - --show-error
+      - --noproxy
+      - "*"
+      - --output
+      - /dev/null
+      - --write-out
+      - "%{http_code}"
+      - "http://127.0.0.1:{{ zabbix_web_http_port }}/"
+  register: verification_frontend_http
+  changed_when: false
+  failed_when: verification_frontend_http.stdout != '200'
+  when: not zabbix_tls_enabled | bool
+
+- name: Require selected listening ports without an extra package dependency
+  ansible.builtin.script:
+    cmd: >-
+      verify_listening_ports.py
+      {{ zabbix_server_listen_port }}
+      {{ zabbix_agent_listen_port }}
+      {{ zabbix_web_https_port if zabbix_tls_enabled else zabbix_web_http_port }}
+      {{ zabbix_db_port if zabbix_db_mode == 'local' else '' }}
+    executable: /usr/bin/python3
+  register: verification_ports
+  changed_when: false
+
+- name: Verify firewalld is active
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/firewall-cmd
+      - --state
+  register: verification_firewalld
+  changed_when: false
+  failed_when: verification_firewalld.stdout != 'running'
+
+- name: Verify SELinux is Enforcing
+  ansible.builtin.command: getenforce
+  register: verification_selinux
+  changed_when: false
+  failed_when: verification_selinux.stdout != 'Enforcing'
+
+- name: Read the installed offline repository definition
+  ansible.builtin.slurp:
+    src: /etc/yum.repos.d/zabbix-offline.repo
+  register: verification_repo_file
+
+- name: Require file-only repository configuration
+  ansible.builtin.assert:
+    that:
+      - (verification_repo_file.content | b64decode) is search('baseurl=file://')
+      - "'http://' not in (verification_repo_file.content | b64decode)"
+      - "'https://' not in (verification_repo_file.content | b64decode)"
+
+- name: Prove local-only repository access
+  ansible.builtin.command:
+    argv:
+      - dnf
+      - --disablerepo=*
+      - "--enablerepo={{ offline_repo_id }}"
+      - repolist
+  register: verification_repolist
+  changed_when: false
+
+- name: Confirm only the local repository was requested
+  ansible.builtin.assert:
+    that:
+      - offline_repo_id in verification_repolist.stdout
+      - "'netbox-offline' not in verification_repolist.stdout"
+      - "'m1-zabbix' not in verification_repolist.stdout"

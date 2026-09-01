@@ -1,0 +1,6 @@
+---
+zabbix_server_packages:
+  - zabbix-server-pgsql
+  - zabbix-sql-scripts
+  - zabbix-selinux-policy
+  - fping

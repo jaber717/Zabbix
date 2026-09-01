@@ -1,0 +1,8 @@
+---
+os_baseline_required_commands:
+  - /usr/bin/dnf
+  - /usr/bin/sha256sum
+  - /usr/bin/systemctl
+  - /usr/bin/systemd-creds
+  - /usr/bin/openssl
+  - /usr/bin/python3

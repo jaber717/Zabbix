@@ -1,0 +1,18 @@
+[Unit]
+Description=Verified full backup of the Zabbix platform
+After=postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/zabbix-offline-backup full
+User=root
+Group=root
+UMask=0077
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths={{ zabbix_backup_root }}
+ReadOnlyPaths=/etc/zabbix /etc/nginx /etc/php-fpm.d /etc/systemd/system /etc/zabbix-offline

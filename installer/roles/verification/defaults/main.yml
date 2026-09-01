@@ -1,0 +1,28 @@
+---
+verification_required_packages:
+  - postgresql
+  - postgresql-server
+  - postgresql-contrib
+  - nginx
+  - php
+  - php-fpm
+  - php-pgsql
+  - firewalld
+  - ansible-core
+  - zabbix-server-pgsql
+  - zabbix-web-pgsql
+  - zabbix-nginx-conf
+  - zabbix-sql-scripts
+  - zabbix-agent2
+  - zabbix-sender
+  - zabbix-get
+  - zabbix-selinux-policy
+  - fping
+
+verification_required_services:
+  - postgresql.service
+  - zabbix-server.service
+  - zabbix-agent2.service
+  - php-fpm.service
+  - nginx.service
+  - firewalld.service

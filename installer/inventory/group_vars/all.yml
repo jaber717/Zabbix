@@ -1,0 +1,65 @@
+---
+# Immutable M1 release input. Override only the extraction location.
+offline_release_root: /opt/zabbix-offline/release
+offline_repository_path: "{{ offline_release_root }}/repository"
+offline_repo_id: zabbix-offline
+offline_release_version: "1.0.0"
+offline_profile_path: "{{ offline_release_root }}/compat/zabbix-7.0.yaml"
+offline_lockfile_path: "{{ offline_release_root }}/rpm-lockfile.txt"
+
+# Target identity. These must be supplied by an environment variables file.
+zabbix_server_hostname: ""
+zabbix_server_listen_ip: "0.0.0.0"
+zabbix_server_listen_port: 10051
+zabbix_web_server_name: ""
+
+# PostgreSQL is local in Phase 1. Set mode=external and manage=false later
+# without changing role implementation.
+zabbix_db_mode: local
+zabbix_db_manage: true
+zabbix_db_host: "127.0.0.1"
+zabbix_db_port: 5432
+zabbix_db_name: zabbix
+zabbix_db_user: zabbix
+zabbix_db_listen_addresses: "127.0.0.1,::1"
+zabbix_db_tls: false
+zabbix_db_secret_input_file: "{{ lookup('ansible.builtin.env', 'ZABBIX_DB_PASSWORD_FILE') }}"
+zabbix_db_credential_path: /etc/credstore.encrypted/zabbix-db-password
+
+# Conservative Phase-1 cache defaults; tune only from observed load.
+zabbix_cache_size: 32M
+zabbix_history_cache_size: 16M
+zabbix_trend_cache_size: 4M
+zabbix_value_cache_size: 8M
+zabbix_log_type: system
+
+zabbix_agent_listen_ip: "0.0.0.0"
+zabbix_agent_listen_port: 10050
+zabbix_agent_allowed_servers:
+  - "127.0.0.1"
+zabbix_agent_active_servers:
+  - "127.0.0.1:10051"
+
+# TLS is required by default. Paths reference operator-provided files on the
+# target/controller; no certificate or private key is stored in this project.
+zabbix_tls_enabled: true
+zabbix_tls_certificate_source: ""
+zabbix_tls_private_key_source: ""
+zabbix_tls_certificate_path: /etc/pki/tls/certs/zabbix-web.crt
+zabbix_tls_private_key_path: /etc/pki/tls/private/zabbix-web.key
+zabbix_tls_minimum_validity_seconds: 2592000
+zabbix_web_https_port: 443
+zabbix_web_http_redirect: true
+zabbix_web_http_port: 80
+
+# Empty source lists fail closed. Use CIDRs in an environment variables file.
+zabbix_firewall_zone: public
+zabbix_firewall_web_sources: []
+zabbix_firewall_server_sources: []
+zabbix_firewall_agent_sources: []
+
+zabbix_backup_root: /var/backups/zabbix-offline
+zabbix_backup_on_calendar: "*-*-* 02:15:00"
+zabbix_backup_retention_days: 14
+
+m2_run_verification: true

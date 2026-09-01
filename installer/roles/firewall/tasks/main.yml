@@ -1,0 +1,95 @@
+---
+- name: Require bounded firewall source lists
+  ansible.builtin.assert:
+    that:
+      - zabbix_firewall_web_sources | length > 0
+      - zabbix_firewall_server_sources | length > 0
+      - zabbix_firewall_agent_sources | length > 0
+      - zabbix_firewall_zone | length > 0
+    fail_msg: Every exposed Zabbix service requires an explicit source CIDR list.
+
+- name: Validate source CIDRs using the Python standard library
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - -c
+      - "import ipaddress,sys; ipaddress.ip_network(sys.argv[1], strict=False)"
+      - "{{ item }}"
+  loop: "{{ (zabbix_firewall_web_sources + zabbix_firewall_server_sources + zabbix_firewall_agent_sources) | unique }}"
+  changed_when: false
+
+- name: Install firewalld from the offline repository
+  ansible.builtin.dnf:
+    name: firewalld
+    state: present
+    disablerepo: "*"
+    enablerepo: "{{ offline_repo_id }}"
+    install_weak_deps: false
+
+- name: Enable and start firewalld
+  ansible.builtin.systemd:
+    name: firewalld.service
+    enabled: true
+    state: started
+  when: not ansible_check_mode
+
+- name: Initialize desired firewall rules
+  ansible.builtin.set_fact:
+    zabbix_firewall_rules: []
+
+- name: Add HTTPS source rules to the desired set
+  ansible.builtin.set_fact:
+    zabbix_firewall_rules: "{{ zabbix_firewall_rules + [{'source': item, 'port': zabbix_web_https_port | string}] }}"
+  loop: "{{ zabbix_firewall_web_sources }}"
+  when: zabbix_tls_enabled | bool
+
+- name: Add HTTP source rules to the desired set
+  ansible.builtin.set_fact:
+    zabbix_firewall_rules: "{{ zabbix_firewall_rules + [{'source': item, 'port': zabbix_web_http_port | string}] }}"
+  loop: "{{ zabbix_firewall_web_sources }}"
+  when: not zabbix_tls_enabled | bool or zabbix_web_http_redirect | bool
+
+- name: Add Zabbix Server source rules to the desired set
+  ansible.builtin.set_fact:
+    zabbix_firewall_rules: "{{ zabbix_firewall_rules + [{'source': item, 'port': zabbix_server_listen_port | string}] }}"
+  loop: "{{ zabbix_firewall_server_sources }}"
+
+- name: Add Agent 2 source rules to the desired set
+  ansible.builtin.set_fact:
+    zabbix_firewall_rules: "{{ zabbix_firewall_rules + [{'source': item, 'port': zabbix_agent_listen_port | string}] }}"
+  loop: "{{ zabbix_firewall_agent_sources }}"
+
+- name: Query desired rich rules
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/firewall-cmd
+      - --permanent
+      - "--zone={{ zabbix_firewall_zone }}"
+      - "--query-rich-rule=rule family=\"{{ 'ipv6' if ':' in item.source else 'ipv4' }}\" source address=\"{{ item.source }}\" port port=\"{{ item.port }}\" protocol=\"tcp\" accept"
+  loop: "{{ zabbix_firewall_rules }}"
+  register: firewall_rule_queries
+  changed_when: false
+  failed_when: firewall_rule_queries.rc not in [0, 1]
+  when: not ansible_check_mode
+
+- name: Add only missing rich rules
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/firewall-cmd
+      - --permanent
+      - "--zone={{ zabbix_firewall_zone }}"
+      - "--add-rich-rule=rule family=\"{{ 'ipv6' if ':' in item.item.source else 'ipv4' }}\" source address=\"{{ item.item.source }}\" port port=\"{{ item.item.port }}\" protocol=\"tcp\" accept"
+  loop: "{{ firewall_rule_queries.results }}"
+  changed_when: true
+  notify: Reload firewalld
+  when:
+    - not ansible_check_mode
+    - item.rc == 1
+
+- name: Validate permanent firewalld configuration
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/firewall-cmd
+      - --check-config
+  changed_when: false
+  when: not ansible_check_mode

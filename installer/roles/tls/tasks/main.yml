@@ -1,0 +1,138 @@
+---
+- name: Validate TLS and server-name inputs
+  ansible.builtin.assert:
+    that:
+      - zabbix_server_hostname is match('^[A-Za-z0-9][A-Za-z0-9.-]{0,252}$')
+      - zabbix_web_server_name is match('^[A-Za-z0-9][A-Za-z0-9.-]{0,252}$')
+      - zabbix_web_https_port | int >= 1
+      - zabbix_web_https_port | int <= 65535
+    fail_msg: Valid environment-specific server hostnames are required.
+
+- name: Inspect operator-provided TLS inputs
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ zabbix_tls_certificate_source }}"
+    - "{{ zabbix_tls_private_key_source }}"
+  register: tls_source_files
+  no_log: true
+  when: zabbix_tls_enabled | bool
+
+- name: Require certificate and protected private-key inputs
+  ansible.builtin.assert:
+    that:
+      - tls_source_files.results[0].stat.exists
+      - tls_source_files.results[0].stat.isreg
+      - tls_source_files.results[1].stat.exists
+      - tls_source_files.results[1].stat.isreg
+      - tls_source_files.results[1].stat.pw_name == 'root'
+      - tls_source_files.results[1].stat.mode in ['0400', '0600']
+    fail_msg: TLS requires a certificate and root-owned 0400/0600 private key.
+  no_log: true
+  when: zabbix_tls_enabled | bool
+
+- name: Validate certificate lifetime
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/openssl
+      - x509
+      - -in
+      - "{{ zabbix_tls_certificate_source }}"
+      - -noout
+      - -checkend
+      - "{{ zabbix_tls_minimum_validity_seconds | string }}"
+  changed_when: false
+  when: zabbix_tls_enabled | bool
+
+- name: Validate certificate identity
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/openssl
+      - x509
+      - -in
+      - "{{ zabbix_tls_certificate_source }}"
+      - -noout
+      - -checkhost
+      - "{{ zabbix_web_server_name }}"
+  changed_when: false
+  when: zabbix_tls_enabled | bool
+
+- name: Validate private-key structure
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/openssl
+      - pkey
+      - -in
+      - "{{ zabbix_tls_private_key_source }}"
+      - -check
+      - -noout
+  changed_when: false
+  no_log: true
+  when: zabbix_tls_enabled | bool
+
+- name: Calculate certificate public-key identity
+  ansible.builtin.shell: >-
+    set -o pipefail &&
+    openssl x509 -in {{ zabbix_tls_certificate_source | quote }} -pubkey -noout |
+    openssl pkey -pubin -outform DER |
+    sha256sum | awk '{print $1}'
+  args:
+    executable: /bin/bash
+  register: tls_certificate_public_key
+  changed_when: false
+  when: zabbix_tls_enabled | bool
+
+- name: Calculate private-key public identity
+  ansible.builtin.shell: >-
+    set -o pipefail &&
+    openssl pkey -in {{ zabbix_tls_private_key_source | quote }} -pubout -outform DER |
+    sha256sum | awk '{print $1}'
+  args:
+    executable: /bin/bash
+  register: tls_private_public_key
+  changed_when: false
+  no_log: true
+  when: zabbix_tls_enabled | bool
+
+- name: Require matching TLS key material
+  ansible.builtin.assert:
+    that:
+      - tls_certificate_public_key.stdout == tls_private_public_key.stdout
+    fail_msg: TLS certificate and private key do not match.
+  no_log: true
+  when: zabbix_tls_enabled | bool
+
+- name: Create TLS destination directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - {path: "{{ zabbix_tls_certificate_path | dirname }}", mode: "0755"}
+    - {path: "{{ zabbix_tls_private_key_path | dirname }}", mode: "0700"}
+  when: zabbix_tls_enabled | bool
+
+- name: Install the TLS certificate
+  ansible.builtin.copy:
+    src: "{{ zabbix_tls_certificate_source }}"
+    dest: "{{ zabbix_tls_certificate_path }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart nginx
+  when: zabbix_tls_enabled | bool
+
+- name: Install the TLS private key without logging content
+  ansible.builtin.copy:
+    src: "{{ zabbix_tls_private_key_source }}"
+    dest: "{{ zabbix_tls_private_key_path }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: Restart nginx
+  when: zabbix_tls_enabled | bool

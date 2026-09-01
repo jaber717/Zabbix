@@ -1,0 +1,116 @@
+---
+- name: Enforce the accepted target platform
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == 'RedHat'
+      - ansible_distribution_version == '9.6'
+      - ansible_architecture == 'x86_64'
+    fail_msg: M2 supports only RHEL 9.6 x86_64.
+
+- name: Read current SELinux enforcement
+  ansible.builtin.command: getenforce
+  register: os_baseline_selinux
+  changed_when: false
+
+- name: Require SELinux Enforcing before any installation
+  ansible.builtin.assert:
+    that:
+      - os_baseline_selinux.stdout == 'Enforcing'
+    fail_msg: SELinux must be Enforcing; M2 will not change the mode.
+
+- name: Locate required target commands
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ os_baseline_required_commands }}"
+  register: os_baseline_commands
+
+- name: Require baseline command availability
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.executable
+    fail_msg: "Required command is unavailable: {{ item.item }}"
+  loop: "{{ os_baseline_commands.results }}"
+
+- name: Create controlled platform directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - {path: /etc/zabbix-offline, mode: "0750"}
+    - {path: /usr/libexec/zabbix-offline, mode: "0755"}
+    - {path: /etc/credstore.encrypted, mode: "0700"}
+    - {path: "{{ zabbix_backup_root }}", mode: "0700"}
+
+- name: Install the release-state helper
+  ansible.builtin.copy:
+    src: release_state.py
+    dest: /usr/libexec/zabbix-offline/release-state
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Validate database password input metadata
+  ansible.builtin.stat:
+    path: "{{ zabbix_db_secret_input_file }}"
+  register: os_baseline_secret_file
+  no_log: true
+
+- name: Require a root-only database password input
+  ansible.builtin.assert:
+    that:
+      - zabbix_db_secret_input_file | length > 0
+      - os_baseline_secret_file.stat.exists
+      - os_baseline_secret_file.stat.isreg
+      - os_baseline_secret_file.stat.pw_name == 'root'
+      - os_baseline_secret_file.stat.mode in ['0400', '0600']
+    fail_msg: Database password input must be a root-owned 0400/0600 file.
+  no_log: true
+
+- name: Read the ephemeral database password input
+  ansible.builtin.slurp:
+    src: "{{ zabbix_db_secret_input_file }}"
+  register: os_baseline_secret_raw
+  no_log: true
+
+- name: Hold the database password only in protected Ansible memory
+  ansible.builtin.set_fact:
+    zabbix_db_password: "{{ os_baseline_secret_raw.content | b64decode | trim }}"
+  no_log: true
+
+- name: Validate database password transport safety
+  ansible.builtin.assert:
+    that:
+      - zabbix_db_password is match('^[A-Za-z0-9_!@%^+=.,:-]{24,128}$')
+    fail_msg: Database password must be 24-128 characters from the documented safe set.
+  no_log: true
+
+- name: Inspect existing release state
+  ansible.builtin.command:
+    argv:
+      - /usr/libexec/zabbix-offline/release-state
+      - inspect
+      - --state
+      - /etc/zabbix-offline/release.json
+      - --target
+      - "{{ offline_release_version }}"
+      - --zabbix
+      - "{{ offline_compat_profile.zabbix.version }}"
+  register: os_baseline_release_state_raw
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Decode release state
+  ansible.builtin.set_fact:
+    os_baseline_release_state: "{{ os_baseline_release_state_raw.stdout | from_json }}"
+  when: not ansible_check_mode
+
+- name: Allow only fresh installation or same-release convergence
+  ansible.builtin.assert:
+    that:
+      - os_baseline_release_state.status in ['fresh', 'converge']
+    fail_msg: Use the separately gated upgrade preflight; downgrade is unsupported.
+  when: not ansible_check_mode

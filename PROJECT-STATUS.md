@@ -4,16 +4,16 @@
 
 Milestone: **M2 — Offline Installer and Configuration Automation**
 
-State: **IN-PROGRESS**
+State: **ACCEPTED / CLOSED**
 
 Milestone baseline commit: `62ba3275a3f016b2f07d333684286b59c1188cfa`
 
 M0.5 source-readiness commit: `b2180c00d0a6029a65996055ae7becbcddc5f0b7`
 
-M0.5 source readiness and M1 are complete. M2 was explicitly authorized on
-2026-09-01. It is limited to building and validating offline installation
-automation; no ZABBIX-01 deployment, NetBox change, synchronization work, or M3
-activity is authorized.
+M0.5 source readiness, M1, and M2 are complete. M2 was explicitly authorized
+and completed on 2026-09-01. It built and statically/offline validated the
+installer; no ZABBIX-01 deployment, NetBox change, synchronization work, or M3
+activity occurred.
 
 M1 pipeline source commit: `fbf3573`
 
@@ -34,6 +34,25 @@ M1 closeout commit: `9f764ec8e019e1ac4ed57e9b4f87dea9d6345f28`
 - Use static and disposable offline validation only. Full systemd, SELinux,
   firewalld, service, converge, and restore execution requires a dedicated RHEL
   target and must remain `NOT-EXECUTED` if none is available within M2.
+
+## M2 result
+
+- A checksum-verifying bootstrap consumes only the accepted M1 release and
+  installs `ansible-core` with every external repository disabled.
+- Eleven required roles plus release-state support implement safe PostgreSQL 16
+  initialization, Zabbix Server 7.0.30, nginx/PHP-FPM, Agent 2, systemd encrypted
+  credentials, operator-supplied TLS, vendor SELinux policy, source-restricted
+  firewalld rules, backup verification, upgrade preflight, and installed-state
+  verification.
+- Static policy, Python/Bash syntax, six helper tests, the 56-entry installer
+  manifest, and all four Ansible playbook syntax gates passed.
+- A fresh RHEL installroot resolved and ran
+  `ansible-core-1:2.14.18-1.el9.x86_64` using only the accepted M1 local
+  repository and trusted Red Hat key. The Build VM host RPM hash was unchanged.
+- Full converge/idempotency/check mode, service/reboot, SELinux AVC, firewalld,
+  frontend, database backup/restore, and runtime verification are explicitly
+  `NOT-EXECUTED`; they require the dedicated M3 target and are not claimed PASS.
+- See `evidence/m2/ACCEPTANCE.md` and `evidence/m2/raw/`.
 
 ## Gate and blocker matrix
 
@@ -139,3 +158,8 @@ See `docs/DISCOVERY.md` and `evidence/discovery/REQUIRED-EVIDENCE.md`.
   empty.
 - M1 output disk use at closeout: **1.5 GiB** under the remote build output
   directory; `/home` retained **21 GiB free** and `/` retained **46 GiB free**.
+- M2 Build VM runtime install: **No**. Only disposable installroots and
+  read-only syntax checks were used; the final host RPM hash matched before and
+  after, and M2 disposable roots were removed.
+- M2 deployment/NetBox/Proxmox change: **No**. ZABBIX-01 was not created, M3 was
+  not started, NetBox was not accessed, and existing guests were not changed.

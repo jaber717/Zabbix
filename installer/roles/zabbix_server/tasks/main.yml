@@ -1,0 +1,96 @@
+---
+- name: Validate Zabbix Server inputs
+  ansible.builtin.assert:
+    that:
+      - zabbix_server_hostname | length > 0
+      - zabbix_server_listen_port | int >= 1
+      - zabbix_server_listen_port | int <= 65535
+      - zabbix_log_type in ['system', 'file', 'console']
+
+- name: Install Zabbix Server from the offline repository
+  ansible.builtin.dnf:
+    name: "{{ zabbix_server_packages }}"
+    state: present
+    disablerepo: "*"
+    enablerepo: "{{ offline_repo_id }}"
+    install_weak_deps: false
+
+- name: Install the runtime secret renderer
+  ansible.builtin.copy:
+    src: render_runtime_secret.py
+    dest: /usr/libexec/zabbix-offline/render-runtime-secret
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Restart Zabbix Server
+
+- name: Inspect the encrypted database credential
+  ansible.builtin.stat:
+    path: "{{ zabbix_db_credential_path }}"
+  register: zabbix_server_encrypted_credential
+  no_log: true
+
+- name: Encrypt the operator-provided database credential for systemd
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/systemd-creds
+      - encrypt
+      - --name=db-password
+      - -
+      - "{{ zabbix_db_credential_path }}"
+  args:
+    stdin: "{{ zabbix_db_password }}"
+    stdin_add_newline: true
+  no_log: true
+  changed_when: true
+  notify: Restart Zabbix Server
+  when:
+    - not zabbix_server_encrypted_credential.stat.exists
+    - not ansible_check_mode
+
+- name: Protect the encrypted database credential
+  ansible.builtin.file:
+    path: "{{ zabbix_db_credential_path }}"
+    state: file
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  when:
+    - zabbix_server_encrypted_credential.stat.exists or not ansible_check_mode
+
+- name: Configure Zabbix Server without a plaintext password
+  ansible.builtin.template:
+    src: zabbix_server.conf.j2
+    dest: /etc/zabbix/zabbix_server.conf
+    owner: root
+    group: zabbix
+    mode: "0640"
+  notify: Restart Zabbix Server
+
+- name: Create Zabbix Server systemd drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/zabbix-server.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Inject the database password as a runtime credential
+  ansible.builtin.template:
+    src: runtime-credential.conf.j2
+    dest: /etc/systemd/system/zabbix-server.service.d/10-runtime-credential.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd for Zabbix Server
+    - Restart Zabbix Server
+
+- name: Enable and start Zabbix Server
+  ansible.builtin.systemd:
+    name: zabbix-server.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not ansible_check_mode
