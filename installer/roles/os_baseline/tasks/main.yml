@@ -11,6 +11,7 @@
   ansible.builtin.command: getenforce
   register: os_baseline_selinux
   changed_when: false
+  check_mode: false
 
 - name: Require SELinux Enforcing before any installation
   ansible.builtin.assert:

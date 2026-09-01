@@ -118,6 +118,14 @@ class LockAndPortTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("Detect whether nginx has applied the managed Zabbix listener", web)
 
+    def test_selinux_safety_probe_runs_in_check_mode(self):
+        baseline = (
+            ROOT / "installer/roles/os_baseline/tasks/main.yml"
+        ).read_text(encoding="utf-8")
+        probe = baseline[baseline.index("Read current SELinux enforcement") :]
+        probe = probe[: probe.index("Require SELinux Enforcing")]
+        self.assertIn("check_mode: false", probe)
+
     def test_database_role_installs_schema_payload_before_import(self):
         defaults = (
             ROOT / "installer/roles/postgresql/defaults/main.yml"
