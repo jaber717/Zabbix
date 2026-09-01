@@ -28,5 +28,7 @@
     checksums, secret scan, whitespace validation, and Git review pass.
 14. Historical blocked evidence is preserved. M5 was not started and nothing
     was pushed externally.
+15. M4 acceptance implementation/evidence commit:
+    `30a48094928ba3ec97db6529cf90d9f065d7767e`.
 
 Final verdict: **M4 ACCEPTED — M5 READY**. Stop after M4.

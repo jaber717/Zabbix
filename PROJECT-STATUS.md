@@ -50,6 +50,8 @@ M4 original blocked handover commit: `54df4e87fb10683e2dddce6313680754b0c55947`
 
 M4 permission-resumption start commit: `262acb8bcfc8d8ccefb7aa5c4c4be461acdd8771`
 
+M4 acceptance commit: `30a48094928ba3ec97db6529cf90d9f065d7767e`
+
 ## M4 result
 
 - Actual NetBox is 4.6.9 with API 4.6; Django is 6.0.8. The existing portal
