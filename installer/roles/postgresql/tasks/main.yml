@@ -125,8 +125,8 @@
   when:
     - zabbix_db_mode == 'local'
     - zabbix_db_manage | bool
-    - postgresql_role_probe.stdout | trim != '1'
     - not ansible_check_mode
+    - postgresql_role_probe.stdout | trim != '1'
 
 - name: Check whether the Zabbix database exists
   ansible.builtin.command:
@@ -161,8 +161,8 @@
   when:
     - zabbix_db_mode == 'local'
     - zabbix_db_manage | bool
-    - postgresql_database_probe.stdout | trim != '1'
     - not ansible_check_mode
+    - postgresql_database_probe.stdout | trim != '1'
 
 - name: Verify the supplied credential against the managed database
   ansible.builtin.command:
@@ -227,8 +227,8 @@
   when:
     - zabbix_db_mode == 'local'
     - zabbix_db_manage | bool
-    - postgresql_schema_probe.stdout | trim == '0'
     - not ansible_check_mode
+    - postgresql_schema_probe.stdout | trim == '0'
 
 - name: Verify schema presence after initialization
   ansible.builtin.command:

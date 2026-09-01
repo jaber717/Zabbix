@@ -126,6 +126,20 @@ class LockAndPortTests(unittest.TestCase):
         probe = probe[: probe.index("Require SELinux Enforcing")]
         self.assertIn("check_mode: false", probe)
 
+    def test_check_mode_guards_precede_skipped_database_probe_results(self):
+        database = (
+            ROOT / "installer/roles/postgresql/tasks/main.yml"
+        ).read_text(encoding="utf-8")
+        for probe in (
+            "postgresql_role_probe.stdout",
+            "postgresql_database_probe.stdout",
+            "postgresql_schema_probe.stdout",
+        ):
+            self.assertLess(
+                database.rfind("not ansible_check_mode", 0, database.index(probe)),
+                database.index(probe),
+            )
+
     def test_database_role_installs_schema_payload_before_import(self):
         defaults = (
             ROOT / "installer/roles/postgresql/defaults/main.yml"
