@@ -42,6 +42,7 @@
       - -checkend
       - "{{ zabbix_tls_minimum_validity_seconds | string }}"
   changed_when: false
+  check_mode: false
   when: zabbix_tls_enabled | bool
 
 - name: Validate certificate identity
@@ -55,6 +56,7 @@
       - -checkhost
       - "{{ zabbix_web_server_name }}"
   changed_when: false
+  check_mode: false
   when: zabbix_tls_enabled | bool
 
 - name: Validate private-key structure
@@ -67,6 +69,7 @@
       - -check
       - -noout
   changed_when: false
+  check_mode: false
   no_log: true
   when: zabbix_tls_enabled | bool
 
@@ -80,6 +83,7 @@
     executable: /bin/bash
   register: tls_certificate_public_key
   changed_when: false
+  check_mode: false
   when: zabbix_tls_enabled | bool
 
 - name: Calculate private-key public identity
@@ -91,6 +95,7 @@
     executable: /bin/bash
   register: tls_private_public_key
   changed_when: false
+  check_mode: false
   no_log: true
   when: zabbix_tls_enabled | bool
 

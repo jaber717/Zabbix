@@ -120,6 +120,13 @@ class LockAndPortTests(unittest.TestCase):
         validation = validation[: validation.index("Resolve the exact accepted firewalld NEVRA")]
         self.assertIn("check_mode: false", validation)
 
+    def test_tls_input_validation_runs_in_check_mode(self):
+        tls_tasks = (
+            ROOT / "installer/roles/tls/tasks/main.yml"
+        ).read_text(encoding="utf-8")
+        validation = tls_tasks[: tls_tasks.index("Create TLS destination directories")]
+        self.assertEqual(validation.count("check_mode: false"), 5)
+
     def test_runtime_handlers_are_applied_before_verification(self):
         verification = (
             ROOT / "installer/roles/verification/tasks/main.yml"
