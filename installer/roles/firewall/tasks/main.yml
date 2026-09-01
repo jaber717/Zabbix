@@ -26,6 +26,7 @@
     executable: /usr/bin/python3
   register: firewall_locked_nevra
   changed_when: false
+  check_mode: false
 
 - name: Install the exact accepted firewalld NEVRA from the offline repository
   ansible.builtin.dnf:

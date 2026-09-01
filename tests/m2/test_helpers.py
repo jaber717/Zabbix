@@ -103,6 +103,12 @@ class LockAndPortTests(unittest.TestCase):
             firewall_lock.locked_nevra(ROOT / "rpm-lockfile.txt", "firewalld"),
             "firewalld-0:1.3.4-15.el9_6.noarch",
         )
+        firewall_tasks = (
+            ROOT / "installer/roles/firewall/tasks/main.yml"
+        ).read_text(encoding="utf-8")
+        resolver = firewall_tasks[firewall_tasks.index("Resolve the exact accepted firewalld NEVRA") :]
+        resolver = resolver[: resolver.index("Install the exact accepted firewalld NEVRA")]
+        self.assertIn("check_mode: false", resolver)
 
     def test_runtime_handlers_are_applied_before_verification(self):
         verification = (
