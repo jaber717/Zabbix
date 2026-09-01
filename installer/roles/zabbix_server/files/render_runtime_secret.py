@@ -56,8 +56,7 @@ def atomic_write(path: Path, content: str, group_name: str) -> None:
     group_id = None
     if grp is not None:
         group_id = grp.getgrnam(group_name).gr_gid
-        os.chown(path.parent, 0, group_id)
-    os.chmod(path.parent, 0o750)
+    os.chmod(path.parent, 0o755)
     fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:

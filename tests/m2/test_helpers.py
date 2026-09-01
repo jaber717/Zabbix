@@ -82,8 +82,8 @@ class RuntimeSecretTests(unittest.TestCase):
 
     def test_runtime_directory_is_group_traversable(self):
         source = inspect.getsource(runtime_secret.atomic_write)
-        self.assertIn("os.chown(path.parent, 0, group_id)", source)
-        self.assertIn("os.chmod(path.parent, 0o750)", source)
+        self.assertIn("os.chmod(path.parent, 0o755)", source)
+        self.assertNotIn("os.chown(path.parent", source)
 
 
 class LockAndPortTests(unittest.TestCase):
