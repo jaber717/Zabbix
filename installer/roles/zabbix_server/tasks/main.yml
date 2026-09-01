@@ -35,9 +35,9 @@
       - "{{ item.type }}"
       - "{{ item.path }}"
   loop:
-    - path: /run/zabbix-server-credentials(/.*)?
+    - path: /var/run/zabbix-server-credentials(/.*)?
       type: zabbix_var_run_t
-    - path: /run/zabbix-web(/.*)?
+    - path: /var/run/zabbix-web(/.*)?
       type: httpd_var_run_t
   when:
     - not ansible_check_mode
@@ -59,9 +59,9 @@
     that:
       - zabbix_server_local_fcontexts_ready.stdout is search((item.path | regex_escape) ~ '.*' ~ item.type)
   loop:
-    - path: /run/zabbix-server-credentials(/.*)?
+    - path: /var/run/zabbix-server-credentials(/.*)?
       type: zabbix_var_run_t
-    - path: /run/zabbix-web(/.*)?
+    - path: /var/run/zabbix-web(/.*)?
       type: httpd_var_run_t
   when: not ansible_check_mode
 
