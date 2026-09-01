@@ -85,3 +85,22 @@
     enabled: true
     state: started
   when: not ansible_check_mode
+
+- name: Detect whether nginx has applied the managed Zabbix listener
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ zabbix_web_https_port if zabbix_tls_enabled else zabbix_web_http_port }}"
+    state: started
+    timeout: 1
+  register: zabbix_web_listener
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: Request nginx reload when the managed listener is absent
+  ansible.builtin.command: /usr/bin/true
+  changed_when: true
+  notify: Reload nginx web service
+  when:
+    - not ansible_check_mode
+    - (zabbix_web_listener.state | default('absent')) != 'started'

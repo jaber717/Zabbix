@@ -113,6 +113,10 @@ class LockAndPortTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("ansible.builtin.meta: flush_handlers", verification)
         self.assertIn("Query desired rich rules in the active runtime", firewall)
+        web = (
+            ROOT / "installer/roles/zabbix_web/tasks/main.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("Detect whether nginx has applied the managed Zabbix listener", web)
 
     def test_database_role_installs_schema_payload_before_import(self):
         defaults = (
