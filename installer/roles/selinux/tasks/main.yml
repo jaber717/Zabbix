@@ -42,6 +42,8 @@
       - /etc/zabbix
       - /usr/share/zabbix
       - /var/log/zabbix
+      - /run/zabbix-server-credentials
+      - /run/zabbix-web
   register: selinux_restorecon
   changed_when: selinux_restorecon.stdout | length > 0
   when: not ansible_check_mode

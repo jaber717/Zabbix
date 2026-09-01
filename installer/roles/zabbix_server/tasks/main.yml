@@ -15,6 +15,56 @@
     enablerepo: "{{ offline_repo_id }}"
     install_weak_deps: false
 
+- name: Read local SELinux runtime context mappings
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/semanage
+      - fcontext
+      - --list
+      - --locallist
+  register: zabbix_server_local_fcontexts
+  changed_when: false
+
+- name: Register confined runtime secret paths
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/semanage
+      - fcontext
+      - --add
+      - --type
+      - "{{ item.type }}"
+      - "{{ item.path }}"
+  loop:
+    - path: /run/zabbix-server-credentials(/.*)?
+      type: zabbix_var_run_t
+    - path: /run/zabbix-web(/.*)?
+      type: httpd_var_run_t
+  when:
+    - not ansible_check_mode
+    - item.path not in zabbix_server_local_fcontexts.stdout
+
+- name: Verify confined runtime secret path mappings
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/semanage
+      - fcontext
+      - --list
+      - --locallist
+  register: zabbix_server_local_fcontexts_ready
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Require correct SELinux runtime secret types
+  ansible.builtin.assert:
+    that:
+      - zabbix_server_local_fcontexts_ready.stdout is search((item.path | regex_escape) ~ '.*' ~ item.type)
+  loop:
+    - path: /run/zabbix-server-credentials(/.*)?
+      type: zabbix_var_run_t
+    - path: /run/zabbix-web(/.*)?
+      type: httpd_var_run_t
+  when: not ansible_check_mode
+
 - name: Install the runtime secret renderer
   ansible.builtin.copy:
     src: render_runtime_secret.py
