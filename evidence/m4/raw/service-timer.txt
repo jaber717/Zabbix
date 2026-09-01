@@ -1,0 +1,77 @@
+UNIT_STATE
+Result=exit-code
+ExecMainStatus=3
+User=nbzsync
+Group=nbzsync
+ActiveState=failed
+SubState=failed
+TIMER_STATE
+ActiveState=active
+SubState=waiting
+UnitFileState=enabled
+NEXT                        LEFT      LAST                        PASSED    UNIT                     ACTIVATES
+Tue 2026-09-01 11:11:14 +03 9min left Tue 2026-09-01 10:43:18 +03 18min ago netbox-zabbix-sync.timer netbox-zabbix-sync.service
+
+1 timers listed.
+ACCOUNT_STATE
+nbzsync:x:992:992::/nonexistent:/sbin/nologin
+uid=992(nbzsync) gid=992(nbzsync) groups=992(nbzsync)
+CREDENTIAL_METADATA
+/etc/credstore.encrypted/nbzsync-netbox-token|root:root|600|187
+/etc/credstore.encrypted/nbzsync-zabbix-password|root:root|600|207
+UNIT_VERIFY
+UNIT_CONTENT
+# /etc/systemd/system/netbox-zabbix-sync.service
+[Unit]
+Description=Dry-run NetBox to Zabbix reconciliation
+After=network-online.target zabbix-server.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=nbzsync
+Group=nbzsync
+UMask=0077
+Environment=PYTHONPATH=/usr/libexec/netbox-zabbix-sync
+LoadCredentialEncrypted=netbox-token:/etc/credstore.encrypted/nbzsync-netbox-token
+LoadCredentialEncrypted=zabbix-password:/etc/credstore.encrypted/nbzsync-zabbix-password
+ExecStart=/usr/bin/python3 -m netbox_zabbix_sync --config /etc/netbox-zabbix-sync/runtime.json --mappings /etc/netbox-zabbix-sync/mappings.json --report /var/lib/netbox-zabbix-sync/last-report.json
+RuntimeDirectory=netbox-zabbix-sync
+RuntimeDirectoryMode=0700
+StateDirectory=netbox-zabbix-sync
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
+
+
+# /etc/systemd/system/netbox-zabbix-sync.timer
+[Unit]
+Description=Schedule dry-run NetBox to Zabbix reconciliation
+
+[Timer]
+OnBootSec=2m
+OnUnitActiveSec=10m
+RandomizedDelaySec=60s
+Persistent=true
+Unit=netbox-zabbix-sync.service
+
+[Install]
+WantedBy=timers.target

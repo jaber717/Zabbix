@@ -4,6 +4,19 @@
 
 ### Added
 
+- Implemented and deployed M4's fail-closed `netbox-zabbix-sync` engine with
+  GET-only NetBox access, stable device/VM identity, explicit mappings,
+  deterministic primary-IP resolution, guarded planning/apply, 10% change
+  budget, encrypted systemd credentials, dedicated `nbzsync` account, hardened
+  service/timer, 29 passing tests, and an operations runbook.
+- Executed two byte-identical live dry-runs against authoritative NetBox LXC
+  9000 and Zabbix `192.168.1.91`. Devices, DCIM interfaces, IP addresses, and
+  mapping schema resources were readable; VM, VM-interface, tag, and
+  custom-field endpoints returned 403. Zero Zabbix changes were proposed or
+  applied, denied counts remained UNKNOWN, and M4 closed blocked on the four
+  exact read permissions plus a scoped Zabbix apply credential.
+- Resolved the earlier version contradiction: NetBox and portal health report
+  4.6.9 with API 4.6; `manage.py version` returned Django 6.0.8, not NetBox 6.0.8.
 - Completed M3 on the authorized dual-purpose RHEL 9.6 host at
   `192.168.1.91`: preserved the existing NetBox/PostgreSQL workload, deployed
   Zabbix 7.0.30 from the accepted offline artifact, passed runtime/API/queue,

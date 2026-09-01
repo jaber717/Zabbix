@@ -1,0 +1,10 @@
+NETBOX_SYMLINK_TARGET
+/opt/netbox-4.6.9
+GENERIC_MANAGE_PY_VERSION
+/opt/netbox-4.6.9/netbox/netbox/settings.py:251: UserWarning: API_TOKEN_PEPPERS is not defined. v2 API tokens cannot be used.
+  warnings.warn("API_TOKEN_PEPPERS is not defined. v2 API tokens cannot be used.")
+6.0.8
+SERVICE_EXECSTART
+ExecStart={ path=/opt/netbox/venv/bin/gunicorn ; argv[]=/opt/netbox/venv/bin/gunicorn --pid /var/tmp/netbox.pid --pythonpath /opt/netbox/netbox --config /opt/netbox/gunicorn.py netbox.wsgi ; ignore_errors=no ; start_time=[Mon 2026-08-31 20:21:10 UTC] ; stop_time=[n/a] ; pid=293 ; code=(null) ; status=0/0 }
+PORTAL_HEALTH
+{"netbox":"4.6.9","reachable":true,"cache_age_s":35221,"cached":true,"last_error":null}

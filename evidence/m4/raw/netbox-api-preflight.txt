@@ -1,0 +1,24 @@
+PREFLIGHT_METHOD=GET_ONLY
+CONFIGURED_NETBOX_ORIGIN=http://127.0.0.1
+AUTH_CREDENTIAL=PRESENT_REDACTED
+ENDPOINT name=api_root method=GET status=200 result=PASS api_version=4.6
+ENDPOINT name=status method=GET status=200 result=PASS api_version=4.6
+STATUS_VERSION_FIELD key=django-version value=6.0.8
+STATUS_VERSION_FIELD key=netbox-full-version value=4.6.9
+STATUS_VERSION_FIELD key=netbox-version value=4.6.9
+STATUS_VERSION_FIELD key=python-version value=3.12.3
+ENDPOINT name=core_status method=GET status=404 result=NOT_FOUND api_version=4.6
+ENDPOINT name=devices method=GET status=200 result=PASS count=81 paginated=True next_present=True api_version=4.6
+ENDPOINT name=interfaces method=GET status=200 result=PASS count=1105 paginated=True next_present=True api_version=4.6
+ENDPOINT name=virtualization_interfaces method=GET status=403 result=DENIED api_version=4.6
+ENDPOINT name=ip_addresses method=GET status=200 result=PASS count=116 paginated=True next_present=True api_version=4.6
+ENDPOINT name=virtual_machines method=GET status=403 result=DENIED api_version=4.6
+ENDPOINT name=tags method=GET status=403 result=DENIED api_version=4.6
+ENDPOINT name=custom_fields method=GET status=403 result=DENIED api_version=4.6
+ENDPOINT name=device_roles method=GET status=200 result=PASS count=10 paginated=True next_present=True api_version=4.6
+ENDPOINT name=platforms method=GET status=200 result=PASS count=4 paginated=True next_present=True api_version=4.6
+ENDPOINT name=sites method=GET status=200 result=PASS count=3 paginated=True next_present=True api_version=4.6
+ENDPOINT name=tenants method=GET status=200 result=PASS count=3 paginated=True next_present=True api_version=4.6
+PAGINATION resource=devices page_2_requested=true status=200 result=PASS valid_shape=True
+REQUIRED_ENDPOINTS_COMPLETE=false
+REQUIRED_ENDPOINTS_BLOCKED=virtualization_interfaces,virtual_machines,tags,custom_fields

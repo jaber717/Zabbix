@@ -1,0 +1,12 @@
+[Unit]
+Description=Schedule dry-run NetBox to Zabbix reconciliation
+
+[Timer]
+OnBootSec=2m
+OnUnitActiveSec={{ nbzsync_interval }}
+RandomizedDelaySec={{ nbzsync_randomized_delay }}
+Persistent=true
+Unit=netbox-zabbix-sync.service
+
+[Install]
+WantedBy=timers.target

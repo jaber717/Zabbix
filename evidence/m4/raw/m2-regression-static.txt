@@ -1,0 +1,31 @@
+FILES_SCANNED=68
+STRUCTURE=PASS
+PYTHON_SYNTAX=PASS
+SOURCE_POLICY=PASS
+OFFLINE_DNF_POLICY=PASS
+RESULT=PASS
+test_backup_streams_through_root_owned_files (tests.m2.test_helpers.LockAndPortTests.test_backup_streams_through_root_owned_files) ... ok
+test_check_mode_guards_precede_skipped_database_probe_results (tests.m2.test_helpers.LockAndPortTests.test_check_mode_guards_precede_skipped_database_probe_results) ... ok
+test_database_role_installs_schema_payload_before_import (tests.m2.test_helpers.LockAndPortTests.test_database_role_installs_schema_payload_before_import) ... ok
+test_firewall_cidr_validation_runs_in_check_mode (tests.m2.test_helpers.LockAndPortTests.test_firewall_cidr_validation_runs_in_check_mode) ... ok
+test_firewall_role_resolves_exact_accepted_nevra (tests.m2.test_helpers.LockAndPortTests.test_firewall_role_resolves_exact_accepted_nevra) ... ok
+test_m1_lock_contains_exact_fping (tests.m2.test_helpers.LockAndPortTests.test_m1_lock_contains_exact_fping) ... ok
+test_proc_port_parser (tests.m2.test_helpers.LockAndPortTests.test_proc_port_parser) ... ok
+test_runtime_handlers_are_applied_before_verification (tests.m2.test_helpers.LockAndPortTests.test_runtime_handlers_are_applied_before_verification) ... ok
+test_selinux_safety_probe_runs_in_check_mode (tests.m2.test_helpers.LockAndPortTests.test_selinux_safety_probe_runs_in_check_mode) ... ok
+test_server_config_matches_vendor_pid_contract (tests.m2.test_helpers.LockAndPortTests.test_server_config_matches_vendor_pid_contract) ... ok
+test_systemd_host_key_is_initialized_before_secret_encryption (tests.m2.test_helpers.LockAndPortTests.test_systemd_host_key_is_initialized_before_secret_encryption) ... ok
+test_tls_input_validation_runs_in_check_mode (tests.m2.test_helpers.LockAndPortTests.test_tls_input_validation_runs_in_check_mode) ... ok
+test_fresh_and_converged (tests.m2.test_helpers.ReleaseStateTests.test_fresh_and_converged) ... ok
+test_upgrade_and_downgrade_are_distinct (tests.m2.test_helpers.ReleaseStateTests.test_upgrade_and_downgrade_are_distinct) ... ok
+test_runtime_directory_is_group_traversable (tests.m2.test_helpers.RuntimeSecretTests.test_runtime_directory_is_group_traversable) ... ok
+test_safe_secret_and_rendering (tests.m2.test_helpers.RuntimeSecretTests.test_safe_secret_and_rendering) ... ok
+test_unsafe_secret_is_rejected (tests.m2.test_helpers.RuntimeSecretTests.test_unsafe_secret_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.009s
+
+OK
+BASH_SYNTAX=PASS
+INSTALLER_MANIFEST=PASS
+RESULT=PASS

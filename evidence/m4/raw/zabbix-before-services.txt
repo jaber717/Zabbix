@@ -1,0 +1,10 @@
+CHECK=systemctl-is-active
+active
+active
+active
+active
+active
+CHECK=zabbix-server-errors-this-boot
+-- No entries --
+CHECK=zabbix-server-errors-this-boot-count
+0

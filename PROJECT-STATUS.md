@@ -2,9 +2,9 @@
 
 ## Current gate
 
-Milestone: **M3 — Zabbix Lab Deployment and Runtime Validation**
+Milestone: **M4 — NetBox to Zabbix Read-Only Source Integration**
 
-State: **ACCEPTED (2026-09-01)**
+State: **BLOCKED — NETBOX READ PERMISSIONS (2026-09-01)**
 
 Milestone baseline commit: `62ba3275a3f016b2f07d333684286b59c1188cfa`
 
@@ -16,10 +16,14 @@ M0.5 source readiness, M1, M2, and M3 are complete. M3 deployed logical
 PostgreSQL 16 cluster, NetBox database/services, Redis, and nginx 80/443
 listeners were preserved and remain healthy after convergence and reboot.
 
-M4 is ready for separate authorization but remains gated by the existing NetBox
-permission and NetBox/portal version-compatibility blockers. No NetBox
-integration, other guest, Proxmox networking/storage, M4 implementation, or
-external Git push occurred in M3.
+M4 implemented and deployed the fail-closed sync engine in dry-run mode. Live
+GET-only preflight proved NetBox 4.6.9/API 4.6 and corrected the earlier
+misclassification of Django 6.0.8 as a NetBox version. Devices, DCIM interfaces,
+IP addresses, roles, platforms, sites, and tenants are readable; VMs, VM
+interfaces, tags, and custom-field metadata return HTTP 403. The live plan made
+zero Zabbix changes and did not infer denied datasets as empty. M4 cannot be
+accepted until the exact read permissions, a scoped Zabbix apply credential,
+safe apply, and second reconciliation pass. M5 is not ready.
 
 M1 pipeline source commit: `fbf3573`
 
@@ -34,6 +38,35 @@ M1 closeout commit: `9f764ec8e019e1ac4ed57e9b4f87dea9d6345f28`
 M2 baseline commit: `7f7ff2676456fd3fc54337456c158ed54e496331`
 
 M2 implementation commit: `16886c1d6251e699cbf2d10c00e158fb938d5ebd`
+
+M3 closeout commit: `e0e417131b707c3760d7775ed33913fd8b2ffa28`
+
+M4 start commit: `e389a51`
+
+## M4 result
+
+- Actual NetBox is 4.6.9 with API 4.6; Django is 6.0.8. The existing portal
+  health and NetBox runtime now agree on 4.6.9.
+- The existing credential passes devices (81), DCIM interfaces (1105), IP
+  addresses (116), roles (10), platforms (4), sites (3), and tenants (3). It is
+  denied for VMs, VM interfaces, tags, and custom fields; those counts remain
+  UNKNOWN.
+- A Python 3.9-compatible, standard-library-only engine implements GET-only
+  NetBox access, Zabbix API access, pagination/retries/timeouts, stable identity,
+  explicit mappings, deterministic primary-IP validation, planning, 10% budget,
+  dry-run default, guarded apply, and machine-readable reporting.
+- Twenty-nine target Python tests and 17 installer regressions passed. The M4
+  role converged idempotently (`ok=13 changed=0 failed=0`).
+- The hardened service runs as dedicated `nbzsync`; the approximately ten-minute
+  timer is enabled/active. Credentials are root-only systemd host-encrypted.
+- Two live dry-runs were byte-identical. All 81 readable device eligibility
+  decisions are UNKNOWN; proposed creates and updates are zero; orphan count is
+  UNKNOWN because source completeness is blocked.
+- Apply and post-apply second reconciliation are `NOT-EXECUTED`. Zabbix remained
+  at one enabled host, 12 unsupported items, zero queue values, active core
+  services, and zero boot-scoped server error entries.
+- See `evidence/m4/HANDOVER.md`, `evidence/m4/BLOCKED.md`, and
+  `docs/NETBOX-ZABBIX-SYNC.md`.
 
 ## M3 result
 
@@ -95,8 +128,9 @@ M2 implementation commit: `16886c1d6251e699cbf2d10c00e158fb938d5ebd`
 |---|---|---|
 | RHEL source repository readiness | BaseOS/AppStream and official Zabbix 7.0 sources passed host and isolated clean-installroot metadata/query tests. | RESOLVED; M1 COMPLETE |
 | `fping` source for Zabbix Server | The non-supported source contributed only `fping-0:5.1-1.el9.x86_64`; repository metadata, SHA256, key fingerprint, signature, and provenance passed. | RESOLVED; M1 COMPLETE |
-| NetBox VM/tag/custom-field permission | Existing read-only credential is denied for these endpoints. | BLOCKS M4 |
-| NetBox/portal version mismatch | NetBox reports 6.0.8; portal declares 4.6.9. | BLOCKS/AFFECTS M4 and M6 |
+| NetBox VM/interface/tag/custom-field permission | Existing credential returns 403 for four exact endpoints. | BLOCKS M4; exact minimum view permissions recorded |
+| NetBox/portal version mismatch | RESOLVED: NetBox/API status and portal health report NetBox 4.6.9; 6.0.8 is Django. | No M4 version blocker; portal feature work remains M6 |
+| Zabbix integration apply credential | Existing Admin credential is encrypted and hard-gated to dry-run only. | BLOCKS M4 apply until a dedicated minimally scoped credential exists |
 | PNETLab/EVE stopped | QEMU 110 and 120 were stopped and left unchanged. | Prerequisite only for M8 |
 
 See `docs/DISCOVERY.md` and `evidence/discovery/REQUIRED-EVIDENCE.md`.
@@ -209,3 +243,14 @@ See `docs/DISCOVERY.md` and `evidence/discovery/REQUIRED-EVIDENCE.md`.
   no permissive mode, guessed boolean, or custom allow policy was introduced.
 - M3 external scope: **No other VM/LXC, Proxmox setting, NetBox integration, M4
   implementation, Git remote, or external push was changed**.
+- M4 NetBox safety: **PASS**. Live and scheduled calls were GET/HEAD only; no
+  NetBox permission, token, object, schema, service, firewall, SELinux, or network
+  setting changed.
+- M4 Zabbix mutation: **No**. Apply was `NOT-EXECUTED`; there were zero host
+  creates/updates/deletes, template unlinks, group removals, or IP changes.
+- M4 target changes: **Yes, limited to the sync runtime on `192.168.1.91`** —
+  dedicated OS account, code/config, encrypted credentials, hardened systemd
+  service/timer, and aggregate state report. Existing Zabbix and NetBox services
+  remained healthy.
+- M4 external scope: **No other guest, Proxmox configuration, portal/M6 work,
+  Git remote, or external push changed**.

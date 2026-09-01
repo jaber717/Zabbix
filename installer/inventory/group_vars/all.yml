@@ -63,3 +63,7 @@ zabbix_backup_on_calendar: "*-*-* 02:15:00"
 zabbix_backup_retention_days: 14
 
 m2_run_verification: true
+
+# M4 is opt-in and remains dry-run unless an operator explicitly edits the unit
+# through an audited change. Credentials must already be encrypted for systemd.
+nbzsync_enabled: false

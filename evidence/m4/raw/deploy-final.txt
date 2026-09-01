@@ -1,0 +1,54 @@
+
+PLAY [Deploy M4 dry-run NetBox integration only] *******************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [localhost]
+
+TASK [netbox_sync : Validate NetBox sync encrypted credential inputs] **********
+ok: [localhost] => (item=None)
+ok: [localhost] => (item=None)
+ok: [localhost]
+
+TASK [netbox_sync : Require existing protected encrypted credentials] **********
+ok: [localhost] => (item=None)
+ok: [localhost] => (item=None)
+ok: [localhost]
+
+TASK [netbox_sync : Create dedicated NetBox sync group] ************************
+ok: [localhost]
+
+TASK [netbox_sync : Create dedicated NetBox sync account] **********************
+ok: [localhost]
+
+TASK [netbox_sync : Create NetBox sync installation directories] ***************
+ok: [localhost] => (item={'path': '/usr/libexec/netbox-zabbix-sync', 'owner': 'root', 'group': 'root', 'mode': '0755'})
+ok: [localhost] => (item={'path': '/etc/netbox-zabbix-sync', 'owner': 'root', 'group': 'nbzsync', 'mode': '0750'})
+ok: [localhost] => (item={'path': '/var/lib/netbox-zabbix-sync', 'owner': 'nbzsync', 'group': 'nbzsync', 'mode': '0700'})
+
+TASK [netbox_sync : Install the NetBox sync Python package] ********************
+changed: [localhost]
+
+TASK [netbox_sync : Install the lab runtime configuration] *********************
+ok: [localhost]
+
+TASK [netbox_sync : Install the reviewed lab mappings] *************************
+ok: [localhost]
+
+TASK [netbox_sync : Install the Zabbix API public certificate] *****************
+ok: [localhost]
+
+TASK [netbox_sync : Install the NetBox sync service] ***************************
+ok: [localhost]
+
+TASK [netbox_sync : Install the NetBox sync timer] *****************************
+ok: [localhost]
+
+TASK [netbox_sync : Enable the dry-run NetBox sync timer] **********************
+ok: [localhost]
+
+RUNNING HANDLER [netbox_sync : Reload systemd for NetBox sync] *****************
+ok: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=14   changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+

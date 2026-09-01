@@ -14,11 +14,11 @@ request it rather than inferring it from this report or memory.
 | QEMU 110 PNET4.2.4, 120 EVE-LAB, 130 Ansible, and 140 Netbox existed and were stopped at capture time. | VERIFIED FACT | `raw/proxmox-read-only.txt` |
 | LXCs 200–205, 211, 212, and 9000 existed and were running; 210 and 9001 existed and were stopped at capture time. | VERIFIED FACT | `raw/proxmox-read-only.txt` |
 | LXC 9000 is running, named `netbox-demo`, unprivileged, Ubuntu/amd64, DHCP on `vmbr0`, and held `192.168.1.89/24` at capture time. | VERIFIED FACT | `raw/netbox-read-only.txt` |
-| NetBox `manage.py version` reported 6.0.8. Core NetBox, worker, nginx, PostgreSQL, and Redis services returned active. | VERIFIED FACT | `raw/netbox-read-only.txt` |
+| The generic Django `manage.py version` command returned 6.0.8. M4 later proved this is the Django version; NetBox `/api/status/`, API headers, install path, and portal health identify NetBox 4.6.9/API 4.6. Core services were active. | VERIFIED FACT, CORRECTED CLASSIFICATION | `raw/netbox-read-only.txt`, `evidence/m4/raw/netbox-api-preflight.txt`, `evidence/m4/raw/netbox-version-reconciliation.txt` |
 | Direct unauthenticated `/api/` returned HTTP 403. The existing topology portal successfully used a credential through a GET/HEAD-only client. | VERIFIED FACT | `raw/netbox-read-only.txt`, `raw/portal-source-inventory.txt` |
 | The read-only portal view observed 3 sites, 4 locations, 11 racks, 81 devices, 84 cables, 2 circuits, 43 prefixes, and 116 IP addresses. | VERIFIED FACT | `raw/netbox-read-only.txt` |
 | Direct read-only endpoint audit observed 81 devices (active/planned), 10 roles, 4 platforms, 8 manufacturers, and 40 devices with a primary IP. | VERIFIED FACT | `raw/netbox-read-only.txt` |
-| The existing credential was insufficient for virtual machines, tags, and custom fields. | VERIFIED FACT | `raw/netbox-read-only.txt` |
+| The existing credential was insufficient for virtual machines, virtual-machine interfaces, tags, and custom fields. M4 reconfirmed exact HTTP 403 results. | VERIFIED FACT | `raw/netbox-read-only.txt`, `evidence/m4/raw/netbox-api-preflight.txt` |
 | A local topology portal source tree is present and exposes read-only graph/summary routes; it was not detected as its own Git repository. | VERIFIED FACT | `raw/portal-source-inventory.txt` |
 | The build VM became reachable at `192.168.1.91`; public-key SSH authenticated as unprivileged user `jaber`, and `hostname -f` returned `netbox-dev`. | VERIFIED FACT | `raw/rhel-build-baseline.txt` |
 | The build VM runs Red Hat Enterprise Linux 9.6 (Plow), x86_64, kernel `5.14.0-570.12.1.el9_6.x86_64`, under KVM/QEMU. The `redhat-release` package is `9.6-0.1.el9.x86_64`. | VERIFIED FACT | `raw/rhel-build-baseline.txt`, `raw/rhel-build-repository-readiness.txt` |
@@ -105,42 +105,46 @@ Assumptions are not build inputs until verified.
 - UNKNOWN: complete M1 dependency closure, RPM signature results, and offline
   modular-metadata reproduction. M0.5 proved source readiness only and did not
   build or download the artifact payload.
-- UNKNOWN: whether the current topology portal is functionally compatible with
-  NetBox 6.0.8 beyond the limited successful GETs observed.
+- UNKNOWN: portal feature behavior beyond the limited successful GETs. The
+  supposed 6.0.8-versus-4.6.9 version contradiction is resolved; NetBox and the
+  portal both report NetBox 4.6.9, while Django is 6.0.8.
 
 ## Blockers and contradictions
 
 | Item | Gate impact |
 |---|---|
 | RHEL source repository readiness | RESOLVED; M1 source gate READY |
-| NetBox VM/tag/custom-field read permission | BLOCKER FOR M4 |
-| NetBox 6.0.8 versus portal 4.6.9 | BLOCKS/AFFECTS M4 and M6 |
+| NetBox VM/VM-interface/tag/custom-field read permission | BLOCKER FOR M4; four exact view permissions remain |
+| NetBox/Django/portal version classification | RESOLVED by M4: NetBox 4.6.9, API 4.6, Django 6.0.8 |
 | PNETLab/EVE stopped | Prerequisite only for M8; not an M1 blocker |
 
-### NetBox and portal version mismatch
+### NetBox and portal version classification — resolved by M4
 
 - EXPECTED: Existing portal documentation/runtime declaration identifies NetBox
   4.6.9.
-- ACTUAL: NetBox `manage.py version` reports 6.0.8 while portal health and source
-  still report a hardcoded 4.6.9.
-- IMPACT: Version-sensitive portal and future integration behavior cannot use the
-  portal label as authoritative. NetBox 6.0 API compatibility and any migration
-  effects require explicit validation.
-- RECOMMENDATION: Treat 6.0.8 as the current verified NetBox runtime version,
-  revalidate the portal against it in a separately authorized non-mutating test,
-  and later replace hardcoded version reporting with a verified runtime value.
+- ACTUAL: M4's authenticated `/api/status/` labels NetBox as 4.6.9, Django as
+  6.0.8, and the API header as 4.6. `/opt/netbox` resolves to
+  `/opt/netbox-4.6.9`; portal health also reports NetBox 4.6.9. The generic
+  `manage.py version` output was Django's version.
+- IMPACT: There is no NetBox 6.0 migration or version blocker for M4. Portal
+  feature validation remains future M6 work, but not because of a live version
+  mismatch.
+- RECOMMENDATION: Use authenticated NetBox status/API fields for product version
+  evidence and label framework versions separately.
 
 ### Required integration reads are denied
 
 - EXPECTED: Future integration discovery must inspect devices and virtual
   machines and evaluate monitoring-related tags/custom fields.
-- ACTUAL: Devices are readable; VM, tag, and custom-field endpoints were denied
-  through the available read-only credential.
+- ACTUAL: Devices, DCIM interfaces, IP addresses, roles, platforms, sites, and
+  tenants are readable. VM, VM-interface, tag, and custom-field endpoints return
+  HTTP 403 through the available credential.
 - IMPACT: A device-only design would violate the architecture, and eligibility
   mapping cannot be approved from current evidence.
-- RECOMMENDATION: In a later authorized step, provision or approve a read-only
-  credential with the listed view permissions. Do not alter NetBox permissions in
-  Milestone 0.
+- RECOMMENDATION: Add only `virtualization.view_virtualmachine`,
+  `virtualization.view_vminterface`, `extras.view_tag`, and
+  `extras.view_customfield` view actions to the constrained credential user. Do
+  not grant add/change/delete or broad administrator permission.
 
 ### RHEL source repository readiness — resolved by M0.5
 

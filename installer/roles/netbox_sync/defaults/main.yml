@@ -1,0 +1,10 @@
+---
+nbzsync_source_root: "{{ playbook_dir }}/../../integration"
+nbzsync_install_root: /usr/libexec/netbox-zabbix-sync
+nbzsync_config_root: /etc/netbox-zabbix-sync
+nbzsync_state_root: /var/lib/netbox-zabbix-sync
+nbzsync_netbox_credential: /etc/credstore.encrypted/nbzsync-netbox-token
+nbzsync_zabbix_credential: /etc/credstore.encrypted/nbzsync-zabbix-password
+nbzsync_zabbix_ca_source: /root/zabbix-m3-inputs/zabbix-01.lab.crt
+nbzsync_interval: 10m
+nbzsync_randomized_delay: 60s

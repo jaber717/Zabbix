@@ -17,16 +17,20 @@ recursive-resolution test. Evidence is under `evidence/m0.5/`. No further source
 readiness evidence is required before M1 approval. Full payload closure, RPM
 signature verification, and offline metadata generation remain M1 deliverables.
 
-## NetBox integration endpoints and permissions
+## NetBox integration endpoints and permissions — partially resolved, still blocked
 
 **Why needed:** The approved integration requires both devices and VMs plus
 eligibility metadata. The available read-only portal credential returned 403
-through the client for virtual machines, tags, and custom fields.
+through the client for virtual machines, tags, and custom fields. M4 reconfirmed
+those 403s and additionally proved virtual-machine interfaces are denied.
 
 **Preconditions:** An explicitly approved read-only NetBox API credential with
-view permission for devices, virtual machines, sites, locations, roles, platforms,
-manufacturers, tags, and custom fields. Do not broaden the existing credential in
-Milestone 0; permission changes are NetBox writes and need later authorization.
+view permission for devices, virtual machines and VM interfaces, sites,
+locations, roles, platforms, manufacturers, tags, and custom fields. The minimum
+missing actions are `virtualization.view_virtualmachine`,
+`virtualization.view_vminterface`, `extras.view_tag`, and
+`extras.view_customfield`. Permission changes remain operator work; M4 did not
+grant them.
 
 **Exact safe API calls:**
 
@@ -36,6 +40,10 @@ curl --fail --silent --show-error \
   -H "Authorization: Token ${NETBOX_READ_TOKEN}" \
   -H 'Accept: application/json' \
   'https://<netbox>/api/virtualization/virtual-machines/?limit=1'
+curl --fail --silent --show-error \
+  -H "Authorization: Token ${NETBOX_READ_TOKEN}" \
+  -H 'Accept: application/json' \
+  'https://<netbox>/api/virtualization/interfaces/?limit=1'
 curl --fail --silent --show-error \
   -H "Authorization: Token ${NETBOX_READ_TOKEN}" \
   -H 'Accept: application/json' \
@@ -49,13 +57,16 @@ curl --fail --silent --show-error \
 **Expected output type:** HTTP 200 JSON collection shapes and counts. Sanitize
 object content to infrastructure metadata and never save request headers.
 
-**Save as:** `evidence/discovery/raw/netbox-required-endpoints.txt`
+**Current evidence:** `evidence/m4/raw/netbox-api-preflight.txt`. After the
+operator grants the four exact views, save the successful recheck as
+`evidence/m4/raw/netbox-api-preflight-after-permission.txt`.
 
-## NetBox/portal version contradiction
+## Resolved — NetBox/portal version classification
 
-**Why needed:** NetBox `manage.py version` reported 6.0.8 while the running portal
-health route and local source hardcode 4.6.9. Compatibility work cannot treat both
-as current.
+M4 proved that the generic `manage.py version` output 6.0.8 is Django's version,
+not NetBox's. Authenticated `/api/status/` reports NetBox 4.6.9, Django 6.0.8,
+and the API header is 4.6. `/opt/netbox` resolves to `/opt/netbox-4.6.9`, and
+portal health reports NetBox 4.6.9.
 
 **Exact safe commands:**
 
@@ -65,11 +76,9 @@ grep -n '^NETBOX_VERSION' /opt/netbox-topology/app/main.py
 curl --fail --silent --show-error http://127.0.0.1:8081/api/health
 ```
 
-**Expected output type:** Actual NetBox version, declared portal version, health
-JSON. A later authorized milestone must decide whether the portal is compatible
-with NetBox 6.0.8; do not change the portal during discovery.
-
-**Save as:** `evidence/discovery/raw/netbox-portal-version-revalidation.txt`
+**Evidence:** `evidence/m4/raw/netbox-api-preflight.txt` and
+`evidence/m4/raw/netbox-version-reconciliation.txt`. No further version evidence
+is required for M4. Portal feature work remains M6 scope.
 
 ## PNETLab and EVE access
 

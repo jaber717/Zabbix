@@ -2,9 +2,10 @@
 
 M0, M0.5, M1, M2, and M3 are complete. M3 used the explicitly authorized
 existing RHEL 9.6 VM at `192.168.1.91`; the prior plan to create a dedicated VM
-was superseded for this home-lab milestone. M4 is ready only for separate
-authorization after its NetBox permission and version-compatibility blockers
-are resolved. Every milestone ends with a stop/review gate.
+was superseded for this home-lab milestone. M4 implementation and live dry-run
+are complete, but M4 is blocked on exact NetBox read permissions and has not
+performed an apply. M5 is not ready. Every milestone ends with a stop/review
+gate.
 
 ## M0 — Discovery + Specifications
 
@@ -27,8 +28,9 @@ are resolved. Every milestone ends with a stop/review gate.
 |---|---|
 | Verified usable RHEL BaseOS/AppStream and official Zabbix 7.0 source | RESOLVED by M0.5; M1 COMPLETE |
 | Pinned `fping` from the fping-only official Zabbix non-supported source | RESOLVED by M1; no broader source authorized |
-| NetBox VM/tag/custom-field read permission | Blocks M4 |
-| NetBox 6.0.8 versus portal 4.6.9 compatibility | Blocks/affects M4 and M6 |
+| NetBox VM/interface/tag/custom-field read permission | Blocks M4; four exact view permissions remain |
+| NetBox/Django/portal version classification | RESOLVED for M4: NetBox 4.6.9, API 4.6, Django 6.0.8 |
+| Dedicated minimally scoped Zabbix sync credential | Blocks M4 apply after NetBox reads are restored |
 | PNETLab/EVE availability | Prerequisite only for M8 |
 
 ## M0.5 — Build Source Readiness
@@ -122,6 +124,8 @@ are resolved. Every milestone ends with a stop/review gate.
 
 ## M4 — NetBox Integration
 
+- **State:** BLOCKED (2026-09-01) after implementation, deployment, and actual
+  deterministic dry-run. Apply and second reconciliation are NOT-EXECUTED.
 - **Scope:** Audit/fetch devices and VMs, identity, mapping/resolver, dry-run,
   guarded apply, lifecycle, service/timer, self-monitoring.
 - **Inputs:** Resolved NetBox version/permission blockers, approved mappings,
@@ -135,9 +139,16 @@ are resolved. Every milestone ends with a stop/review gate.
   NetBox write.
 - **Risks:** Mass change, incorrect identity, privilege excess, template/IP churn.
 - **Stop condition:** Safe limited reconciliation demonstrated; no estate rollout.
+- **Result:** Engine, mapping/config, 29-test suite, Ansible role, encrypted
+  credentials, dedicated account, hardened service/timer, and runbook are
+  deployed. Devices/interfaces/IP/schema dimensions read successfully. VM, VM
+  interface, tag, and custom-field endpoints return 403; the plan classified
+  all 81 readable device eligibility states UNKNOWN and made no Zabbix changes.
+  Resume only after the exact view permissions and a scoped Zabbix credential.
 
 ## M5 — Real Monitoring
 
+- **State:** NOT READY; M4 apply and second reconciliation have not passed.
 - **Scope:** Monitor Proxmox, existing guests, NetBox LXC, and approved services;
   tune initial alerts.
 - **Inputs:** M3 platform, M4 integration, explicit endpoint credentials and

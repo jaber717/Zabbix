@@ -1,0 +1,38 @@
+[Unit]
+Description=Dry-run NetBox to Zabbix reconciliation
+After=network-online.target zabbix-server.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=nbzsync
+Group=nbzsync
+UMask=0077
+Environment=PYTHONPATH={{ nbzsync_install_root }}
+LoadCredentialEncrypted=netbox-token:{{ nbzsync_netbox_credential }}
+LoadCredentialEncrypted=zabbix-password:{{ nbzsync_zabbix_credential }}
+ExecStart=/usr/bin/python3 -m netbox_zabbix_sync --config {{ nbzsync_config_root }}/runtime.json --mappings {{ nbzsync_config_root }}/mappings.json --report {{ nbzsync_state_root }}/last-report.json
+RuntimeDirectory=netbox-zabbix-sync
+RuntimeDirectoryMode=0700
+StateDirectory=netbox-zabbix-sync
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

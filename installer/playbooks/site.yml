@@ -16,6 +16,8 @@
     - selinux
     - firewall
     - backup
+    - role: netbox_sync
+      when: nbzsync_enabled | bool
     - role: verification
       when:
         - m2_run_verification | bool
