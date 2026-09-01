@@ -1,0 +1,12 @@
+Updating Subscription Management repositories.
+Unable to read consumer identity
+
+This system is not registered with an entitlement server. You can use "rhc" or "subscription-manager" to register.
+
+Added m1-local repo from file:///home/jaber/zabbix-platform-m1-91947c3/build/out/m1-accepted-build1/repository
+Last metadata expiration check: 0:00:01 ago on Tue 01 Sep 2026 03:31:46 AM +03.
+m1-local
+Name       Stream Profiles       Summary                            
+postgresql 16     client, server PostgreSQL server and client module
+
+Hint: [d]efault, [e]nabled, [x]disabled, [i]nstalled

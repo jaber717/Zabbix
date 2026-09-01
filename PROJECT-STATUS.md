@@ -4,33 +4,32 @@
 
 Milestone: **M1 — Offline Build Pipeline**
 
-State: **IN-PROGRESS — RESUMED**
+State: **COMPLETE**
 
 Milestone baseline commit: `62ba3275a3f016b2f07d333684286b59c1188cfa`
 
 M0.5 source-readiness commit: `b2180c00d0a6029a65996055ae7becbcddc5f0b7`
 
-M0.5 source readiness is complete. M1 was explicitly authorized on 2026-09-01,
-implemented to the dependency gate, and stopped. The clean original-source
-transaction could not resolve `fping`, an exact requirement of
-`zabbix-server-pgsql-7.0.30-release1.el9.x86_64`. M2 has not been started and is
-blocked until M1 completes.
-
-The owner then approved a narrow amendment: the official Zabbix non-supported
-RHEL 9 x86_64 source may provide only the pinned `fping` package. M1 has resumed
-from the dependency gate; EPEL and every broader source expansion remain
-prohibited.
+M0.5 source readiness and M1 are complete. The first M1 transaction stopped at
+the missing-`fping` dependency gate. After the owner approved the official
+Zabbix non-supported RHEL 9 x86_64 source for only the pinned `fping` RPM, two
+fresh clean builds completed without EPEL or any broader source expansion.
+M2 has not been started; its gate is ready for separate explicit authorization.
 
 M1 pipeline source commit: `fbf3573`
 
 M1 blocked-run evidence commit: `499f35a`
 
+M1 fping source-policy commit: `c6dedeb`
+
+M1 accepted build source commit: `91947c3`
+
 ## Gate and blocker matrix
 
 | Item | Current evidence | Gate impact |
 |---|---|---|
-| RHEL source repository readiness | BaseOS/AppStream and official Zabbix 7.0 sources passed host and isolated clean-installroot metadata/query tests. | RESOLVED; M1 READY |
-| `fping` source for Zabbix Server | Narrow official Zabbix non-supported source approved for pinned `fping` only; metadata, NEVRA, SHA256, key fingerprint, and signature independently verified. | RESOLVED FOR AMENDED M1; controls mandatory |
+| RHEL source repository readiness | BaseOS/AppStream and official Zabbix 7.0 sources passed host and isolated clean-installroot metadata/query tests. | RESOLVED; M1 COMPLETE |
+| `fping` source for Zabbix Server | The non-supported source contributed only `fping-0:5.1-1.el9.x86_64`; repository metadata, SHA256, key fingerprint, signature, and provenance passed. | RESOLVED; M1 COMPLETE |
 | NetBox VM/tag/custom-field permission | Existing read-only credential is denied for these endpoints. | BLOCKS M4 |
 | NetBox/portal version mismatch | NetBox reports 6.0.8; portal declares 4.6.9. | BLOCKS/AFFECTS M4 and M6 |
 | PNETLab/EVE stopped | QEMU 110 and 120 were stopped and left unchanged. | Prerequisite only for M8 |
@@ -39,18 +38,23 @@ See `docs/DISCOVERY.md` and `evidence/discovery/REQUIRED-EVIDENCE.md`.
 
 ## M1 result
 
-- Compatibility/source profile, isolated resolver, signature verification,
-  modulemd filtering, local-only validation, manifests, allow-list assembly,
-  wheel scaffolding, and negative-test automation were implemented and syntax
-  checked.
-- Build 1 used an empty RPM database, enabled PostgreSQL 16, PHP 8.3, and nginx
-  1.24 only in the disposable root, and saw only BaseOS, AppStream, and the
-  temporary official Zabbix source.
-- The actual `dnf download --resolve --alldeps` transaction failed because no
-  approved source provides `fping`. Per the M1 stop policy, no repository,
-  artifact, reproducibility build, or post-build negative suite was attempted.
-- See `evidence/m1/ACCEPTANCE.md` for every gate status and
-  `evidence/m1/resolution/` for the raw resolver output.
+- Build 1 and Build 2 each completed in a fresh empty RPM database with 313
+  locked RPMs and zero wheels. Source counts are BaseOS 167, AppStream 132,
+  official Zabbix 13, and non-supported `fping` 1.
+- PostgreSQL 16, PHP 8.3, and nginx 1.24 module metadata was preserved. Local-only
+  module enable, package resolution, main installation, and separate PostgreSQL
+  and SQLite proxy installations passed with all external repositories disabled.
+- Every RPM signature passed in an isolated trust database. The `fping` RPM is
+  locked with its exact upstream repository, NEVRA, SHA256, and pinned official
+  Zabbix signing-key fingerprint.
+- The nine-case negative suite passed. Build 2 matched Build 1 for the lockfile,
+  modular metadata, artifact allow-list, RPM checksums/provenance, and byte-level
+  repository contents.
+- Accepted artifact: `zabbix-rhel96-offline-1.0.0-build1.tar.gz`, 178093296 bytes,
+  SHA256 `dbcd9a1185a21f1bc44bff356f06088ac63d77a5bb8fe539ad573280d9cef42b`.
+- See `evidence/m1/ACCEPTANCE.md`, `evidence/m1/final-build1/raw/`, and
+  `evidence/m1/final-build2/raw/`. The original stopped run remains under
+  `evidence/m1/resolution/`.
 
 ## M0.5 acceptance
 
@@ -110,8 +114,17 @@ See `docs/DISCOVERY.md` and `evidence/discovery/REQUIRED-EVIDENCE.md`.
 - Module state, release pin, SELinux policy/mode, firewall, or networking modified:
   **No**.
 - DNF metadata cache changed: **Yes, expected** from authorized `makecache` tests.
+- Persistently enabled repositories after M1: **Unchanged by M1** — BaseOS,
+  AppStream, and the two pre-existing NetBox offline repositories are visible.
+  No temporary M1/Zabbix repository definition file exists; every build
+  transaction disabled all global repositories before enabling its exact source
+  set, so the NetBox repositories had zero build influence.
 - Secrets placed in evidence or documentation: **No observed occurrence**; M0
   staged-content scans found no private-key marker or credential-like literal.
-- M1 disposable roots: **Removed** after the resolver failure.
-- M1 host package/module hashes: **Unchanged during the pipeline after the
-  authorized tool transaction**.
+- M1 disposable roots: **Removed** after each accepted build; final active-root
+  inventory was empty.
+- M1 host package/module hashes: **Unchanged during both accepted builds after
+  the authorized tool transaction**; final host Zabbix package inventory was
+  empty.
+- M1 output disk use at closeout: **1.5 GiB** under the remote build output
+  directory; `/home` retained **21 GiB free** and `/` retained **46 GiB free**.

@@ -1,0 +1,6 @@
+SOURCE=Build VM /home/jaber/zabbix-platform-m1-91947c3/build/out/m1-accepted-build2/dist/zabbix-rhel96-offline-1.0.0-build1.tar.gz
+DESTINATION=C:\Users\jaber\Documents\Home-Server\zabbix-platform\dist\m1-accepted-build2\zabbix-rhel96-offline-1.0.0-build1.tar.gz
+EXPECTED_SHA256=dbcd9a1185a21f1bc44bff356f06088ac63d77a5bb8fe539ad573280d9cef42b
+ACTUAL_SHA256=dbcd9a1185a21f1bc44bff356f06088ac63d77a5bb8fe539ad573280d9cef42b
+BYTES=178093296
+RESULT=PASS

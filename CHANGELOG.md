@@ -22,6 +22,11 @@
   dependencies for the PostgreSQL/nginx target.
 - Normalized RPM and repository-metadata timestamps to the source-date epoch so
   meaningful reproducibility includes a stable artifact file allow-list.
+- Completed M1 with two fresh clean builds: 313 locked and signature-verified
+  RPMs, preserved PostgreSQL 16/PHP 8.3/nginx 1.24 module metadata, local-only
+  installs, an allow-listed offline artifact, nine passing negative tests, and
+  a passing reproducibility comparison including byte-identical repository
+  content.
 - Milestone 0 repository scaffold and durable specifications.
 - Capability, Proxmox, NetBox, portal-source, Internet, and build-VM discovery
   evidence.
@@ -34,5 +39,5 @@
 - Completed M0.5: enabled only standard RHEL 9 BaseOS/AppStream, verified official
   Zabbix 7.0.30 package metadata and signing-key information, and passed isolated
   clean-installroot source/dependency resolution with NetBox repositories excluded.
-- Resolved the M1 source-readiness blocker; M1 remains unstarted pending explicit
-  approval.
+- Resolved the M1 source-readiness blocker; M1 subsequently began only after
+  explicit approval.

@@ -1,0 +1,22 @@
+COMMAND=observed_utc
+2026-09-01T00:52:19Z
+COMMAND=enabled_repositories
+repo id                          repo name
+netbox-offline-base              NetBox RHEL 9.6 offline base closure
+netbox-offline-modules           NetBox RHEL 9.6 offline modular content
+rhel-9-for-x86_64-appstream-rpms Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)
+rhel-9-for-x86_64-baseos-rpms    Red Hat Enterprise Linux 9 for x86_64 - BaseOS (RPMs)
+COMMAND=repo_definition_files
+netbox-offline-base.repo
+netbox-offline-modules.repo
+redhat.repo
+COMMAND=temporary_m1_repo_definitions
+COMMAND=active_disposable_roots
+COMMAND=host_zabbix_packages
+COMMAND=workspace_disk_consumption
+1.5G	/home/jaber/zabbix-platform-m1-91947c3/build/out
+208K	/home/jaber/zabbix-platform-m1-91947c3
+COMMAND=filesystem_free_space
+Filesystem             Size  Used Avail Use% Mounted on
+/dev/mapper/rhel-root   50G  3.7G   46G   8% /
+/dev/mapper/rhel-home   24G  3.4G   21G  14% /home

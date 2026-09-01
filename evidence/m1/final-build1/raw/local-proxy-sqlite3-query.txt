@@ -1,0 +1,1 @@
+zabbix-proxy-sqlite3-7.0.30-release1.el9.x86_64

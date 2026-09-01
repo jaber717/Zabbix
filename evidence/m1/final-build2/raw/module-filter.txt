@@ -1,0 +1,4 @@
+selected_documents=13
+postgresql:16=7
+php:8.3=2
+nginx:1.24=4

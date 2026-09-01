@@ -139,3 +139,22 @@ only `https://repo.zabbix.com/non-supported/rhel/9/x86_64/` for
 `973ea94723ef69a9196c9f72f44ca414b7857a75ccc02e8a6492293fb010073c`, and it must
 verify against Zabbix key fingerprint
 `D9AA 84C2 B617 479C 6E4F CF4D 19F2 4753 08EF A7DD`.
+
+## Accepted M1 result
+
+The accepted runs `m1-accepted-build1` and `m1-accepted-build2` each resolved
+313 RPMs: BaseOS 167, AppStream 132, official Zabbix 13, and exactly one package
+from the non-supported source (`fping`). Both used fresh build roots, retained
+13 selected modulemd documents, passed local-only installation, and left the
+post-tooling host RPM and module hashes unchanged.
+
+The second run produced the accepted transfer copy:
+
+- `zabbix-rhel96-offline-1.0.0-build1.tar.gz`
+- 178093296 bytes
+- SHA256 `dbcd9a1185a21f1bc44bff356f06088ac63d77a5bb8fe539ad573280d9cef42b`
+
+The reproducibility comparison passed for the RPM lock, modular metadata,
+release-tree allow-list, RPM checksums/provenance, and byte-identical repository
+contents. The outer archive hash is not required to match because the allowed
+`BUILD-INFO.json` timestamp records each run's actual build time.

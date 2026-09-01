@@ -1,0 +1,1 @@
+fping|fping-0:5.1-1.el9.x86_64|m1-zabbix-nonsupported

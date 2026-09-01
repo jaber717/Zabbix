@@ -1,8 +1,8 @@
 # Implementation Plan
 
-M0 and M0.5 are complete. M1 resumed after a narrowly approved source-policy
-amendment for `fping` and is IN-PROGRESS. Every milestone ends with a stop/review
-gate.
+M0, M0.5, and M1 are complete. M1 passed after a narrowly approved source-policy
+amendment for `fping`. M2 has not started and requires separate explicit
+authorization. Every milestone ends with a stop/review gate.
 
 ## M0 — Discovery + Specifications
 
@@ -23,7 +23,8 @@ gate.
 
 | Dependency | Affected milestone |
 |---|---|
-| Verified usable RHEL BaseOS/AppStream and official Zabbix 7.0 source | RESOLVED by M0.5; M1 READY |
+| Verified usable RHEL BaseOS/AppStream and official Zabbix 7.0 source | RESOLVED by M0.5; M1 COMPLETE |
+| Pinned `fping` from the fping-only official Zabbix non-supported source | RESOLVED by M1; no broader source authorized |
 | NetBox VM/tag/custom-field read permission | Blocks M4 |
 | NetBox 6.0.8 versus portal 4.6.9 compatibility | Blocks/affects M4 and M6 |
 | PNETLab/EVE availability | Prerequisite only for M8 |
@@ -48,8 +49,8 @@ gate.
 
 ## M1 — Offline Build Pipeline
 
-- **State:** IN-PROGRESS (resumed 2026-09-01); the official Zabbix non-supported
-  RHEL 9 source is authorized only for pinned `fping`. M2 is not authorized.
+- **State:** COMPLETE (2026-09-01); the official Zabbix non-supported RHEL 9
+  source supplied only pinned `fping`. M2 is not authorized or started.
 - **Scope:** Compatibility profile, clean installroot, RPM/module closure, Python
   wheels, artifact assembly, manifests, hashes, and build verification.
 - **Inputs:** Completed RHEL build evidence; verified usable BaseOS/AppStream and
@@ -64,10 +65,14 @@ gate.
   licensing/provenance gaps, artifact contamination.
 - **Stop condition:** Reproducible verified build artifact; do not install it.
 - **Prior stop:** The initial source set lacked `fping`; retained as evidence.
-  The amended run must still stop on any other missing dependency or source
-  expansion.
+  The amended runs found no further missing dependency or source expansion.
+- **Result:** Two fresh builds passed; 313-RPM closure, lock/provenance,
+  signatures, modular metadata, local-only installations, artifact checks, nine
+  negative tests, and meaningful reproducibility all passed.
 
 ## M2 — Installer
+
+- **State:** NOT STARTED; gate ready for separate explicit authorization.
 
 - **Scope:** Bootstrap/Ansible for PostgreSQL, Zabbix, nginx/PHP, TLS, SELinux,
   firewalld, systemd, backup, upgrade skeleton, and state model.

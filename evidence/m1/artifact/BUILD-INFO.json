@@ -1,0 +1,37 @@
+{
+  "release": "zabbix-rhel96-offline-1.0.0-build1",
+  "designation": "M1 pre-install release candidate",
+  "build_timestamp_utc": "2026-09-01T00:44:17Z",
+  "git": {
+    "commit": "91947c3",
+    "dirty": "false"
+  },
+  "build_host": "netbox-dev",
+  "target": {
+    "rhel_release": "9.6",
+    "arch": "x86_64"
+  },
+  "zabbix": "7.0.30-release1.el9",
+  "streams": {
+    "postgresql": "16",
+    "php": "8.3",
+    "nginx": "1.24"
+  },
+  "python": {
+    "abi": "3.11",
+    "status": "selected; requirements intentionally empty pending M4"
+  },
+  "source_repository_ids": [
+    "rhel-9-for-x86_64-baseos-rpms",
+    "rhel-9-for-x86_64-appstream-rpms",
+    "m1-zabbix",
+    "m1-zabbix-nonsupported"
+  ],
+  "metadata": {
+    "upstream_appstream_modulemd_sha256": "7e7c12ccfb401ac8c27aa53c2a66f00f3dad93360ac144bb443d07256d496830",
+    "local_repomd_sha256": "4c2b63548f25d52eac92ac88e8130d26fddde9ed915d6c56c1f58ac41ddea386"
+  },
+  "rpm_count": 313,
+  "wheel_count": 0,
+  "artifact_sha256": null
+}

@@ -1,0 +1,20 @@
+Updating Subscription Management repositories.
+Unable to read consumer identity
+
+This system is not registered with an entitlement server. You can use "rhc" or "subscription-manager" to register.
+
+Added m1-local repo from file:///home/jaber/zabbix-platform-m1-91947c3/build/out/m1-accepted-build1/repository
+Last metadata expiration check: 0:00:03 ago on Tue 01 Sep 2026 03:31:46 AM +03.
+Dependencies resolved.
+================================================================================
+ Package           Architecture     Version             Repository         Size
+================================================================================
+Enabling module streams:
+ nginx                              1.24                                       
+ php                                8.3                                        
+ postgresql                         16                                         
+
+Transaction Summary
+================================================================================
+
+Complete!

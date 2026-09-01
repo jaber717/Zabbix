@@ -1,0 +1,9 @@
+PASS: release top-level allow-list
+PASS: artifact file hygiene
+PASS: secret-pattern scan
+PASS: runtime lab-leakage scan
+PASS: manifest bidirectional coverage
+PASS: release SHA256SUMS
+PASS: RPM lock and manifest
+PASS: repository and modular metadata present
+RESULT=PASS
