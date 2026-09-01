@@ -81,6 +81,19 @@ class RuntimeSecretTests(unittest.TestCase):
 
 
 class LockAndPortTests(unittest.TestCase):
+    def test_database_role_installs_schema_payload_before_import(self):
+        defaults = (
+            ROOT / "installer/roles/postgresql/defaults/main.yml"
+        ).read_text(encoding="utf-8")
+        tasks = (
+            ROOT / "installer/roles/postgresql/tasks/main.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("- zabbix-sql-scripts", defaults)
+        self.assertLess(
+            tasks.index("Install PostgreSQL 16 from the offline repository"),
+            tasks.index("Import the accepted Zabbix schema only when absent"),
+        )
+
     def test_m1_lock_contains_exact_fping(self):
         locked = locked_packages.read_locked_nevras(ROOT / "rpm-lockfile.txt")
         self.assertIn("fping-0:5.1-1.el9.x86_64", locked)

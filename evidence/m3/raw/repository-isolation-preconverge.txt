@@ -1,0 +1,30 @@
+EXECUTION_TIME=2026-09-01T04:49:52+03:00
+PRE_NETBOX_SERVICE=active
+PRE_NETBOX_RQ_SERVICE=active
+PRE_POSTGRESQL_SERVICE=active
+PRE_NGINX_SERVICE=active
+PRE_NETBOX_HTTP_CODE=200
+PRE_PG_HBA_SHA256=33fab0fb5a6fdac2e4dd4e2976037dc6d012d8b86d85a002fd296e88338d6e04
+PRE_POSTGRESQL_CONF_SHA256=7ab9bd605e38379dd2453eaa791b6644c9bae8072947e12ce9ebaad11295bc4c
+PRE_RPM_HASH=853a74a7907d1a0f660ca4693bba4664ab2d2e12bd1e3d5a8d3422388468ccb8
+STRICT_REPOLIST
+repo id                                 repo name
+m3-local                                m3-local
+STRICT_MODULES
+m3-local
+Name       Stream   Profiles               Summary
+nginx      1.24 [e] common                 nginx webserver
+php        8.3      common, devel, minimal PHP scripting language
+postgresql 16 [e]   client, server         PostgreSQL server and client module
+
+Hint: [d]efault, [e]nabled, [x]disabled, [i]nstalled
+STRICT_TARGET_PROVIDERS
+ansible-core-1:2.14.18-1.el9.x86_64|m3-local
+fping-0:5.1-1.el9.x86_64|m3-local
+nginx-1:1.24.0-4.module+el9.5.0+22954+e2d70a1c.1.x86_64|m3-local
+postgresql-server-0:16.10-1.module+el9.6.0+23420+848a4539.x86_64|m3-local
+zabbix-agent2-0:7.0.30-release1.el9.x86_64|m3-local
+zabbix-server-pgsql-0:7.0.30-release1.el9.x86_64|m3-local
+zabbix-web-pgsql-0:7.0.30-release1.el9.noarch|m3-local
+EXTERNAL_URLS_IN_M3_REPO_DEFINITION=0
+REPOSITORY_ISOLATION_PREFLIGHT=PASS

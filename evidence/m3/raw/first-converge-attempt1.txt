@@ -1,0 +1,91 @@
+FIRST_CONVERGE_LOG_BYTES=46070
+FIRST_CONVERGE_LOG_SHA256=4f67b9c4d70221b498595c92c179eae4d870953516b5227f3e85f602c8a3b90f
+FIRST_CONVERGE_TASK_SUMMARY
+PLAY [Install and configure the offline Zabbix platform] ***********************
+TASK [Gathering Facts] *********************************************************
+TASK [offline_repo : Validate immutable offline input paths] *******************
+TASK [offline_repo : Check required M1 release files] **************************
+TASK [offline_repo : Require every immutable M1 input] *************************
+TASK [offline_repo : Read the accepted compatibility profile] ******************
+TASK [offline_repo : Decode the compatibility profile] *************************
+TASK [offline_repo : Enforce accepted target and component versions] ***********
+TASK [offline_repo : Configure the file-only repository] ***********************
+TASK [offline_repo : Enable required streams from local metadata only] *********
+changed: [zabbix-target] => (item=php:8.3)
+TASK [offline_repo : Prove the isolated repository is readable] ****************
+TASK [offline_repo : Reject unexpected repository visibility] ******************
+TASK [os_baseline : Enforce the accepted target platform] **********************
+TASK [os_baseline : Read current SELinux enforcement] **************************
+TASK [os_baseline : Require SELinux Enforcing before any installation] *********
+TASK [os_baseline : Locate required target commands] ***************************
+TASK [os_baseline : Require baseline command availability] *********************
+TASK [os_baseline : Create controlled platform directories] ********************
+changed: [zabbix-target] => (item={'path': '/etc/zabbix-offline', 'mode': '0750'})
+changed: [zabbix-target] => (item={'path': '/usr/libexec/zabbix-offline', 'mode': '0755'})
+changed: [zabbix-target] => (item={'path': '/etc/credstore.encrypted', 'mode': '0700'})
+changed: [zabbix-target] => (item={'path': '/var/backups/zabbix-offline', 'mode': '0700'})
+TASK [os_baseline : Install the release-state helper] **************************
+changed: [zabbix-target]
+TASK [os_baseline : Validate database password input metadata] *****************
+TASK [os_baseline : Require a root-only database password input] ***************
+TASK [os_baseline : Read the ephemeral database password input] ****************
+TASK [os_baseline : Hold the database password only in protected Ansible memory] ***
+TASK [os_baseline : Validate database password transport safety] ***************
+TASK [os_baseline : Inspect existing release state] ****************************
+TASK [os_baseline : Decode release state] **************************************
+TASK [os_baseline : Allow only fresh installation or same-release convergence] ***
+TASK [postgresql : Validate PostgreSQL operating mode and identifiers] *********
+TASK [postgresql : Install PostgreSQL 16 from the offline repository] **********
+TASK [postgresql : Detect an initialized PostgreSQL cluster] *******************
+TASK [postgresql : Initialize PostgreSQL only when no cluster exists] **********
+skipping: [zabbix-target]
+TASK [postgresql : Configure local PostgreSQL listen addresses] ****************
+TASK [postgresql : Require SCRAM password storage] *****************************
+changed: [zabbix-target]
+TASK [postgresql : Add bounded Zabbix authentication without replacing existing policy] ***
+changed: [zabbix-target]
+TASK [postgresql : Enable and start PostgreSQL] ********************************
+TASK [postgresql : Apply pending PostgreSQL configuration before database work] ***
+RUNNING HANDLER [postgresql : Reload PostgreSQL] *******************************
+changed: [zabbix-target]
+TASK [postgresql : Check whether the Zabbix database role exists] **************
+TASK [postgresql : Create the least-privilege Zabbix database role once] *******
+changed: [zabbix-target]
+TASK [postgresql : Check whether the Zabbix database exists] *******************
+TASK [postgresql : Create the Zabbix database once] ****************************
+changed: [zabbix-target]
+TASK [postgresql : Verify the supplied credential against the managed database] ***
+TASK [postgresql : Check for an existing Zabbix schema] ************************
+TASK [postgresql : Import the accepted Zabbix schema only when absent] *********
+fatal: [zabbix-target]: FAILED! => {"changed": true, "cmd": "set -o pipefail && gzip -dc -- /usr/share/zabbix-sql-scripts/postgresql/server.sql.gz | psql --no-psqlrc --set ON_ERROR_STOP=1 --dbname zabbix", "delta": "0:00:00.011172", "end": "2026-09-01 04:50:46.182138", "msg": "non-zero return code", "rc": 1, "start": "2026-09-01 04:50:46.170966", "stderr": "gzip: /usr/share/zabbix-sql-scripts/postgresql/server.sql.gz: No such file or directory", "stderr_lines": ["gzip: /usr/share/zabbix-sql-scripts/postgresql/server.sql.gz: No such file or directory"], "stdout": "", "stdout_lines": []}
+PLAY RECAP *********************************************************************
+zabbix-target              : ok=40   changed=8    unreachable=0    failed=1    skipped=1    rescued=0    ignored=0
+POST_FAILURE_SHARED_SERVICES
+netbox.service=active
+netbox-rq.service=active
+postgresql.service=active
+nginx.service=active
+redis.service=active
+POST_FAILURE_NETBOX_HTTP=200
+POST_FAILURE_DATABASES
+netbox|bytes=28619235
+postgres|bytes=7688675
+template0|bytes=7520783
+template1|bytes=7602703
+zabbix|bytes=7680483
+NETBOX_USER_TABLES=198
+ZABBIX_USER_TABLES=0
+PG_HBA_EFFECTIVE
+local   all       postgres                                peer
+local   all       all                                     peer
+host    zabbix  zabbix  127.0.0.1/32  scram-sha-256
+host    zabbix  zabbix  ::1/128       scram-sha-256
+local   all             all                                     peer
+host    all             all             127.0.0.1/32          scram-sha-256
+host    all             all             ::1/128                 ident
+local   replication     all                                     peer
+host    replication     all             127.0.0.1/32            ident
+host    replication     all             ::1/128                 ident
+FIRST_CONVERGE_RESULT=FAIL
+FAILURE_REASON=zabbix-sql-scripts package not installed before schema import
+DESTRUCTIVE_DATABASE_OPERATION=NONE

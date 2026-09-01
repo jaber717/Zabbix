@@ -3,5 +3,7 @@ postgresql_packages:
   - postgresql
   - postgresql-server
   - postgresql-contrib
+  # The database role imports this package's schema before server configuration.
+  - zabbix-sql-scripts
 postgresql_data_directory: /var/lib/pgsql/data
 postgresql_schema_path: "{{ offline_compat_profile.zabbix.sql_paths.postgresql_server }}"

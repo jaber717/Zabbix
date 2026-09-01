@@ -1,0 +1,18 @@
+EXECUTION_TIME=2026-09-01T04:49:15+03:00
+ARTIFACT_BYTES=178093296
+ARTIFACT_SHA256=dbcd9a1185a21f1bc44bff356f06088ac63d77a5bb8fe539ad573280d9cef42b
+RELEASE_SHA256SUMS=PASS
+INSTALLER_MANIFEST=PASS
+INPUT=/root/zabbix-m3-inputs/installer-vars.yml OWNER=root:root MODE=600 BYTES=1404
+INPUT=/root/zabbix-m3-inputs/db-password OWNER=root:root MODE=600 BYTES=49
+INPUT=/root/zabbix-m3-inputs/zabbix-01.lab.crt OWNER=root:root MODE=644 BYTES=1513
+INPUT=/root/zabbix-m3-inputs/zabbix-01.lab.key OWNER=root:root MODE=600 BYTES=2484
+subject=CN=zabbix-01.lab
+issuer=CN=zabbix-01.lab
+notBefore=Sep  1 01:49:16 2026 GMT
+notAfter=Dec  4 01:49:16 2028 GMT
+sha256 Fingerprint=8A:01:A4:4E:27:48:92:3E:CF:9C:28:5E:6F:59:95:44:68:F1:13:E5:6E:9E:77:C4:59:CB:55:40:BA:46:21:73
+X509v3 Subject Alternative Name:
+    DNS:zabbix-01.lab, IP Address:192.168.1.91
+RESULT=PASS_PREFLIGHT
+ARTIFACT_STAGING_RESULT=PASS
