@@ -1,0 +1,1355 @@
+Updating Subscription Management repositories.
+
+This system has release set to 9.6 and it receives updates only for this release.
+
+Last metadata expiration check: 0:51:25 ago on Tue 01 Sep 2026 04:50:20 AM +03.
+Package ansible-core-1:2.14.18-1.el9.x86_64 is already installed.
+Dependencies resolved.
+Nothing to do.
+Complete!
+
+PLAY [Install and configure the offline Zabbix platform] ***********************
+
+TASK [Gathering Facts] *********************************************************
+ok: [zabbix-target]
+
+TASK [offline_repo : Validate immutable offline input paths] *******************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [offline_repo : Check required M1 release files] **************************
+ok: [zabbix-target] => (item=/opt/zabbix-offline/release/compat/zabbix-7.0.yaml)
+ok: [zabbix-target] => (item=/opt/zabbix-offline/release/rpm-lockfile.txt)
+ok: [zabbix-target] => (item=/opt/zabbix-offline/release/repository/repodata/repomd.xml)
+ok: [zabbix-target] => (item=/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-redhat-release)
+ok: [zabbix-target] => (item=/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-B5333005)
+ok: [zabbix-target] => (item=/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-08EFA7DD)
+
+TASK [offline_repo : Require every immutable M1 input] *************************
+ok: [zabbix-target] => (item={'changed': False, 'stat': {'exists': True, 'path': '/opt/zabbix-offline/release/compat/zabbix-7.0.yaml', 'mode': '0644', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': True, 'isfifo': False, 'islnk': False, 'issock': False, 'uid': 0, 'gid': 0, 'size': 2614, 'inode': 34120450, 'dev': 64768, 'nlink': 1, 'atime': 1788227175.9222267, 'mtime': 1788222145.0, 'ctime': 1788227175.9062269, 'wusr': True, 'rusr': True, 'xusr': False, 'wgrp': False, 'rgrp': True, 'xgrp': False, 'woth': False, 'roth': True, 'xoth': False, 'isuid': False, 'isgid': False, 'blocks': 8, 'block_size': 4096, 'device_type': 0, 'readable': True, 'writeable': True, 'executable': False, 'pw_name': 'root', 'gr_name': 'root', 'checksum': '2fa4ca4e883794db4613fb3ece6d1dde739ddcce', 'mimetype': 'application/json', 'charset': 'us-ascii', 'version': '3571513140', 'attributes': [], 'attr_flags': ''}, 'invocation': {'module_args': {'path': '/opt/zabbix-offline/release/compat/zabbix-7.0.yaml', 'follow': False, 'get_md5': False, 'get_checksum': True, 'get_mime': True, 'get_attributes': True, 'checksum_algorithm': 'sha1'}}, 'failed': False, 'item': '/opt/zabbix-offline/release/compat/zabbix-7.0.yaml', 'ansible_loop_var': 'item'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "ansible_loop_var": "item",
+        "changed": false,
+        "failed": false,
+        "invocation": {
+            "module_args": {
+                "checksum_algorithm": "sha1",
+                "follow": false,
+                "get_attributes": true,
+                "get_checksum": true,
+                "get_md5": false,
+                "get_mime": true,
+                "path": "/opt/zabbix-offline/release/compat/zabbix-7.0.yaml"
+            }
+        },
+        "item": "/opt/zabbix-offline/release/compat/zabbix-7.0.yaml",
+        "stat": {
+            "atime": 1788227175.9222267,
+            "attr_flags": "",
+            "attributes": [],
+            "block_size": 4096,
+            "blocks": 8,
+            "charset": "us-ascii",
+            "checksum": "2fa4ca4e883794db4613fb3ece6d1dde739ddcce",
+            "ctime": 1788227175.9062269,
+            "dev": 64768,
+            "device_type": 0,
+            "executable": false,
+            "exists": true,
+            "gid": 0,
+            "gr_name": "root",
+            "inode": 34120450,
+            "isblk": false,
+            "ischr": false,
+            "isdir": false,
+            "isfifo": false,
+            "isgid": false,
+            "islnk": false,
+            "isreg": true,
+            "issock": false,
+            "isuid": false,
+            "mimetype": "application/json",
+            "mode": "0644",
+            "mtime": 1788222145.0,
+            "nlink": 1,
+            "path": "/opt/zabbix-offline/release/compat/zabbix-7.0.yaml",
+            "pw_name": "root",
+            "readable": true,
+            "rgrp": true,
+            "roth": true,
+            "rusr": true,
+            "size": 2614,
+            "uid": 0,
+            "version": "3571513140",
+            "wgrp": false,
+            "woth": false,
+            "writeable": true,
+            "wusr": true,
+            "xgrp": false,
+            "xoth": false,
+            "xusr": false
+        }
+    },
+    "msg": "All assertions passed"
+}
+ok: [zabbix-target] => (item={'changed': False, 'stat': {'exists': True, 'path': '/opt/zabbix-offline/release/rpm-lockfile.txt', 'mode': '0644', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': True, 'isfifo': False, 'islnk': False, 'issock': False, 'uid': 0, 'gid': 0, 'size': 43701, 'inode': 1131982, 'dev': 64768, 'nlink': 1, 'atime': 1788227176.4002213, 'mtime': 1788222145.0, 'ctime': 1788227175.9072268, 'wusr': True, 'rusr': True, 'xusr': False, 'wgrp': False, 'rgrp': True, 'xgrp': False, 'woth': False, 'roth': True, 'xoth': False, 'isuid': False, 'isgid': False, 'blocks': 88, 'block_size': 4096, 'device_type': 0, 'readable': True, 'writeable': True, 'executable': False, 'pw_name': 'root', 'gr_name': 'root', 'checksum': 'b66d92bf4dcf70e3780c320d8582aea05fed72c3', 'mimetype': 'text/plain', 'charset': 'us-ascii', 'version': '3703798731', 'attributes': [], 'attr_flags': ''}, 'invocation': {'module_args': {'path': '/opt/zabbix-offline/release/rpm-lockfile.txt', 'follow': False, 'get_md5': False, 'get_checksum': True, 'get_mime': True, 'get_attributes': True, 'checksum_algorithm': 'sha1'}}, 'failed': False, 'item': '/opt/zabbix-offline/release/rpm-lockfile.txt', 'ansible_loop_var': 'item'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "ansible_loop_var": "item",
+        "changed": false,
+        "failed": false,
+        "invocation": {
+            "module_args": {
+                "checksum_algorithm": "sha1",
+                "follow": false,
+                "get_attributes": true,
+                "get_checksum": true,
+                "get_md5": false,
+                "get_mime": true,
+                "path": "/opt/zabbix-offline/release/rpm-lockfile.txt"
+            }
+        },
+        "item": "/opt/zabbix-offline/release/rpm-lockfile.txt",
+        "stat": {
+            "atime": 1788227176.4002213,
+            "attr_flags": "",
+            "attributes": [],
+            "block_size": 4096,
+            "blocks": 88,
+            "charset": "us-ascii",
+            "checksum": "b66d92bf4dcf70e3780c320d8582aea05fed72c3",
+            "ctime": 1788227175.9072268,
+            "dev": 64768,
+            "device_type": 0,
+            "executable": false,
+            "exists": true,
+            "gid": 0,
+            "gr_name": "root",
+            "inode": 1131982,
+            "isblk": false,
+            "ischr": false,
+            "isdir": false,
+            "isfifo": false,
+            "isgid": false,
+            "islnk": false,
+            "isreg": true,
+            "issock": false,
+            "isuid": false,
+            "mimetype": "text/plain",
+            "mode": "0644",
+            "mtime": 1788222145.0,
+            "nlink": 1,
+            "path": "/opt/zabbix-offline/release/rpm-lockfile.txt",
+            "pw_name": "root",
+            "readable": true,
+            "rgrp": true,
+            "roth": true,
+            "rusr": true,
+            "size": 43701,
+            "uid": 0,
+            "version": "3703798731",
+            "wgrp": false,
+            "woth": false,
+            "writeable": true,
+            "wusr": true,
+            "xgrp": false,
+            "xoth": false,
+            "xusr": false
+        }
+    },
+    "msg": "All assertions passed"
+}
+ok: [zabbix-target] => (item={'changed': False, 'stat': {'exists': True, 'path': '/opt/zabbix-offline/release/repository/repodata/repomd.xml', 'mode': '0644', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': True, 'isfifo': False, 'islnk': False, 'issock': False, 'uid': 0, 'gid': 0, 'size': 3564, 'inode': 101824777, 'dev': 64768, 'nlink': 1, 'atime': 1788227175.9252267, 'mtime': 1788222145.0, 'ctime': 1788227175.9062269, 'wusr': True, 'rusr': True, 'xusr': False, 'wgrp': False, 'rgrp': True, 'xgrp': False, 'woth': False, 'roth': True, 'xoth': False, 'isuid': False, 'isgid': False, 'blocks': 8, 'block_size': 4096, 'device_type': 0, 'readable': True, 'writeable': True, 'executable': False, 'pw_name': 'root', 'gr_name': 'root', 'checksum': '8650625c0778e148b702b9d60429a01aafd3b737', 'mimetype': 'text/xml', 'charset': 'us-ascii', 'version': '1083389634', 'attributes': [], 'attr_flags': ''}, 'invocation': {'module_args': {'path': '/opt/zabbix-offline/release/repository/repodata/repomd.xml', 'follow': False, 'get_md5': False, 'get_checksum': True, 'get_mime': True, 'get_attributes': True, 'checksum_algorithm': 'sha1'}}, 'failed': False, 'item': '/opt/zabbix-offline/release/repository/repodata/repomd.xml', 'ansible_loop_var': 'item'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "ansible_loop_var": "item",
+        "changed": false,
+        "failed": false,
+        "invocation": {
+            "module_args": {
+                "checksum_algorithm": "sha1",
+                "follow": false,
+                "get_attributes": true,
+                "get_checksum": true,
+                "get_md5": false,
+                "get_mime": true,
+                "path": "/opt/zabbix-offline/release/repository/repodata/repomd.xml"
+            }
+        },
+        "item": "/opt/zabbix-offline/release/repository/repodata/repomd.xml",
+        "stat": {
+            "atime": 1788227175.9252267,
+            "attr_flags": "",
+            "attributes": [],
+            "block_size": 4096,
+            "blocks": 8,
+            "charset": "us-ascii",
+            "checksum": "8650625c0778e148b702b9d60429a01aafd3b737",
+            "ctime": 1788227175.9062269,
+            "dev": 64768,
+            "device_type": 0,
+            "executable": false,
+            "exists": true,
+            "gid": 0,
+            "gr_name": "root",
+            "inode": 101824777,
+            "isblk": false,
+            "ischr": false,
+            "isdir": false,
+            "isfifo": false,
+            "isgid": false,
+            "islnk": false,
+            "isreg": true,
+            "issock": false,
+            "isuid": false,
+            "mimetype": "text/xml",
+            "mode": "0644",
+            "mtime": 1788222145.0,
+            "nlink": 1,
+            "path": "/opt/zabbix-offline/release/repository/repodata/repomd.xml",
+            "pw_name": "root",
+            "readable": true,
+            "rgrp": true,
+            "roth": true,
+            "rusr": true,
+            "size": 3564,
+            "uid": 0,
+            "version": "1083389634",
+            "wgrp": false,
+            "woth": false,
+            "writeable": true,
+            "wusr": true,
+            "xgrp": false,
+            "xoth": false,
+            "xusr": false
+        }
+    },
+    "msg": "All assertions passed"
+}
+ok: [zabbix-target] => (item={'changed': False, 'stat': {'exists': True, 'path': '/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-redhat-release', 'mode': '0644', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': True, 'isfifo': False, 'islnk': False, 'issock': False, 'uid': 0, 'gid': 0, 'size': 3682, 'inode': 68146631, 'dev': 64768, 'nlink': 1, 'atime': 1788227175.9222267, 'mtime': 1788222145.0, 'ctime': 1788227175.9062269, 'wusr': True, 'rusr': True, 'xusr': False, 'wgrp': False, 'rgrp': True, 'xgrp': False, 'woth': False, 'roth': True, 'xoth': False, 'isuid': False, 'isgid': False, 'blocks': 8, 'block_size': 4096, 'device_type': 0, 'readable': True, 'writeable': True, 'executable': False, 'pw_name': 'root', 'gr_name': 'root', 'checksum': '9333c0a06770787f21a1fe9f7c17484cfbd3a818', 'mimetype': 'text/plain', 'charset': 'us-ascii', 'version': '4152531797', 'attributes': [], 'attr_flags': ''}, 'invocation': {'module_args': {'path': '/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-redhat-release', 'follow': False, 'get_md5': False, 'get_checksum': True, 'get_mime': True, 'get_attributes': True, 'checksum_algorithm': 'sha1'}}, 'failed': False, 'item': '/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-redhat-release', 'ansible_loop_var': 'item'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "ansible_loop_var": "item",
+        "changed": false,
+        "failed": false,
+        "invocation": {
+            "module_args": {
+                "checksum_algorithm": "sha1",
+                "follow": false,
+                "get_attributes": true,
+                "get_checksum": true,
+                "get_md5": false,
+                "get_mime": true,
+                "path": "/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-redhat-release"
+            }
+        },
+        "item": "/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-redhat-release",
+        "stat": {
+            "atime": 1788227175.9222267,
+            "attr_flags": "",
+            "attributes": [],
+            "block_size": 4096,
+            "blocks": 8,
+            "charset": "us-ascii",
+            "checksum": "9333c0a06770787f21a1fe9f7c17484cfbd3a818",
+            "ctime": 1788227175.9062269,
+            "dev": 64768,
+            "device_type": 0,
+            "executable": false,
+            "exists": true,
+            "gid": 0,
+            "gr_name": "root",
+            "inode": 68146631,
+            "isblk": false,
+            "ischr": false,
+            "isdir": false,
+            "isfifo": false,
+            "isgid": false,
+            "islnk": false,
+            "isreg": true,
+            "issock": false,
+            "isuid": false,
+            "mimetype": "text/plain",
+            "mode": "0644",
+            "mtime": 1788222145.0,
+            "nlink": 1,
+            "path": "/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-redhat-release",
+            "pw_name": "root",
+            "readable": true,
+            "rgrp": true,
+            "roth": true,
+            "rusr": true,
+            "size": 3682,
+            "uid": 0,
+            "version": "4152531797",
+            "wgrp": false,
+            "woth": false,
+            "writeable": true,
+            "wusr": true,
+            "xgrp": false,
+            "xoth": false,
+            "xusr": false
+        }
+    },
+    "msg": "All assertions passed"
+}
+ok: [zabbix-target] => (item={'changed': False, 'stat': {'exists': True, 'path': '/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-B5333005', 'mode': '0644', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': True, 'isfifo': False, 'islnk': False, 'issock': False, 'uid': 0, 'gid': 0, 'size': 3163, 'inode': 68146630, 'dev': 64768, 'nlink': 1, 'atime': 1788227175.9222267, 'mtime': 1788222145.0, 'ctime': 1788227175.9062269, 'wusr': True, 'rusr': True, 'xusr': False, 'wgrp': False, 'rgrp': True, 'xgrp': False, 'woth': False, 'roth': True, 'xoth': False, 'isuid': False, 'isgid': False, 'blocks': 8, 'block_size': 4096, 'device_type': 0, 'readable': True, 'writeable': True, 'executable': False, 'pw_name': 'root', 'gr_name': 'root', 'checksum': '073f61126977922eb568d8a7502c62759d908680', 'mimetype': 'application/pgp-keys', 'charset': 'us-ascii', 'version': '2838951860', 'attributes': [], 'attr_flags': ''}, 'invocation': {'module_args': {'path': '/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-B5333005', 'follow': False, 'get_md5': False, 'get_checksum': True, 'get_mime': True, 'get_attributes': True, 'checksum_algorithm': 'sha1'}}, 'failed': False, 'item': '/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-B5333005', 'ansible_loop_var': 'item'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "ansible_loop_var": "item",
+        "changed": false,
+        "failed": false,
+        "invocation": {
+            "module_args": {
+                "checksum_algorithm": "sha1",
+                "follow": false,
+                "get_attributes": true,
+                "get_checksum": true,
+                "get_md5": false,
+                "get_mime": true,
+                "path": "/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-B5333005"
+            }
+        },
+        "item": "/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-B5333005",
+        "stat": {
+            "atime": 1788227175.9222267,
+            "attr_flags": "",
+            "attributes": [],
+            "block_size": 4096,
+            "blocks": 8,
+            "charset": "us-ascii",
+            "checksum": "073f61126977922eb568d8a7502c62759d908680",
+            "ctime": 1788227175.9062269,
+            "dev": 64768,
+            "device_type": 0,
+            "executable": false,
+            "exists": true,
+            "gid": 0,
+            "gr_name": "root",
+            "inode": 68146630,
+            "isblk": false,
+            "ischr": false,
+            "isdir": false,
+            "isfifo": false,
+            "isgid": false,
+            "islnk": false,
+            "isreg": true,
+            "issock": false,
+            "isuid": false,
+            "mimetype": "application/pgp-keys",
+            "mode": "0644",
+            "mtime": 1788222145.0,
+            "nlink": 1,
+            "path": "/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-B5333005",
+            "pw_name": "root",
+            "readable": true,
+            "rgrp": true,
+            "roth": true,
+            "rusr": true,
+            "size": 3163,
+            "uid": 0,
+            "version": "2838951860",
+            "wgrp": false,
+            "woth": false,
+            "writeable": true,
+            "wusr": true,
+            "xgrp": false,
+            "xoth": false,
+            "xusr": false
+        }
+    },
+    "msg": "All assertions passed"
+}
+ok: [zabbix-target] => (item={'changed': False, 'stat': {'exists': True, 'path': '/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-08EFA7DD', 'mode': '0644', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': True, 'isfifo': False, 'islnk': False, 'issock': False, 'uid': 0, 'gid': 0, 'size': 3163, 'inode': 68116155, 'dev': 64768, 'nlink': 1, 'atime': 1788227175.9222267, 'mtime': 1788222145.0, 'ctime': 1788227175.9062269, 'wusr': True, 'rusr': True, 'xusr': False, 'wgrp': False, 'rgrp': True, 'xgrp': False, 'woth': False, 'roth': True, 'xoth': False, 'isuid': False, 'isgid': False, 'blocks': 8, 'block_size': 4096, 'device_type': 0, 'readable': True, 'writeable': True, 'executable': False, 'pw_name': 'root', 'gr_name': 'root', 'checksum': '981b5f8caaba402cd958b5817be376b5b2cc19c1', 'mimetype': 'application/pgp-keys', 'charset': 'us-ascii', 'version': '2886045274', 'attributes': [], 'attr_flags': ''}, 'invocation': {'module_args': {'path': '/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-08EFA7DD', 'follow': False, 'get_md5': False, 'get_checksum': True, 'get_mime': True, 'get_attributes': True, 'checksum_algorithm': 'sha1'}}, 'failed': False, 'item': '/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-08EFA7DD', 'ansible_loop_var': 'item'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "ansible_loop_var": "item",
+        "changed": false,
+        "failed": false,
+        "invocation": {
+            "module_args": {
+                "checksum_algorithm": "sha1",
+                "follow": false,
+                "get_attributes": true,
+                "get_checksum": true,
+                "get_md5": false,
+                "get_mime": true,
+                "path": "/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-08EFA7DD"
+            }
+        },
+        "item": "/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-08EFA7DD",
+        "stat": {
+            "atime": 1788227175.9222267,
+            "attr_flags": "",
+            "attributes": [],
+            "block_size": 4096,
+            "blocks": 8,
+            "charset": "us-ascii",
+            "checksum": "981b5f8caaba402cd958b5817be376b5b2cc19c1",
+            "ctime": 1788227175.9062269,
+            "dev": 64768,
+            "device_type": 0,
+            "executable": false,
+            "exists": true,
+            "gid": 0,
+            "gr_name": "root",
+            "inode": 68116155,
+            "isblk": false,
+            "ischr": false,
+            "isdir": false,
+            "isfifo": false,
+            "isgid": false,
+            "islnk": false,
+            "isreg": true,
+            "issock": false,
+            "isuid": false,
+            "mimetype": "application/pgp-keys",
+            "mode": "0644",
+            "mtime": 1788222145.0,
+            "nlink": 1,
+            "path": "/opt/zabbix-offline/release/repository/gpg/RPM-GPG-KEY-ZABBIX-08EFA7DD",
+            "pw_name": "root",
+            "readable": true,
+            "rgrp": true,
+            "roth": true,
+            "rusr": true,
+            "size": 3163,
+            "uid": 0,
+            "version": "2886045274",
+            "wgrp": false,
+            "woth": false,
+            "writeable": true,
+            "wusr": true,
+            "xgrp": false,
+            "xoth": false,
+            "xusr": false
+        }
+    },
+    "msg": "All assertions passed"
+}
+
+TASK [offline_repo : Read the accepted compatibility profile] ******************
+ok: [zabbix-target]
+
+TASK [offline_repo : Decode the compatibility profile] *************************
+ok: [zabbix-target]
+
+TASK [offline_repo : Enforce accepted target and component versions] ***********
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [offline_repo : Configure the file-only repository] ***********************
+ok: [zabbix-target]
+
+TASK [offline_repo : Enable required streams from local metadata only] *********
+ok: [zabbix-target] => (item=postgresql:16)
+ok: [zabbix-target] => (item=php:8.3)
+ok: [zabbix-target] => (item=nginx:1.24)
+
+TASK [offline_repo : Prove the isolated repository is readable] ****************
+ok: [zabbix-target]
+
+TASK [offline_repo : Reject unexpected repository visibility] ******************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [os_baseline : Enforce the accepted target platform] **********************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [os_baseline : Read current SELinux enforcement] **************************
+ok: [zabbix-target]
+
+TASK [os_baseline : Require SELinux Enforcing before any installation] *********
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [os_baseline : Locate required target commands] ***************************
+ok: [zabbix-target] => (item=/usr/bin/dnf)
+ok: [zabbix-target] => (item=/usr/bin/sha256sum)
+ok: [zabbix-target] => (item=/usr/bin/systemctl)
+ok: [zabbix-target] => (item=/usr/bin/systemd-creds)
+ok: [zabbix-target] => (item=/usr/bin/openssl)
+ok: [zabbix-target] => (item=/usr/bin/python3)
+
+TASK [os_baseline : Require baseline command availability] *********************
+ok: [zabbix-target] => (item={'changed': False, 'stat': {'exists': True, 'path': '/usr/bin/dnf', 'mode': '0777', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': False, 'isfifo': False, 'islnk': True, 'issock': False, 'uid': 0, 'gid': 0, 'size': 5, 'inode': 101514413, 'dev': 64768, 'nlink': 1, 'atime': 1788217415.0873697, 'mtime': 1738941000.0, 'ctime': 1788130000.776793, 'wusr': True, 'rusr': True, 'xusr': True, 'wgrp': True, 'rgrp': True, 'xgrp': True, 'woth': True, 'roth': True, 'xoth': True, 'isuid': False, 'isgid': False, 'blocks': 0, 'block_size': 4096, 'device_type': 0, 'readable': True, 'writeable': True, 'executable': True, 'lnk_source': '/usr/bin/dnf-3', 'lnk_target': 'dnf-3', 'pw_name': 'root', 'gr_name': 'root', 'mimetype': 'inode/symlink', 'charset': 'binary', 'version': None, 'attributes': [], 'attr_flags': ''}, 'invocation': {'module_args': {'path': '/usr/bin/dnf', 'follow': False, 'get_md5': False, 'get_checksum': True, 'get_mime': True, 'get_attributes': True, 'checksum_algorithm': 'sha1'}}, 'failed': False, 'item': '/usr/bin/dnf', 'ansible_loop_var': 'item'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "ansible_loop_var": "item",
+        "changed": false,
+        "failed": false,
+        "invocation": {
+            "module_args": {
+                "checksum_algorithm": "sha1",
+                "follow": false,
+                "get_attributes": true,
+                "get_checksum": true,
+                "get_md5": false,
+                "get_mime": true,
+                "path": "/usr/bin/dnf"
+            }
+        },
+        "item": "/usr/bin/dnf",
+        "stat": {
+            "atime": 1788217415.0873697,
+            "attr_flags": "",
+            "attributes": [],
+            "block_size": 4096,
+            "blocks": 0,
+            "charset": "binary",
+            "ctime": 1788130000.776793,
+            "dev": 64768,
+            "device_type": 0,
+            "executable": true,
+            "exists": true,
+            "gid": 0,
+            "gr_name": "root",
+            "inode": 101514413,
+            "isblk": false,
+            "ischr": false,
+            "isdir": false,
+            "isfifo": false,
+            "isgid": false,
+            "islnk": true,
+            "isreg": false,
+            "issock": false,
+            "isuid": false,
+            "lnk_source": "/usr/bin/dnf-3",
+            "lnk_target": "dnf-3",
+            "mimetype": "inode/symlink",
+            "mode": "0777",
+            "mtime": 1738941000.0,
+            "nlink": 1,
+            "path": "/usr/bin/dnf",
+            "pw_name": "root",
+            "readable": true,
+            "rgrp": true,
+            "roth": true,
+            "rusr": true,
+            "size": 5,
+            "uid": 0,
+            "version": null,
+            "wgrp": true,
+            "woth": true,
+            "writeable": true,
+            "wusr": true,
+            "xgrp": true,
+            "xoth": true,
+            "xusr": true
+        }
+    },
+    "msg": "All assertions passed"
+}
+ok: [zabbix-target] => (item={'changed': False, 'stat': {'exists': True, 'path': '/usr/bin/sha256sum', 'mode': '0755', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': True, 'isfifo': False, 'islnk': False, 'issock': False, 'uid': 0, 'gid': 0, 'size': 40576, 'inode': 100799058, 'dev': 64768, 'nlink': 1, 'atime': 1788144402.2380095, 'mtime': 1733749107.0, 'ctime': 1788129948.7322645, 'wusr': True, 'rusr': True, 'xusr': True, 'wgrp': False, 'rgrp': True, 'xgrp': True, 'woth': False, 'roth': True, 'xoth': True, 'isuid': False, 'isgid': False, 'blocks': 80, 'block_size': 4096, 'device_type': 0, 'readable': True, 'writeable': True, 'executable': True, 'pw_name': 'root', 'gr_name': 'root', 'checksum': '436abdf023d1cea389276f4cb96148b07f8b995a', 'mimetype': 'application/x-pie-executable', 'charset': 'binary', 'version': '588947766', 'attributes': [], 'attr_flags': ''}, 'invocation': {'module_args': {'path': '/usr/bin/sha256sum', 'follow': False, 'get_md5': False, 'get_checksum': True, 'get_mime': True, 'get_attributes': True, 'checksum_algorithm': 'sha1'}}, 'failed': False, 'item': '/usr/bin/sha256sum', 'ansible_loop_var': 'item'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "ansible_loop_var": "item",
+        "changed": false,
+        "failed": false,
+        "invocation": {
+            "module_args": {
+                "checksum_algorithm": "sha1",
+                "follow": false,
+                "get_attributes": true,
+                "get_checksum": true,
+                "get_md5": false,
+                "get_mime": true,
+                "path": "/usr/bin/sha256sum"
+            }
+        },
+        "item": "/usr/bin/sha256sum",
+        "stat": {
+            "atime": 1788144402.2380095,
+            "attr_flags": "",
+            "attributes": [],
+            "block_size": 4096,
+            "blocks": 80,
+            "charset": "binary",
+            "checksum": "436abdf023d1cea389276f4cb96148b07f8b995a",
+            "ctime": 1788129948.7322645,
+            "dev": 64768,
+            "device_type": 0,
+            "executable": true,
+            "exists": true,
+            "gid": 0,
+            "gr_name": "root",
+            "inode": 100799058,
+            "isblk": false,
+            "ischr": false,
+            "isdir": false,
+            "isfifo": false,
+            "isgid": false,
+            "islnk": false,
+            "isreg": true,
+            "issock": false,
+            "isuid": false,
+            "mimetype": "application/x-pie-executable",
+            "mode": "0755",
+            "mtime": 1733749107.0,
+            "nlink": 1,
+            "path": "/usr/bin/sha256sum",
+            "pw_name": "root",
+            "readable": true,
+            "rgrp": true,
+            "roth": true,
+            "rusr": true,
+            "size": 40576,
+            "uid": 0,
+            "version": "588947766",
+            "wgrp": false,
+            "woth": false,
+            "writeable": true,
+            "wusr": true,
+            "xgrp": true,
+            "xoth": true,
+            "xusr": true
+        }
+    },
+    "msg": "All assertions passed"
+}
+ok: [zabbix-target] => (item={'changed': False, 'stat': {'exists': True, 'path': '/usr/bin/systemctl', 'mode': '0755', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': True, 'isfifo': False, 'islnk': False, 'issock': False, 'uid': 0, 'gid': 0, 'size': 305736, 'inode': 100932246, 'dev': 64768, 'nlink': 1, 'atime': 1788216402.4766283, 'mtime': 1738059078.0, 'ctime': 1788129955.0928137, 'wusr': True, 'rusr': True, 'xusr': True, 'wgrp': False, 'rgrp': True, 'xgrp': True, 'woth': False, 'roth': True, 'xoth': True, 'isuid': False, 'isgid': False, 'blocks': 600, 'block_size': 4096, 'device_type': 0, 'readable': True, 'writeable': True, 'executable': True, 'pw_name': 'root', 'gr_name': 'root', 'checksum': 'f84b951641a6a939432f2616e8d3682426086a07', 'mimetype': 'application/x-pie-executable', 'charset': 'binary', 'version': '1121953962', 'attributes': [], 'attr_flags': ''}, 'invocation': {'module_args': {'path': '/usr/bin/systemctl', 'follow': False, 'get_md5': False, 'get_checksum': True, 'get_mime': True, 'get_attributes': True, 'checksum_algorithm': 'sha1'}}, 'failed': False, 'item': '/usr/bin/systemctl', 'ansible_loop_var': 'item'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "ansible_loop_var": "item",
+        "changed": false,
+        "failed": false,
+        "invocation": {
+            "module_args": {
+                "checksum_algorithm": "sha1",
+                "follow": false,
+                "get_attributes": true,
+                "get_checksum": true,
+                "get_md5": false,
+                "get_mime": true,
+                "path": "/usr/bin/systemctl"
+            }
+        },
+        "item": "/usr/bin/systemctl",
+        "stat": {
+            "atime": 1788216402.4766283,
+            "attr_flags": "",
+            "attributes": [],
+            "block_size": 4096,
+            "blocks": 600,
+            "charset": "binary",
+            "checksum": "f84b951641a6a939432f2616e8d3682426086a07",
+            "ctime": 1788129955.0928137,
+            "dev": 64768,
+            "device_type": 0,
+            "executable": true,
+            "exists": true,
+            "gid": 0,
+            "gr_name": "root",
+            "inode": 100932246,
+            "isblk": false,
+            "ischr": false,
+            "isdir": false,
+            "isfifo": false,
+            "isgid": false,
+            "islnk": false,
+            "isreg": true,
+            "issock": false,
+            "isuid": false,
+            "mimetype": "application/x-pie-executable",
+            "mode": "0755",
+            "mtime": 1738059078.0,
+            "nlink": 1,
+            "path": "/usr/bin/systemctl",
+            "pw_name": "root",
+            "readable": true,
+            "rgrp": true,
+            "roth": true,
+            "rusr": true,
+            "size": 305736,
+            "uid": 0,
+            "version": "1121953962",
+            "wgrp": false,
+            "woth": false,
+            "writeable": true,
+            "wusr": true,
+            "xgrp": true,
+            "xoth": true,
+            "xusr": true
+        }
+    },
+    "msg": "All assertions passed"
+}
+ok: [zabbix-target] => (item={'changed': False, 'stat': {'exists': True, 'path': '/usr/bin/systemd-creds', 'mode': '0755', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': True, 'isfifo': False, 'islnk': False, 'issock': False, 'uid': 0, 'gid': 0, 'size': 45024, 'inode': 100932252, 'dev': 64768, 'nlink': 1, 'atime': 1788227436.694301, 'mtime': 1738059078.0, 'ctime': 1788129955.0928137, 'wusr': True, 'rusr': True, 'xusr': True, 'wgrp': False, 'rgrp': True, 'xgrp': True, 'woth': False, 'roth': True, 'xoth': True, 'isuid': False, 'isgid': False, 'blocks': 88, 'block_size': 4096, 'device_type': 0, 'readable': True, 'writeable': True, 'executable': True, 'pw_name': 'root', 'gr_name': 'root', 'checksum': '741ec547dd7a6dae6f5766735c9c3e4a019a2d1d', 'mimetype': 'application/x-pie-executable', 'charset': 'binary', 'version': '3569690024', 'attributes': [], 'attr_flags': ''}, 'invocation': {'module_args': {'path': '/usr/bin/systemd-creds', 'follow': False, 'get_md5': False, 'get_checksum': True, 'get_mime': True, 'get_attributes': True, 'checksum_algorithm': 'sha1'}}, 'failed': False, 'item': '/usr/bin/systemd-creds', 'ansible_loop_var': 'item'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "ansible_loop_var": "item",
+        "changed": false,
+        "failed": false,
+        "invocation": {
+            "module_args": {
+                "checksum_algorithm": "sha1",
+                "follow": false,
+                "get_attributes": true,
+                "get_checksum": true,
+                "get_md5": false,
+                "get_mime": true,
+                "path": "/usr/bin/systemd-creds"
+            }
+        },
+        "item": "/usr/bin/systemd-creds",
+        "stat": {
+            "atime": 1788227436.694301,
+            "attr_flags": "",
+            "attributes": [],
+            "block_size": 4096,
+            "blocks": 88,
+            "charset": "binary",
+            "checksum": "741ec547dd7a6dae6f5766735c9c3e4a019a2d1d",
+            "ctime": 1788129955.0928137,
+            "dev": 64768,
+            "device_type": 0,
+            "executable": true,
+            "exists": true,
+            "gid": 0,
+            "gr_name": "root",
+            "inode": 100932252,
+            "isblk": false,
+            "ischr": false,
+            "isdir": false,
+            "isfifo": false,
+            "isgid": false,
+            "islnk": false,
+            "isreg": true,
+            "issock": false,
+            "isuid": false,
+            "mimetype": "application/x-pie-executable",
+            "mode": "0755",
+            "mtime": 1738059078.0,
+            "nlink": 1,
+            "path": "/usr/bin/systemd-creds",
+            "pw_name": "root",
+            "readable": true,
+            "rgrp": true,
+            "roth": true,
+            "rusr": true,
+            "size": 45024,
+            "uid": 0,
+            "version": "3569690024",
+            "wgrp": false,
+            "woth": false,
+            "writeable": true,
+            "wusr": true,
+            "xgrp": true,
+            "xoth": true,
+            "xusr": true
+        }
+    },
+    "msg": "All assertions passed"
+}
+ok: [zabbix-target] => (item={'changed': False, 'stat': {'exists': True, 'path': '/usr/bin/openssl', 'mode': '0755', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': True, 'isfifo': False, 'islnk': False, 'issock': False, 'uid': 0, 'gid': 0, 'size': 1061208, 'inode': 100931835, 'dev': 64768, 'nlink': 1, 'atime': 1788144421.44883, 'mtime': 1738155612.0, 'ctime': 1788129953.9547155, 'wusr': True, 'rusr': True, 'xusr': True, 'wgrp': False, 'rgrp': True, 'xgrp': True, 'woth': False, 'roth': True, 'xoth': True, 'isuid': False, 'isgid': False, 'blocks': 2080, 'block_size': 4096, 'device_type': 0, 'readable': True, 'writeable': True, 'executable': True, 'pw_name': 'root', 'gr_name': 'root', 'checksum': 'f94ce406d46c5a645b629b6af7ed17c4f8e2c9a8', 'mimetype': 'application/x-pie-executable', 'charset': 'binary', 'version': '3881645080', 'attributes': [], 'attr_flags': ''}, 'invocation': {'module_args': {'path': '/usr/bin/openssl', 'follow': False, 'get_md5': False, 'get_checksum': True, 'get_mime': True, 'get_attributes': True, 'checksum_algorithm': 'sha1'}}, 'failed': False, 'item': '/usr/bin/openssl', 'ansible_loop_var': 'item'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "ansible_loop_var": "item",
+        "changed": false,
+        "failed": false,
+        "invocation": {
+            "module_args": {
+                "checksum_algorithm": "sha1",
+                "follow": false,
+                "get_attributes": true,
+                "get_checksum": true,
+                "get_md5": false,
+                "get_mime": true,
+                "path": "/usr/bin/openssl"
+            }
+        },
+        "item": "/usr/bin/openssl",
+        "stat": {
+            "atime": 1788144421.44883,
+            "attr_flags": "",
+            "attributes": [],
+            "block_size": 4096,
+            "blocks": 2080,
+            "charset": "binary",
+            "checksum": "f94ce406d46c5a645b629b6af7ed17c4f8e2c9a8",
+            "ctime": 1788129953.9547155,
+            "dev": 64768,
+            "device_type": 0,
+            "executable": true,
+            "exists": true,
+            "gid": 0,
+            "gr_name": "root",
+            "inode": 100931835,
+            "isblk": false,
+            "ischr": false,
+            "isdir": false,
+            "isfifo": false,
+            "isgid": false,
+            "islnk": false,
+            "isreg": true,
+            "issock": false,
+            "isuid": false,
+            "mimetype": "application/x-pie-executable",
+            "mode": "0755",
+            "mtime": 1738155612.0,
+            "nlink": 1,
+            "path": "/usr/bin/openssl",
+            "pw_name": "root",
+            "readable": true,
+            "rgrp": true,
+            "roth": true,
+            "rusr": true,
+            "size": 1061208,
+            "uid": 0,
+            "version": "3881645080",
+            "wgrp": false,
+            "woth": false,
+            "writeable": true,
+            "wusr": true,
+            "xgrp": true,
+            "xoth": true,
+            "xusr": true
+        }
+    },
+    "msg": "All assertions passed"
+}
+ok: [zabbix-target] => (item={'changed': False, 'stat': {'exists': True, 'path': '/usr/bin/python3', 'mode': '0777', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': False, 'isfifo': False, 'islnk': True, 'issock': False, 'uid': 0, 'gid': 0, 'size': 9, 'inode': 100799261, 'dev': 64768, 'nlink': 1, 'atime': 1788216709.3612084, 'mtime': 1739295175.0, 'ctime': 1788129951.0344634, 'wusr': True, 'rusr': True, 'xusr': True, 'wgrp': True, 'rgrp': True, 'xgrp': True, 'woth': True, 'roth': True, 'xoth': True, 'isuid': False, 'isgid': False, 'blocks': 0, 'block_size': 4096, 'device_type': 0, 'readable': True, 'writeable': True, 'executable': True, 'lnk_source': '/usr/bin/python3.9', 'lnk_target': 'python3.9', 'pw_name': 'root', 'gr_name': 'root', 'mimetype': 'inode/symlink', 'charset': 'binary', 'version': None, 'attributes': [], 'attr_flags': ''}, 'invocation': {'module_args': {'path': '/usr/bin/python3', 'follow': False, 'get_md5': False, 'get_checksum': True, 'get_mime': True, 'get_attributes': True, 'checksum_algorithm': 'sha1'}}, 'failed': False, 'item': '/usr/bin/python3', 'ansible_loop_var': 'item'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "ansible_loop_var": "item",
+        "changed": false,
+        "failed": false,
+        "invocation": {
+            "module_args": {
+                "checksum_algorithm": "sha1",
+                "follow": false,
+                "get_attributes": true,
+                "get_checksum": true,
+                "get_md5": false,
+                "get_mime": true,
+                "path": "/usr/bin/python3"
+            }
+        },
+        "item": "/usr/bin/python3",
+        "stat": {
+            "atime": 1788216709.3612084,
+            "attr_flags": "",
+            "attributes": [],
+            "block_size": 4096,
+            "blocks": 0,
+            "charset": "binary",
+            "ctime": 1788129951.0344634,
+            "dev": 64768,
+            "device_type": 0,
+            "executable": true,
+            "exists": true,
+            "gid": 0,
+            "gr_name": "root",
+            "inode": 100799261,
+            "isblk": false,
+            "ischr": false,
+            "isdir": false,
+            "isfifo": false,
+            "isgid": false,
+            "islnk": true,
+            "isreg": false,
+            "issock": false,
+            "isuid": false,
+            "lnk_source": "/usr/bin/python3.9",
+            "lnk_target": "python3.9",
+            "mimetype": "inode/symlink",
+            "mode": "0777",
+            "mtime": 1739295175.0,
+            "nlink": 1,
+            "path": "/usr/bin/python3",
+            "pw_name": "root",
+            "readable": true,
+            "rgrp": true,
+            "roth": true,
+            "rusr": true,
+            "size": 9,
+            "uid": 0,
+            "version": null,
+            "wgrp": true,
+            "woth": true,
+            "writeable": true,
+            "wusr": true,
+            "xgrp": true,
+            "xoth": true,
+            "xusr": true
+        }
+    },
+    "msg": "All assertions passed"
+}
+
+TASK [os_baseline : Create controlled platform directories] ********************
+ok: [zabbix-target] => (item={'path': '/etc/zabbix-offline', 'mode': '0750'})
+ok: [zabbix-target] => (item={'path': '/usr/libexec/zabbix-offline', 'mode': '0755'})
+ok: [zabbix-target] => (item={'path': '/etc/credstore.encrypted', 'mode': '0700'})
+ok: [zabbix-target] => (item={'path': '/var/backups/zabbix-offline', 'mode': '0700'})
+
+TASK [os_baseline : Install the release-state helper] **************************
+ok: [zabbix-target]
+
+TASK [os_baseline : Validate database password input metadata] *****************
+ok: [zabbix-target]
+
+TASK [os_baseline : Require a root-only database password input] ***************
+ok: [zabbix-target]
+
+TASK [os_baseline : Read the ephemeral database password input] ****************
+ok: [zabbix-target]
+
+TASK [os_baseline : Hold the database password only in protected Ansible memory] ***
+ok: [zabbix-target]
+
+TASK [os_baseline : Validate database password transport safety] ***************
+ok: [zabbix-target]
+
+TASK [os_baseline : Inspect existing release state] ****************************
+ok: [zabbix-target]
+
+TASK [os_baseline : Decode release state] **************************************
+ok: [zabbix-target]
+
+TASK [os_baseline : Allow only fresh installation or same-release convergence] ***
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [postgresql : Validate PostgreSQL operating mode and identifiers] *********
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [postgresql : Install PostgreSQL 16 from the offline repository] **********
+ok: [zabbix-target]
+
+TASK [postgresql : Detect an initialized PostgreSQL cluster] *******************
+ok: [zabbix-target]
+
+TASK [postgresql : Initialize PostgreSQL only when no cluster exists] **********
+skipping: [zabbix-target]
+
+TASK [postgresql : Configure local PostgreSQL listen addresses] ****************
+ok: [zabbix-target]
+
+TASK [postgresql : Require SCRAM password storage] *****************************
+ok: [zabbix-target]
+
+TASK [postgresql : Add bounded Zabbix authentication without replacing existing policy] ***
+ok: [zabbix-target]
+
+TASK [postgresql : Enable and start PostgreSQL] ********************************
+ok: [zabbix-target]
+
+TASK [postgresql : Apply pending PostgreSQL configuration before database work] ***
+
+TASK [postgresql : Check whether the Zabbix database role exists] **************
+ok: [zabbix-target]
+
+TASK [postgresql : Create the least-privilege Zabbix database role once] *******
+skipping: [zabbix-target]
+
+TASK [postgresql : Check whether the Zabbix database exists] *******************
+ok: [zabbix-target]
+
+TASK [postgresql : Create the Zabbix database once] ****************************
+skipping: [zabbix-target]
+
+TASK [postgresql : Verify the supplied credential against the managed database] ***
+ok: [zabbix-target]
+
+TASK [postgresql : Check for an existing Zabbix schema] ************************
+ok: [zabbix-target]
+
+TASK [postgresql : Import the accepted Zabbix schema only when absent] *********
+skipping: [zabbix-target]
+
+TASK [postgresql : Verify schema presence after initialization] ****************
+ok: [zabbix-target]
+
+TASK [tls : Validate TLS and server-name inputs] *******************************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [tls : Inspect operator-provided TLS inputs] ******************************
+ok: [zabbix-target] => (item=None)
+ok: [zabbix-target] => (item=None)
+ok: [zabbix-target]
+
+TASK [tls : Require certificate and protected private-key inputs] **************
+ok: [zabbix-target]
+
+TASK [tls : Validate certificate lifetime] *************************************
+ok: [zabbix-target]
+
+TASK [tls : Validate certificate identity] *************************************
+ok: [zabbix-target]
+
+TASK [tls : Validate private-key structure] ************************************
+ok: [zabbix-target]
+
+TASK [tls : Calculate certificate public-key identity] *************************
+ok: [zabbix-target]
+
+TASK [tls : Calculate private-key public identity] *****************************
+ok: [zabbix-target]
+
+TASK [tls : Require matching TLS key material] *********************************
+ok: [zabbix-target]
+
+TASK [tls : Create TLS destination directories] ********************************
+ok: [zabbix-target] => (item={'path': '/etc/pki/tls/certs', 'mode': '0755'})
+ok: [zabbix-target] => (item={'path': '/etc/pki/tls/private', 'mode': '0700'})
+
+TASK [tls : Install the TLS certificate] ***************************************
+ok: [zabbix-target]
+
+TASK [tls : Install the TLS private key without logging content] ***************
+ok: [zabbix-target]
+
+TASK [zabbix_server : Validate Zabbix Server inputs] ***************************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [zabbix_server : Install Zabbix Server from the offline repository] *******
+ok: [zabbix-target]
+
+TASK [zabbix_server : Read local SELinux runtime context mappings] *************
+ok: [zabbix-target]
+
+TASK [zabbix_server : Register confined runtime secret paths] ******************
+skipping: [zabbix-target] => (item={'path': '/var/run/zabbix-server-credentials(/.*)?', 'type': 'zabbix_var_run_t'}) 
+skipping: [zabbix-target] => (item={'path': '/var/run/zabbix-web(/.*)?', 'type': 'httpd_var_run_t'}) 
+skipping: [zabbix-target]
+
+TASK [zabbix_server : Verify confined runtime secret path mappings] ************
+ok: [zabbix-target]
+
+TASK [zabbix_server : Require correct SELinux runtime secret types] ************
+ok: [zabbix-target] => (item={'path': '/var/run/zabbix-server-credentials(/.*)?', 'type': 'zabbix_var_run_t'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "path": "/var/run/zabbix-server-credentials(/.*)?",
+        "type": "zabbix_var_run_t"
+    },
+    "msg": "All assertions passed"
+}
+ok: [zabbix-target] => (item={'path': '/var/run/zabbix-web(/.*)?', 'type': 'httpd_var_run_t'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "path": "/var/run/zabbix-web(/.*)?",
+        "type": "httpd_var_run_t"
+    },
+    "msg": "All assertions passed"
+}
+
+TASK [zabbix_server : Install the runtime secret renderer] *********************
+ok: [zabbix-target]
+
+TASK [zabbix_server : Inspect the systemd host credential key] *****************
+ok: [zabbix-target]
+
+TASK [zabbix_server : Initialize the systemd host credential key when absent] ***
+skipping: [zabbix-target]
+
+TASK [zabbix_server : Verify the protected systemd host credential key] ********
+ok: [zabbix-target]
+
+TASK [zabbix_server : Require a root-only systemd host credential key] *********
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [zabbix_server : Inspect the encrypted database credential] ***************
+ok: [zabbix-target]
+
+TASK [zabbix_server : Encrypt the operator-provided database credential for systemd] ***
+skipping: [zabbix-target]
+
+TASK [zabbix_server : Protect the encrypted database credential] ***************
+ok: [zabbix-target]
+
+TASK [zabbix_server : Configure Zabbix Server without a plaintext password] ****
+ok: [zabbix-target]
+
+TASK [zabbix_server : Create Zabbix Server systemd drop-in directory] **********
+ok: [zabbix-target]
+
+TASK [zabbix_server : Inject the database password as a runtime credential] ****
+ok: [zabbix-target]
+
+TASK [zabbix_server : Enable and start Zabbix Server] **************************
+ok: [zabbix-target]
+
+TASK [zabbix_web : Install nginx, PHP 8.3, and the Zabbix frontend offline] ****
+ok: [zabbix-target]
+
+TASK [zabbix_web : Inspect the Apache vendor unit for nginx-only enforcement] ***
+ok: [zabbix-target]
+
+TASK [zabbix_web : Keep Apache inactive on the selected nginx architecture] ****
+skipping: [zabbix-target]
+
+TASK [zabbix_web : Configure the dedicated Zabbix PHP-FPM pool] ****************
+ok: [zabbix-target]
+
+TASK [zabbix_web : Configure the Zabbix nginx virtual host] ********************
+ok: [zabbix-target]
+
+TASK [zabbix_web : Create the PHP-FPM systemd drop-in directory] ***************
+ok: [zabbix-target]
+
+TASK [zabbix_web : Render frontend database configuration only at service start] ***
+ok: [zabbix-target]
+
+TASK [zabbix_web : Replace the package placeholder with a runtime-only configuration link] ***
+ok: [zabbix-target]
+
+TASK [zabbix_web : Enable and start PHP-FPM] ***********************************
+ok: [zabbix-target]
+
+TASK [zabbix_web : Enable and start nginx] *************************************
+ok: [zabbix-target]
+
+TASK [zabbix_web : Detect whether nginx has applied the managed Zabbix listener] ***
+ok: [zabbix-target]
+
+TASK [zabbix_web : Request nginx reload when the managed listener is absent] ***
+skipping: [zabbix-target]
+
+TASK [zabbix_agent2 : Validate Agent 2 network inputs] *************************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [zabbix_agent2 : Install Zabbix Agent 2 and diagnostic clients offline] ***
+ok: [zabbix-target]
+
+TASK [zabbix_agent2 : Configure Zabbix Agent 2] ********************************
+ok: [zabbix-target]
+
+TASK [zabbix_agent2 : Enable and start Zabbix Agent 2] *************************
+ok: [zabbix-target]
+
+TASK [selinux : Read SELinux enforcement before policy verification] ***********
+ok: [zabbix-target]
+
+TASK [selinux : Refuse non-enforcing SELinux] **********************************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [selinux : Verify the vendor Zabbix SELinux policy package] ***************
+ok: [zabbix-target]
+
+TASK [selinux : List installed SELinux modules] ********************************
+ok: [zabbix-target]
+
+TASK [selinux : Require an installed vendor Zabbix policy module] **************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [selinux : Restore packaged labels on managed Zabbix paths] ***************
+ok: [zabbix-target]
+
+TASK [selinux : Confirm SELinux remains Enforcing] *****************************
+ok: [zabbix-target]
+
+TASK [selinux : Enforce the SELinux safety invariant] **************************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [firewall : Require bounded firewall source lists] ************************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [firewall : Validate source CIDRs using the Python standard library] ******
+ok: [zabbix-target] => (item=192.168.1.0/24)
+
+TASK [firewall : Resolve the exact accepted firewalld NEVRA] *******************
+ok: [zabbix-target]
+
+TASK [firewall : Install the exact accepted firewalld NEVRA from the offline repository] ***
+ok: [zabbix-target]
+
+TASK [firewall : Enable and start firewalld] ***********************************
+ok: [zabbix-target]
+
+TASK [firewall : Initialize desired firewall rules] ****************************
+ok: [zabbix-target]
+
+TASK [firewall : Add HTTPS source rules to the desired set] ********************
+ok: [zabbix-target] => (item=192.168.1.0/24)
+
+TASK [firewall : Add HTTP source rules to the desired set] *********************
+skipping: [zabbix-target] => (item=192.168.1.0/24) 
+skipping: [zabbix-target]
+
+TASK [firewall : Add Zabbix Server source rules to the desired set] ************
+ok: [zabbix-target] => (item=192.168.1.0/24)
+
+TASK [firewall : Add Agent 2 source rules to the desired set] ******************
+ok: [zabbix-target] => (item=192.168.1.0/24)
+
+TASK [firewall : Query desired rich rules] *************************************
+ok: [zabbix-target] => (item={'source': '192.168.1.0/24', 'port': '8443'})
+ok: [zabbix-target] => (item={'source': '192.168.1.0/24', 'port': '10051'})
+ok: [zabbix-target] => (item={'source': '192.168.1.0/24', 'port': '10050'})
+
+TASK [firewall : Add only missing rich rules] **********************************
+skipping: [zabbix-target] => (item={'changed': False, 'stdout': 'yes', 'stderr': '', 'rc': 0, 'cmd': ['/usr/bin/firewall-cmd', '--permanent', '--zone=public', '--query-rich-rule=rule family="ipv4" source address="192.168.1.0/24" port port="8443" protocol="tcp" accept'], 'start': '2026-09-01 05:42:37.592228', 'end': '2026-09-01 05:42:37.827186', 'delta': '0:00:00.234958', 'msg': '', 'invocation': {'module_args': {'argv': ['/usr/bin/firewall-cmd', '--permanent', '--zone=public', '--query-rich-rule=rule family="ipv4" source address="192.168.1.0/24" port port="8443" protocol="tcp" accept'], '_uses_shell': False, 'stdin_add_newline': True, 'strip_empty_ends': True, '_raw_params': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['yes'], 'stderr_lines': [], 'failed': False, 'failed_when_result': False, 'item': {'source': '192.168.1.0/24', 'port': '8443'}, 'ansible_loop_var': 'item'}) 
+skipping: [zabbix-target] => (item={'changed': False, 'stdout': 'yes', 'stderr': '', 'rc': 0, 'cmd': ['/usr/bin/firewall-cmd', '--permanent', '--zone=public', '--query-rich-rule=rule family="ipv4" source address="192.168.1.0/24" port port="10051" protocol="tcp" accept'], 'start': '2026-09-01 05:42:38.030435', 'end': '2026-09-01 05:42:38.252732', 'delta': '0:00:00.222297', 'msg': '', 'invocation': {'module_args': {'argv': ['/usr/bin/firewall-cmd', '--permanent', '--zone=public', '--query-rich-rule=rule family="ipv4" source address="192.168.1.0/24" port port="10051" protocol="tcp" accept'], '_uses_shell': False, 'stdin_add_newline': True, 'strip_empty_ends': True, '_raw_params': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['yes'], 'stderr_lines': [], 'failed': False, 'failed_when_result': False, 'item': {'source': '192.168.1.0/24', 'port': '10051'}, 'ansible_loop_var': 'item'}) 
+skipping: [zabbix-target] => (item={'changed': False, 'stdout': 'yes', 'stderr': '', 'rc': 0, 'cmd': ['/usr/bin/firewall-cmd', '--permanent', '--zone=public', '--query-rich-rule=rule family="ipv4" source address="192.168.1.0/24" port port="10050" protocol="tcp" accept'], 'start': '2026-09-01 05:42:38.456708', 'end': '2026-09-01 05:42:38.708191', 'delta': '0:00:00.251483', 'msg': '', 'invocation': {'module_args': {'argv': ['/usr/bin/firewall-cmd', '--permanent', '--zone=public', '--query-rich-rule=rule family="ipv4" source address="192.168.1.0/24" port port="10050" protocol="tcp" accept'], '_uses_shell': False, 'stdin_add_newline': True, 'strip_empty_ends': True, '_raw_params': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['yes'], 'stderr_lines': [], 'failed': False, 'failed_when_result': False, 'item': {'source': '192.168.1.0/24', 'port': '10050'}, 'ansible_loop_var': 'item'}) 
+skipping: [zabbix-target]
+
+TASK [firewall : Query desired rich rules in the active runtime] ***************
+ok: [zabbix-target] => (item={'source': '192.168.1.0/24', 'port': '8443'})
+ok: [zabbix-target] => (item={'source': '192.168.1.0/24', 'port': '10051'})
+ok: [zabbix-target] => (item={'source': '192.168.1.0/24', 'port': '10050'})
+
+TASK [firewall : Request a reload when permanent rules are absent from the runtime] ***
+skipping: [zabbix-target] => (item={'changed': False, 'stdout': 'yes', 'stderr': '', 'rc': 0, 'cmd': ['/usr/bin/firewall-cmd', '--zone=public', '--query-rich-rule=rule family="ipv4" source address="192.168.1.0/24" port port="8443" protocol="tcp" accept'], 'start': '2026-09-01 05:42:38.971001', 'end': '2026-09-01 05:42:39.191353', 'delta': '0:00:00.220352', 'msg': '', 'invocation': {'module_args': {'argv': ['/usr/bin/firewall-cmd', '--zone=public', '--query-rich-rule=rule family="ipv4" source address="192.168.1.0/24" port port="8443" protocol="tcp" accept'], '_uses_shell': False, 'stdin_add_newline': True, 'strip_empty_ends': True, '_raw_params': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['yes'], 'stderr_lines': [], 'failed': False, 'failed_when_result': False, 'item': {'source': '192.168.1.0/24', 'port': '8443'}, 'ansible_loop_var': 'item'}) 
+skipping: [zabbix-target] => (item={'changed': False, 'stdout': 'yes', 'stderr': '', 'rc': 0, 'cmd': ['/usr/bin/firewall-cmd', '--zone=public', '--query-rich-rule=rule family="ipv4" source address="192.168.1.0/24" port port="10051" protocol="tcp" accept'], 'start': '2026-09-01 05:42:39.395441', 'end': '2026-09-01 05:42:39.613329', 'delta': '0:00:00.217888', 'msg': '', 'invocation': {'module_args': {'argv': ['/usr/bin/firewall-cmd', '--zone=public', '--query-rich-rule=rule family="ipv4" source address="192.168.1.0/24" port port="10051" protocol="tcp" accept'], '_uses_shell': False, 'stdin_add_newline': True, 'strip_empty_ends': True, '_raw_params': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['yes'], 'stderr_lines': [], 'failed': False, 'failed_when_result': False, 'item': {'source': '192.168.1.0/24', 'port': '10051'}, 'ansible_loop_var': 'item'}) 
+skipping: [zabbix-target] => (item={'changed': False, 'stdout': 'yes', 'stderr': '', 'rc': 0, 'cmd': ['/usr/bin/firewall-cmd', '--zone=public', '--query-rich-rule=rule family="ipv4" source address="192.168.1.0/24" port port="10050" protocol="tcp" accept'], 'start': '2026-09-01 05:42:39.815802', 'end': '2026-09-01 05:42:40.031998', 'delta': '0:00:00.216196', 'msg': '', 'invocation': {'module_args': {'argv': ['/usr/bin/firewall-cmd', '--zone=public', '--query-rich-rule=rule family="ipv4" source address="192.168.1.0/24" port port="10050" protocol="tcp" accept'], '_uses_shell': False, 'stdin_add_newline': True, 'strip_empty_ends': True, '_raw_params': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['yes'], 'stderr_lines': [], 'failed': False, 'failed_when_result': False, 'item': {'source': '192.168.1.0/24', 'port': '10050'}, 'ansible_loop_var': 'item'}) 
+skipping: [zabbix-target]
+
+TASK [firewall : Validate permanent firewalld configuration] *******************
+ok: [zabbix-target]
+
+TASK [backup : Install backup and lifecycle scripts] ***************************
+ok: [zabbix-target] => (item=zabbix-offline-backup)
+ok: [zabbix-target] => (item=zabbix-offline-verify-backup)
+ok: [zabbix-target] => (item=zabbix-offline-restore-preflight)
+ok: [zabbix-target] => (item=zabbix-offline-upgrade-preflight)
+
+TASK [backup : Configure non-secret backup settings] ***************************
+ok: [zabbix-target]
+
+TASK [backup : Install the backup service] *************************************
+ok: [zabbix-target]
+
+TASK [backup : Install the backup timer] ***************************************
+ok: [zabbix-target]
+
+TASK [backup : Enable the backup timer] ****************************************
+ok: [zabbix-target]
+
+TASK [verification : Apply notified service configuration before runtime verification] ***
+
+TASK [verification : Verify installed package versions against the M1 lock] ****
+ok: [zabbix-target]
+
+TASK [verification : Verify enabled module streams from local metadata only] ***
+ok: [zabbix-target]
+
+TASK [verification : Require selected module streams] **************************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [verification : Verify required services are enabled] *********************
+ok: [zabbix-target] => (item=postgresql.service)
+ok: [zabbix-target] => (item=zabbix-server.service)
+ok: [zabbix-target] => (item=zabbix-agent2.service)
+ok: [zabbix-target] => (item=php-fpm.service)
+ok: [zabbix-target] => (item=nginx.service)
+ok: [zabbix-target] => (item=firewalld.service)
+
+TASK [verification : Verify required services are active] **********************
+ok: [zabbix-target] => (item=postgresql.service)
+ok: [zabbix-target] => (item=zabbix-server.service)
+ok: [zabbix-target] => (item=zabbix-agent2.service)
+ok: [zabbix-target] => (item=php-fpm.service)
+ok: [zabbix-target] => (item=nginx.service)
+ok: [zabbix-target] => (item=firewalld.service)
+
+TASK [verification : Verify local PostgreSQL connectivity and schema] **********
+ok: [zabbix-target]
+
+TASK [verification : Verify external PostgreSQL connectivity and schema] *******
+skipping: [zabbix-target]
+
+TASK [verification : Validate nginx configuration] *****************************
+ok: [zabbix-target]
+
+TASK [verification : Validate Agent 2 configuration] ***************************
+ok: [zabbix-target]
+
+TASK [verification : Probe the local HTTPS frontend] ***************************
+ok: [zabbix-target]
+
+TASK [verification : Probe the local HTTP frontend] ****************************
+skipping: [zabbix-target]
+
+TASK [verification : Require selected listening ports without an extra package dependency] ***
+ok: [zabbix-target]
+
+TASK [verification : Verify firewalld is active] *******************************
+ok: [zabbix-target]
+
+TASK [verification : Verify SELinux is Enforcing] ******************************
+ok: [zabbix-target]
+
+TASK [verification : Read the installed offline repository definition] *********
+ok: [zabbix-target]
+
+TASK [verification : Require file-only repository configuration] ***************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [verification : Prove local-only repository access] ***********************
+ok: [zabbix-target]
+
+TASK [verification : Confirm only the local repository was requested] **********
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [release_state : Persist successful release state] ************************
+ok: [zabbix-target]
+
+PLAY RECAP *********************************************************************
+zabbix-target              : ok=121  changed=0    unreachable=0    failed=0    skipped=14   rescued=0    ignored=0   
+

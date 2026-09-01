@@ -4,21 +4,22 @@
 
 Milestone: **M3 — Zabbix Lab Deployment and Runtime Validation**
 
-State: **IN-PROGRESS**
+State: **ACCEPTED (2026-09-01)**
 
 Milestone baseline commit: `62ba3275a3f016b2f07d333684286b59c1188cfa`
 
 M0.5 source-readiness commit: `b2180c00d0a6029a65996055ae7becbcddc5f0b7`
 
-M0.5 source readiness, M1, and M2 are complete. M3 was explicitly authorized on
-2026-09-01 with an architecture amendment: deploy only to the existing RHEL 9.6
-VM at `192.168.1.91`; do not create another VM. The host may retain the OS
-hostname `netbox-dev` while using logical Zabbix identity `ZABBIX-01`.
+M0.5 source readiness, M1, M2, and M3 are complete. M3 deployed logical
+`ZABBIX-01` only to the explicitly authorized existing RHEL 9.6 VM at
+`192.168.1.91`; the OS hostname remains `netbox-dev`. The pre-existing
+PostgreSQL 16 cluster, NetBox database/services, Redis, and nginx 80/443
+listeners were preserved and remain healthy after convergence and reboot.
 
-The mandatory read-only coexistence preflight must prove that existing
-PostgreSQL and unrelated application state can be preserved before convergence.
-NetBox access/integration, another guest, Proxmox networking/storage, M4, and
-external Git push remain prohibited.
+M4 is ready for separate authorization but remains gated by the existing NetBox
+permission and NetBox/portal version-compatibility blockers. No NetBox
+integration, other guest, Proxmox networking/storage, M4 implementation, or
+external Git push occurred in M3.
 
 M1 pipeline source commit: `fbf3573`
 
@@ -33,6 +34,31 @@ M1 closeout commit: `9f764ec8e019e1ac4ed57e9b4f87dea9d6345f28`
 M2 baseline commit: `7f7ff2676456fd3fc54337456c158ed54e496331`
 
 M2 implementation commit: `16886c1d6251e699cbf2d10c00e158fb938d5ebd`
+
+## M3 result
+
+- The immutable accepted M1 artifact hash, release checksums, and current
+  57-entry installer manifest passed. Installer package transactions used only
+  the accepted `file://` repository with every other repository disabled.
+- Zabbix 7.0.30, PostgreSQL 16, nginx 1.24, PHP 8.3, Agent 2, firewalld, and the
+  vendor SELinux policy are installed and active. Zabbix uses HTTPS 8443 and a
+  separate 203-table `zabbix` database; NetBox remains healthy on 80/443 with
+  its 198-table database.
+- Current-code full convergence is idempotent (`ok=121 changed=0 failed=0`),
+  and converged-target check mode passed (`ok=77 changed=0 failed=0`).
+- The authorized reboot passed. API 7.0.30, server/agent availability, recent
+  item collection, queue values of zero, firewall rules, TLS/credential
+  protections, backup verification, and five safe negative controls passed.
+- Twelve of 160 monitored enabled items are explicitly recorded as unsupported:
+  11 correspond to disabled optional subsystems and one to unavailable NIC link
+  speed. Seventy identical startup-only SELinux search denials were diagnosed;
+  SELinux remained Enforcing and no broad allow policy was added.
+- A full backup passed. Restore preflight passed, but destructive restore is
+  `NOT-EXECUTED` because it was not authorized.
+- `192.168.1.91` is now the Zabbix home-lab runtime host and is no longer a
+  pristine runtime-free Build VM. M1/M2 acceptance predates this authorized
+  transition and remains valid.
+- See `evidence/m3/ACCEPTANCE.md` and `evidence/m3/raw/`.
 
 ## M2 scope
 
@@ -172,3 +198,14 @@ See `docs/DISCOVERY.md` and `evidence/discovery/REQUIRED-EVIDENCE.md`.
   after, and M2 disposable roots were removed.
 - M2 deployment/NetBox/Proxmox change: **No**. ZABBIX-01 was not created, M3 was
   not started, NetBox was not accessed, and existing guests were not changed.
+- M3 authorized target change: **Yes, limited to `192.168.1.91`**. The accepted
+  offline stack, isolated Zabbix database/configuration, source-restricted
+  firewall rules, lab TLS, encrypted runtime credential, backup timer, and
+  vendor SELinux policy were installed/configured. No general package update ran.
+- M3 existing workload preservation: **PASS**. PostgreSQL was not reinitialized;
+  the 198-table NetBox database and NetBox/Redis/nginx services remained healthy
+  before and after reboot and safe negative tests. No NetBox write was made.
+- M3 SELinux: **Enforcing throughout**. Startup AVCs were diagnosed and retained;
+  no permissive mode, guessed boolean, or custom allow policy was introduced.
+- M3 external scope: **No other VM/LXC, Proxmox setting, NetBox integration, M4
+  implementation, Git remote, or external push was changed**.

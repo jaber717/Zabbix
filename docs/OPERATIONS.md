@@ -79,10 +79,37 @@ before acceptance.
 - **Firewall failure:** validate each CIDR and inspect permanent rich rules in
   the configured zone. Empty source lists are intentionally refused.
 
-## M2 test boundary
+## M3 observed operating baseline
+
+The accepted home-lab runtime is logical `ZABBIX-01` on
+`192.168.1.91` (`netbox-dev`). PostgreSQL, Zabbix Server, Agent 2, PHP-FPM,
+nginx, firewalld, NetBox, NetBox RQ, and Redis recovered enabled/active after the
+authorized reboot. Zabbix HTTPS 8443 and the pre-existing NetBox HTTPS 443
+endpoints both returned 200.
+
+API validation observed Zabbix 7.0.30, active and passive agent availability,
+recent `agent.ping`, hostname, and uptime values, and two supported internal
+queue items with value zero. The API does not expose `queue.get` in this version,
+so that method is `NOT-APPLICABLE`; queue health is based on the monitored
+internal items instead.
+
+Twelve of 160 monitored enabled items are unsupported. Eleven represent optional
+server processes deliberately not started in this lab, and one interface-speed
+item receives the kernel sentinel `-1000000`. Treat these as known template
+tuning work for a later monitoring milestone; do not hide or relabel them.
+
+SELinux remains Enforcing. The post-reboot audit contained 70 startup-only
+`zabbix_t` search denials against `/var/kerberos/krb5`, attributable to linked
+Kerberos-capable libraries. No Kerberos monitoring is required and no later
+denials appeared during observation, so no permissive workaround, guessed
+boolean, or custom allow policy is justified.
+
+## M2 test boundary and M3 execution
 
 Static validation, helper unit tests, shell/Python syntax checks, offline
 `ansible-core` resolution, and Ansible playbook syntax are M2 gates. Full
 service operation, first converge, second-run idempotency, converged-target
 check mode, reboot, SELinux AVC behavior, firewalld reachability, frontend/API,
-and database restore require the dedicated M3 VM and are `NOT-EXECUTED` in M2.
+and database restore were `NOT-EXECUTED` within M2. M3 subsequently executed the
+runtime gates on the separately authorized dual-purpose lab host; results are in
+`evidence/m3/ACCEPTANCE.md`. A destructive restore is still `NOT-EXECUTED`.

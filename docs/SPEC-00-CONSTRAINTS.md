@@ -27,9 +27,12 @@ implementation conflicts with it, stop and resolve the conflict explicitly.
 
 ## Architecture boundaries
 
-- Target: dedicated `ZABBIX-01`, RHEL 9.6 x86_64, SELinux Enforcing, firewalld
-  enabled. Zabbix Server, web frontend, nginx, PHP-FPM, PostgreSQL, Agent 2, and
-  `netbox-zabbix-sync` initially share that VM; NetBox remains separate.
+- Production target baseline: dedicated `ZABBIX-01`, RHEL 9.6 x86_64, SELinux
+  Enforcing, firewalld enabled. The M3 home-lab gate used an explicitly
+  authorized exception: logical `ZABBIX-01` shares `192.168.1.91` with the
+  existing NetBox runtime while preserving separate databases and web
+  listeners. That exception does not change the production baseline or
+  authorize future co-location. `netbox-zabbix-sync` remains future M4 scope.
 - Approved architect baseline, last verified 31 August 2026: Zabbix 7.0.30 LTS,
   RHEL 9.6 x86_64, PostgreSQL 16 candidate. Upstream verification must be reported
   separately and cannot silently replace the baseline.

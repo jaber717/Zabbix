@@ -4,6 +4,17 @@
 
 ### Added
 
+- Completed M3 on the authorized dual-purpose RHEL 9.6 host at
+  `192.168.1.91`: preserved the existing NetBox/PostgreSQL workload, deployed
+  Zabbix 7.0.30 from the accepted offline artifact, passed runtime/API/queue,
+  zero-change convergence, check-mode, reboot, backup, security-control, and
+  safe negative gates, and recorded the host's transition from pristine Build
+  VM to Zabbix home-lab runtime. Destructive restore remains `NOT-EXECUTED`.
+- Hardened M3-discovered runtime behavior without widening architecture or
+  package sources: shared-service-safe PostgreSQL/nginx handling, protected
+  systemd runtime credentials, explicit SELinux runtime labels, schema-owner and
+  PID alignment, exact offline firewalld locking, handler/recovery sequencing,
+  protected backup streaming, and read-only CIDR/TLS validation in check mode.
 - Began M3 under the approved home-lab architecture amendment: deploy and
   runtime-validate logical `ZABBIX-01` only on the existing RHEL 9.6 VM at
   `192.168.1.91`, after a mandatory read-only database/service coexistence

@@ -1,0 +1,67 @@
+BACKUP=/var/backups/zabbix-offline/20260901T025738Z-full
+RESULT=PASS
+BACKUP_METADATA
+/var/backups/zabbix-offline/20260901T025738Z-full root:root 700 directory
+/var/backups/zabbix-offline/20260901T025738Z-full/backup-info.txt root:root 600 regular file
+/var/backups/zabbix-offline/20260901T025738Z-full/config-paths.txt root:root 600 regular file
+/var/backups/zabbix-offline/20260901T025738Z-full/configuration.tar.gz root:root 600 regular file
+/var/backups/zabbix-offline/20260901T025738Z-full/database.dump root:root 600 regular file
+/var/backups/zabbix-offline/20260901T025738Z-full/SHA256SUMS root:root 600 regular file
+INDEPENDENT_VERIFICATION
+BACKUP=/var/backups/zabbix-offline/20260901T025738Z-full
+RESULT=PASS
+CHECKSUMS
+backup-info.txt: OK
+config-paths.txt: OK
+configuration.tar.gz: OK
+database.dump: OK
+CONFIGURATION_ARCHIVE
+drwxr-xr-x root/root         0 2026-09-01 05:28 etc/zabbix/
+drwxr-xr-x root/root         0 2026-08-25 07:46 etc/zabbix/zabbix_server.d/
+-rw-r----- root/zabbix     291 2026-09-01 05:26 etc/zabbix/zabbix_server.conf
+drwxr-xr-x apache/apache     0 2026-09-01 05:28 etc/zabbix/web/
+-rw-r--r-- root/root       946 2026-08-24 08:04 etc/zabbix/web/maintenance.inc.php
+lrwxrwxrwx root/root         0 2026-09-01 05:28 etc/zabbix/web/zabbix.conf.php -> /run/zabbix-web/zabbix.conf.php
+drwxr-xr-x root/root         0 2026-09-01 05:28 etc/zabbix/zabbix_agent2.d/
+drwxr-xr-x root/root         0 2026-09-01 05:28 etc/zabbix/zabbix_agent2.d/plugins.d/
+-rw-r--r-- root/root      2237 2026-08-25 07:45 etc/zabbix/zabbix_agent2.d/plugins.d/ceph.conf
+-rw-r--r-- root/root       366 2026-08-25 07:45 etc/zabbix/zabbix_agent2.d/plugins.d/docker.conf
+-rw-r--r-- root/root      1818 2026-08-25 07:45 etc/zabbix/zabbix_agent2.d/plugins.d/memcached.conf
+-rw-r--r-- root/root       592 2026-08-25 07:45 etc/zabbix/zabbix_agent2.d/plugins.d/modbus.conf
+-rw-r--r-- root/root      3137 2026-08-25 07:45 etc/zabbix/zabbix_agent2.d/plugins.d/mqtt.conf
+-rw-r--r-- root/root      3957 2026-08-25 07:45 etc/zabbix/zabbix_agent2.d/plugins.d/mysql.conf
+-rw-r--r-- root/root      3619 2026-08-25 07:45 etc/zabbix/zabbix_agent2.d/plugins.d/oracle.conf
+-rw-r--r-- root/root      3869 2026-08-25 07:45 etc/zabbix/zabbix_agent2.d/plugins.d/redis.conf
+-rw-r--r-- root/root       388 2026-08-25 07:45 etc/zabbix/zabbix_agent2.d/plugins.d/smart.conf
+-rw-r----- root/zabbix     243 2026-09-01 05:28 etc/zabbix/zabbix_agent2.conf
+-rw-r--r-- root/root      1368 2026-09-01 05:28 etc/nginx/conf.d/zabbix.conf
+-rw-r--r-- root/root       562 2026-09-01 05:28 etc/php-fpm.d/zabbix.conf
+drwxr-xr-x root/root         0 2026-09-01 05:14 etc/systemd/system/zabbix-server.service.d/
+-rw-r--r-- root/root       310 2026-09-01 05:14 etc/systemd/system/zabbix-server.service.d/10-runtime-credential.conf
+drwxr-xr-x root/root         0 2026-09-01 05:28 etc/systemd/system/php-fpm.service.d/
+-rw-r--r-- root/root       476 2026-09-01 05:28 etc/systemd/system/php-fpm.service.d/10-runtime-credential.conf
+drwxr-x--- root/root         0 2026-09-01 05:38 etc/zabbix-offline/
+-rw-r----- root/root        73 2026-09-01 05:28 etc/zabbix-offline/backup.env
+-rw-r----- root/root       204 2026-09-01 05:38 etc/zabbix-offline/release.json
+DATABASE_ARCHIVE
+;
+; Archive created at 2026-09-01 05:57:38 +03
+;     dbname: zabbix
+;     TOC Entries: 1330
+;     Compression: gzip
+;     Dump Version: 1.15-0
+;     Format: CUSTOM
+;     Integer: 4 bytes
+;     Offset: 8 bytes
+;     Dumped from database version: 16.10
+;     Dumped by pg_dump version: 16.10
+;
+;
+; Selected TOC Entries:
+;
+481; 1255 60076 FUNCTION public changelog_connector_delete() zabbix
+479; 1255 60072 FUNCTION public changelog_connector_insert() zabbix
+484; 1255 60082 FUNCTION public changelog_connector_tag_delete() zabbix
+482; 1255 60078 FUNCTION public changelog_connector_tag_insert() zabbix
+483; 1255 60080 FUNCTION public changelog_connector_tag_update() zabbix
+EXPECTED_CONTENT

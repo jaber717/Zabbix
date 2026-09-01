@@ -2,9 +2,12 @@
 
 ## Boundary
 
-This procedure targets a new dedicated RHEL 9.6 x86_64 VM. It consumes the
-accepted M1 release without altering it. It does not authorize creating the VM,
-changing another guest, or deploying M3.
+This procedure targets an explicitly approved RHEL 9.6 x86_64 system. A new
+dedicated VM remains the production default. M3 used a separately authorized
+home-lab exception: the existing dual-purpose host `192.168.1.91`, after a
+read-only coexistence gate proved its PostgreSQL/NetBox state could be
+preserved. This procedure consumes the accepted M1 release without altering it
+and does not itself authorize creating or changing any target.
 
 The target must start with SELinux Enforcing and must have root access,
 `python3`, `dnf`, `sha256sum`, `systemctl`, `systemd-creds`, and `openssl`.
@@ -74,3 +77,16 @@ on the converged target to assess configuration drift.
 Run installed-state verification independently with `--verify-only`. A failure
 is a release gate, not a reason to enable another repository or disable a
 security control.
+
+## M3 observed lab deployment
+
+M3 kept the OS hostname `netbox-dev` and configured logical Zabbix identity
+`ZABBIX-01`. Lab-only values live in `environments/lab/m3-zabbix.yml`; passwords
+and TLS private material remain in root-only files outside Git. The accepted
+release is under `/opt/zabbix-offline/release`, Zabbix uses HTTPS 8443, and the
+existing NetBox nginx listeners remain on 80/443.
+
+The current installer completed a zero-change convergence and zero-change check
+mode on the rebooted target. This host is now a runtime system and must not be
+treated as a pristine Build VM. Future artifact builds require isolated fresh
+installroots or a separate clean build host. See `evidence/m3/ACCEPTANCE.md`.

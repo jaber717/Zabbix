@@ -1,0 +1,84 @@
+
+PLAY [Verify an installed offline Zabbix platform] *****************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [zabbix-target]
+
+TASK [verification : Apply notified service configuration before runtime verification] ***
+
+TASK [verification : Verify installed package versions against the M1 lock] ****
+ok: [zabbix-target]
+
+TASK [verification : Verify enabled module streams from local metadata only] ***
+ok: [zabbix-target]
+
+TASK [verification : Require selected module streams] **************************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [verification : Verify required services are enabled] *********************
+ok: [zabbix-target] => (item=postgresql.service)
+ok: [zabbix-target] => (item=zabbix-server.service)
+ok: [zabbix-target] => (item=zabbix-agent2.service)
+ok: [zabbix-target] => (item=php-fpm.service)
+ok: [zabbix-target] => (item=nginx.service)
+ok: [zabbix-target] => (item=firewalld.service)
+
+TASK [verification : Verify required services are active] **********************
+ok: [zabbix-target] => (item=postgresql.service)
+ok: [zabbix-target] => (item=zabbix-server.service)
+ok: [zabbix-target] => (item=zabbix-agent2.service)
+ok: [zabbix-target] => (item=php-fpm.service)
+ok: [zabbix-target] => (item=nginx.service)
+ok: [zabbix-target] => (item=firewalld.service)
+
+TASK [verification : Verify local PostgreSQL connectivity and schema] **********
+ok: [zabbix-target]
+
+TASK [verification : Verify external PostgreSQL connectivity and schema] *******
+skipping: [zabbix-target]
+
+TASK [verification : Validate nginx configuration] *****************************
+ok: [zabbix-target]
+
+TASK [verification : Validate Agent 2 configuration] ***************************
+ok: [zabbix-target]
+
+TASK [verification : Probe the local HTTPS frontend] ***************************
+ok: [zabbix-target]
+
+TASK [verification : Probe the local HTTP frontend] ****************************
+skipping: [zabbix-target]
+
+TASK [verification : Require selected listening ports without an extra package dependency] ***
+ok: [zabbix-target]
+
+TASK [verification : Verify firewalld is active] *******************************
+ok: [zabbix-target]
+
+TASK [verification : Verify SELinux is Enforcing] ******************************
+ok: [zabbix-target]
+
+TASK [verification : Read the installed offline repository definition] *********
+ok: [zabbix-target]
+
+TASK [verification : Require file-only repository configuration] ***************
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [verification : Prove local-only repository access] ***********************
+ok: [zabbix-target]
+
+TASK [verification : Confirm only the local repository was requested] **********
+ok: [zabbix-target] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+PLAY RECAP *********************************************************************
+zabbix-target              : ok=17   changed=0    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+

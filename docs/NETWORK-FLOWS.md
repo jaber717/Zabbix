@@ -18,3 +18,13 @@ outbound TCP flow from Zabbix Server/PHP to `zabbix_db_host:zabbix_db_port`
 
 Package installation and verification require no Internet egress. DNF is
 explicitly restricted to the local `file://` repository.
+
+## M3 home-lab observation
+
+The dual-purpose M3 host preserves pre-existing NetBox nginx listeners and
+firewall ports 80/443. Zabbix uses HTTPS 8443 instead of 443. Firewalld has
+source-restricted rich rules for `192.168.1.0/24` to TCP 8443, 10050, and 10051;
+the installer did not add any global Zabbix service/port. PostgreSQL remains on
+`127.0.0.1:5432`. Every converge package transaction disabled all repositories
+except the accepted local `zabbix-offline` repository; no package egress was
+used.

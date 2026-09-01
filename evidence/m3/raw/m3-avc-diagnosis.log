@@ -1,0 +1,62 @@
+PATH_BY_INODE
+KRB5_PATHS
+100799130 -rw-r--r--. 1 root root system_u:object_r:krb5_conf_t:s0 880 Jan 29  2025 /etc/krb5.conf
+ 33559308 drwxr-xr-x. 2 root root system_u:object_r:etc_t:s0        55 Aug 31 01:46 /etc/krb5.conf.d
+ZABBIX_LINKED_KRB_LIBRARIES
+	libcurl.so.4 => /lib64/libcurl.so.4 (0x00007ffa6435e000)
+	libgssapi_krb5.so.2 => /lib64/libgssapi_krb5.so.2 (0x00007ffa64191000)
+	libkrb5.so.3 => /lib64/libkrb5.so.3 (0x00007ffa63d26000)
+	libkrb5support.so.0 => /lib64/libkrb5support.so.0 (0x00007ffa6403a000)
+AVC_SUMMARY_AFTER_OBSERVATION
+BOOT_EPOCH=1788230953
+AVC_RECORDS_SINCE_BOOT=70
+RESULT=REVIEW
+PROCESS_CONTEXTS
+system_u:system_r:zabbix_t:s0      1088 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1185 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1187 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1188 ?        00:00:00 zabbix_server
+system_u:system_r:unconfined_service_t:s0 1196 ? 00:00:00 zabbix_agent2
+system_u:system_r:zabbix_t:s0      1310 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1311 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1312 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1317 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1318 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1319 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1320 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1321 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1322 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1323 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1324 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1326 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1330 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1331 ?        00:00:00 zabbix_server
+system_u:system_r:zabbix_t:s0      1332 ?        00:00:00 zabbix_server
+POLICY_BOOLEAN_CONTEXT
+httpd_can_connect_zabbix --> off
+zabbix_can_network --> off
+zabbix_run_sudo --> off
+SERVICE_HEALTH
+active
+active
+API_VERSION=7.0.30
+HOST=ZABBIX-01 STATUS=0 ACTIVE_AVAILABLE=1
+INTERFACE=127.0.0.1:10050 AVAILABLE=1 ERROR=none
+ITEM=agent.ping LASTCLOCK=1788231117 LASTVALUE=1 STATE=0
+ITEM=system.hostname LASTCLOCK=1788230631 LASTVALUE=netbox-dev STATE=0
+ITEM=system.uptime LASTCLOCK=1788231120 LASTVALUE=167 STATE=0
+UNSUPPORTED_ENABLED_ITEMS=12
+UNSUPPORTED=zabbix[connector_queue] ERROR=connector is not initialized: please check "StartConnectors" configuration parameter
+UNSUPPORTED=zabbix[process,connector manager,avg,busy] ERROR=No "connector manager" processes started.
+UNSUPPORTED=zabbix[process,connector worker,avg,busy] ERROR=No "connector worker" processes started.
+UNSUPPORTED=zabbix[process,ipmi poller,avg,busy] ERROR=No "ipmi poller" processes started.
+UNSUPPORTED=zabbix[process,java poller,avg,busy] ERROR=No "java poller" processes started.
+UNSUPPORTED=zabbix[process,snmp trapper,avg,busy] ERROR=No "snmp trapper" processes started.
+UNSUPPORTED=zabbix[process,ipmi manager,avg,busy] ERROR=No "ipmi manager" processes started.
+UNSUPPORTED=zabbix[process,vmware collector,avg,busy] ERROR=No "vmware collector" processes started.
+UNSUPPORTED=zabbix[vmware,buffer,pused] ERROR=No "vmware collector" processes started.
+UNSUPPORTED=zabbix[process,report writer,avg,busy] ERROR=No "report writer" processes started.
+QUEUE_API=NOT-APPLICABLE reason=queue-api-not-exposed-by-zabbix-7.0.30
+RESULT=PASS
+DIAGNOSIS=startup-only blocked Kerberos path search; no configured Kerberos dependency; no allow policy justified
+RESULT=PASS

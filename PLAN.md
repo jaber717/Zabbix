@@ -1,9 +1,10 @@
 # Implementation Plan
 
-M0, M0.5, M1, and M2 are complete. M3 was explicitly authorized on 2026-09-01
-for the existing RHEL 9.6 VM at `192.168.1.91`; the prior plan to create a
-dedicated VM is superseded for this home-lab milestone. Every milestone ends
-with a stop/review gate.
+M0, M0.5, M1, M2, and M3 are complete. M3 used the explicitly authorized
+existing RHEL 9.6 VM at `192.168.1.91`; the prior plan to create a dedicated VM
+was superseded for this home-lab milestone. M4 is ready only for separate
+authorization after its NetBox permission and version-compatibility blockers
+are resolved. Every milestone ends with a stop/review gate.
 
 ## M0 — Discovery + Specifications
 
@@ -96,7 +97,7 @@ with a stop/review gate.
 
 ## M3 — Zabbix Lab Deployment
 
-- **State:** IN-PROGRESS (authorized 2026-09-01); M4 is not authorized.
+- **State:** COMPLETE (accepted 2026-09-01); M4 was not started.
 - **Scope:** Deploy logical `ZABBIX-01` to the existing RHEL 9.6 VM at
   `192.168.1.91`; validate platform and self-monitoring without renaming the OS
   host unless required.
@@ -112,6 +113,12 @@ with a stop/review gate.
   mishandling.
 - **Stop condition:** Stable dual-purpose home-lab instance; record that it is no
   longer a pristine runtime-free Build VM; no NetBox integration or M4 work.
+- **Result:** Accepted artifact and installer integrity passed; offline-only
+  convergence, runtime/API/queue validation, zero-change convergence, check
+  mode, authorized reboot, backup verification, SELinux/firewall/TLS/secret
+  controls, and safe negatives passed. Destructive restore remains
+  `NOT-EXECUTED` after a passing preflight. The bounded unsupported items and
+  startup-only AVCs are diagnosed in `evidence/m3/ACCEPTANCE.md`.
 
 ## M4 — NetBox Integration
 

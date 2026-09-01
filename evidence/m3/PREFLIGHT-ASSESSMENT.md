@@ -12,10 +12,10 @@ Target: `192.168.1.91` (`netbox-dev`)
 | SELinux | PASS | Enforcing |
 | Capacity | PASS | 4 CPUs, 11 GiB RAM, 46 GiB free on `/`, 21 GiB free on `/home` |
 | firewalld | PASS | Active; public zone on `ens18` |
-| PostgreSQL safety | PASS WITH COEXISTENCE CONTROLS | PostgreSQL 16.10 is active and contains a meaningful `netbox` database with 198 user tables. It must not be initialized, replaced, or interrupted. |
-| Web coexistence | PASS WITH COEXISTENCE CONTROLS | nginx serves NetBox on 80/443. Zabbix must use HTTPS 8443 and no HTTP redirect. |
+| PostgreSQL safety | PASS | PostgreSQL 16.10 is active and contains a meaningful `netbox` database with 198 user tables. Passing required the documented coexistence controls: it must not be initialized, replaced, or interrupted. |
+| Web coexistence | PASS | nginx serves NetBox on 80/443. Passing required Zabbix to use HTTPS 8443 and no HTTP redirect. |
 | Zabbix pre-existence | PASS | No Zabbix RPM or service exists; ports 10050/10051 are unused. |
-| Unrelated workloads | PASS WITH PROTECTION | NetBox, NetBox RQ, nginx, PostgreSQL, Redis, and firewalld are running and must remain available. |
+| Unrelated workloads | PASS | NetBox, NetBox RQ, nginx, PostgreSQL, Redis, and firewalld are running; passing required them to remain available. |
 
 ## Required bounded corrections before converge
 

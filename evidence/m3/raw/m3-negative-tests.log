@@ -1,0 +1,49 @@
+NEGATIVE_TESTS_BEGIN
+CASE=ARTIFACT_CHECKSUM_MISMATCH
+EXPECTED_FAILURE_RC=1
+./compat/zabbix-7.0.yaml: FAILED
+ERROR: accepted M1 release checksum verification failed
+CASE_RESULT=PASS
+CASE=MISSING_DATABASE_SECRET
+EXPECTED_FAILURE_RC=1
+ERROR: database password input file is required
+CASE_RESULT=PASS
+CASE=EXTERNAL_REPOSITORY_DEPENDENCY_REJECTED
+REQUESTED_REPOSITORIES=zabbix-offline
+PROVIDER=NONE
+CASE_RESULT=PASS
+CASE=INVALID_FIREWALL_SOURCE_CIDR
+EXPECTED_FAILURE_RC=2
+TASK [firewall : Validate source CIDRs using the Python standard library] ******
+failed: [zabbix-target] (item=invalid-cidr) => {"ansible_loop_var": "item", "changed": false, "cmd": ["/usr/bin/python3", "-c", "import ipaddress,sys; ipaddress.ip_network(sys.argv[1], strict=False)", "invalid-cidr"], "delta": "0:00:00.022887", "end": "2026-09-01 06:08:35.995197", "item": "invalid-cidr", "msg": "non-zero return code", "rc": 1, "start": "2026-09-01 06:08:35.972310", "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/usr/lib64/python3.9/ipaddress.py\", line 82, in ip_network\n    raise ValueError(f'{address!r} does not appear to be an IPv4 or IPv6 network')\nValueError: 'invalid-cidr' does not appear to be an IPv4 or IPv6 network", "stderr_lines": ["Traceback (most recent call last):", "  File \"<string>\", line 1, in <module>", "  File \"/usr/lib64/python3.9/ipaddress.py\", line 82, in ip_network", "    raise ValueError(f'{address!r} does not appear to be an IPv4 or IPv6 network')", "ValueError: 'invalid-cidr' does not appear to be an IPv4 or IPv6 network"], "stdout": "", "stdout_lines": []}
+PLAY RECAP *********************************************************************
+zabbix-target              : ok=65   changed=0    unreachable=0    failed=1    skipped=32   rescued=0    ignored=0   
+CASE_RESULT=PASS
+CASE=MISMATCHED_TLS_PRIVATE_KEY
+CERTIFICATE_PUBLIC_KEY_SHA256=4a0f118e2a206e8f798017132ee722d8c729b70de6701d5dc6648fd8c03a710b
+MISMATCH_PUBLIC_KEY_SHA256=69e24b0075308e3c271b67063c9d4a3cf6bc61d89029dcae6e1f7e1f171a1162
+EXPECTED_FAILURE_RC=2
+TASK [tls : Require matching TLS key material] *********************************
+PLAY RECAP *********************************************************************
+zabbix-target              : ok=35   changed=0    unreachable=0    failed=1    skipped=15   rescued=0    ignored=0   
+CASE_RESULT=PASS
+POST_NEGATIVE_RUNTIME_INVARIANTS
+/etc/yum.repos.d/zabbix-offline.repo: OK
+/etc/zabbix/zabbix_server.conf: OK
+/etc/zabbix/zabbix_agent2.conf: OK
+/etc/nginx/conf.d/zabbix.conf: OK
+/etc/php-fpm.d/zabbix.conf: OK
+SERVICE_postgresql=active
+SERVICE_zabbix-server=active
+SERVICE_zabbix-agent2=active
+SERVICE_php-fpm=active
+SERVICE_nginx=active
+SERVICE_firewalld=active
+SERVICE_netbox=active
+SERVICE_netbox-rq=active
+SERVICE_redis=active
+SELINUX=Enforcing
+NETBOX_HTTPS_CODE=200
+ZABBIX_HTTPS_CODE=200
+NEGATIVE_TESTS=PASS
+RUNTIME_UNCHANGED=PASS

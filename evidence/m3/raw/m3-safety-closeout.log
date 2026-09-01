@@ -1,0 +1,186 @@
+M3_SAFETY_CLOSEOUT_BEGIN
+2026-09-01T06:11:08+03:00
+ Static hostname: netbox-dev
+       Icon name: computer-vm
+         Chassis: vm 🖴
+      Machine ID: 1357bb385e9e4cd3b24fde521977d9c4
+         Boot ID: 422a56478a00474ea6cc64fb25c3c0d3
+  Virtualization: kvm
+Operating System: Red Hat Enterprise Linux 9.6 (Plow)
+     CPE OS Name: cpe:/o:redhat:enterprise_linux:9::baseos
+          Kernel: Linux 5.14.0-570.12.1.el9_6.x86_64
+    Architecture: x86-64
+ Hardware Vendor: QEMU
+  Hardware Model: Standard PC _i440FX + PIIX, 1996_
+Firmware Version: rel-1.16.3-0-ga6ed6b701f0a-prebuilt.qemu.org
+Red Hat Enterprise Linux release 9.6 (Plow)
+x86_64
+BOOT_ID=422a5647-8a00-474e-a6cc-64fb25c3c0d3
+SELINUX=Enforcing
+RPM_STATE_SHA256=57f464d1198b39a86799793d85aeb7fa78b0e8aa02b31ffb07749e86fadfb68d
+ACCEPTED_INPUT_INTEGRITY
+M1_RELEASE_SHA256SUMS=PASS
+M2_INSTALLER_MANIFEST=PASS
+ENABLED_REPOSITORIES
+repo id                          repo name
+netbox-offline-base              NetBox RHEL 9.6 offline base closure
+netbox-offline-modules           NetBox RHEL 9.6 offline modular content
+rhel-9-for-x86_64-appstream-rpms Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)
+rhel-9-for-x86_64-baseos-rpms    Red Hat Enterprise Linux 9 for x86_64 - BaseOS (RPMs)
+zabbix-offline                   Zabbix Offline M1 Repository
+INSTALLED_MODULE_STREAMS_LOCAL_METADATA
+Zabbix Offline M1 Repository
+Name       Stream   Profiles               Summary                            
+nginx      1.24 [e] common                 nginx webserver                    
+php        8.3 [e]  common, devel, minimal PHP scripting language             
+postgresql 16 [e]   client, server         PostgreSQL server and client module
+
+Hint: [d]efault, [e]nabled, [x]disabled, [i]nstalled
+INSTALLED_ZABBIX_AND_RUNTIME_PACKAGES
+firewalld-1.3.4-15.el9_6.noarch
+firewalld-filesystem-1.3.4-15.el9_6.noarch
+fping-5.1-1.el9.x86_64
+nginx-1:1.24.0-4.module+el9.5.0+22954+e2d70a1c.1.x86_64
+nginx-core-1:1.24.0-4.module+el9.5.0+22954+e2d70a1c.1.x86_64
+nginx-filesystem-1:1.24.0-4.module+el9.5.0+22954+e2d70a1c.1.noarch
+php-8.3.19-1.module+el9.6.0+23015+da8065b7.x86_64
+php-bcmath-8.3.19-1.module+el9.6.0+23015+da8065b7.x86_64
+php-cli-8.3.19-1.module+el9.6.0+23015+da8065b7.x86_64
+php-common-8.3.19-1.module+el9.6.0+23015+da8065b7.x86_64
+php-fpm-8.3.19-1.module+el9.6.0+23015+da8065b7.x86_64
+php-gd-8.3.19-1.module+el9.6.0+23015+da8065b7.x86_64
+php-ldap-8.3.19-1.module+el9.6.0+23015+da8065b7.x86_64
+php-mbstring-8.3.19-1.module+el9.6.0+23015+da8065b7.x86_64
+php-pdo-8.3.19-1.module+el9.6.0+23015+da8065b7.x86_64
+php-pgsql-8.3.19-1.module+el9.6.0+23015+da8065b7.x86_64
+php-xml-8.3.19-1.module+el9.6.0+23015+da8065b7.x86_64
+zabbix-agent2-7.0.30-release1.el9.x86_64
+zabbix-get-7.0.30-release1.el9.x86_64
+zabbix-nginx-conf-7.0.30-release1.el9.noarch
+zabbix-selinux-policy-7.0.30-release1.el9.x86_64
+zabbix-sender-7.0.30-release1.el9.x86_64
+zabbix-server-pgsql-7.0.30-release1.el9.x86_64
+zabbix-sql-scripts-7.0.30-release1.el9.noarch
+zabbix-web-7.0.30-release1.el9.noarch
+zabbix-web-deps-7.0.30-release1.el9.noarch
+zabbix-web-pgsql-7.0.30-release1.el9.noarch
+FORBIDDEN_PACKAGE_zabbix-server-mysql=ABSENT
+FORBIDDEN_PACKAGE_zabbix-proxy-mysql=ABSENT
+FORBIDDEN_PACKAGE_zabbix-proxy-pgsql=ABSENT
+FORBIDDEN_PACKAGE_zabbix-java-gateway=ABSENT
+SERVICE_STATE
+SERVICE_postgresql_ACTIVE=active ENABLED=enabled
+SERVICE_zabbix-server_ACTIVE=active ENABLED=enabled
+SERVICE_zabbix-agent2_ACTIVE=active ENABLED=enabled
+SERVICE_php-fpm_ACTIVE=active ENABLED=enabled
+SERVICE_nginx_ACTIVE=active ENABLED=enabled
+SERVICE_firewalld_ACTIVE=active ENABLED=enabled
+SERVICE_netbox_ACTIVE=active ENABLED=enabled
+SERVICE_netbox-rq_ACTIVE=active ENABLED=enabled
+SERVICE_redis_ACTIVE=active ENABLED=enabled
+SERVICE_httpd_ACTIVE=inactive ENABLED=masked
+LISTENERS
+LISTEN 0      4096     0.0.0.0:10051 0.0.0.0:* users:(("zabbix_server",pid=1412,fd=11),("zabbix_server",pid=1402,fd=11),("zabbix_server",pid=1401,fd=11),("zabbix_server",pid=1400,fd=11),("zabbix_server",pid=1399,fd=11),("zabbix_server",pid=1398,fd=11),("zabbix_server",pid=1397,fd=11),("zabbix_server",pid=1396,fd=11),("zabbix_server",pid=1395,fd=11),("zabbix_server",pid=1392,fd=11),("zabbix_server",pid=1391,fd=11),("zabbix_server",pid=1380,fd=11),("zabbix_server",pid=1378,fd=11),("zabbix_server",pid=1376,fd=11),("zabbix_server",pid=1373,fd=11),("zabbix_server",pid=1372,fd=11),("zabbix_server",pid=1371,fd=11),("zabbix_server",pid=1370,fd=11),("zabbix_server",pid=1369,fd=11),("zabbix_server",pid=1367,fd=11),("zabbix_server",pid=1358,fd=11),("zabbix_server",pid=1357,fd=11),("zabbix_server",pid=1356,fd=11),("zabbix_server",pid=1355,fd=11),("zabbix_server",pid=1354,fd=11),("zabbix_server",pid=1353,fd=11),("zabbix_server",pid=1350,fd=11),("zabbix_server",pid=1338,fd=11),("zabbix_server",pid=1337,fd=11),("zabbix_server",pid=1336,fd=11),("zabbix_server",pid=1335,fd=11),("zabbix_server",pid=1334,fd=11),("zabbix_server",pid=1333,fd=11),("zabbix_server",pid=1332,fd=11),("zabbix_server",pid=1331,fd=11),("zabbix_server",pid=1330,fd=11),("zabbix_server",pid=1326,fd=11),("zabbix_server",pid=1324,fd=11),("zabbix_server",pid=1323,fd=11),("zabbix_server",pid=1322,fd=11),("zabbix_server",pid=1321,fd=11),("zabbix_server",pid=1320,fd=11),("zabbix_server",pid=1319,fd=11),("zabbix_server",pid=1318,fd=11),("zabbix_server",pid=1317,fd=11),("zabbix_server",pid=1312,fd=11),("zabbix_server",pid=1311,fd=11),("zabbix_server",pid=1310,fd=11),("zabbix_server",pid=1188,fd=11),("zabbix_server",pid=1187,fd=11),("zabbix_server",pid=1088,fd=11))
+LISTEN 0      511      0.0.0.0:80    0.0.0.0:* users:(("nginx",pid=915,fd=6),("nginx",pid=914,fd=6),("nginx",pid=913,fd=6),("nginx",pid=912,fd=6),("nginx",pid=910,fd=6))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+LISTEN 0      511      0.0.0.0:8443  0.0.0.0:* users:(("nginx",pid=915,fd=10),("nginx",pid=914,fd=10),("nginx",pid=913,fd=10),("nginx",pid=912,fd=10),("nginx",pid=910,fd=10))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
+LISTEN 0      511      0.0.0.0:443   0.0.0.0:* users:(("nginx",pid=915,fd=8),("nginx",pid=914,fd=8),("nginx",pid=913,fd=8),("nginx",pid=912,fd=8),("nginx",pid=910,fd=8))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+LISTEN 0      200    127.0.0.1:5432  0.0.0.0:* users:(("postgres",pid=859,fd=7))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+LISTEN 0      4096           *:10050       *:* users:(("zabbix_agent2",pid=1196,fd=8))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+LISTEN 0      511         [::]:80       [::]:* users:(("nginx",pid=915,fd=7),("nginx",pid=914,fd=7),("nginx",pid=913,fd=7),("nginx",pid=912,fd=7),("nginx",pid=910,fd=7))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+LISTEN 0      511         [::]:443      [::]:* users:(("nginx",pid=915,fd=9),("nginx",pid=914,fd=9),("nginx",pid=913,fd=9),("nginx",pid=912,fd=9),("nginx",pid=910,fd=9))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+DATABASE_STATE
+netbox
+postgres
+zabbix
+ZABBIX_ROLE=zabbix:superuser=false:createdb=false:createrole=false
+ZABBIX_PUBLIC_TABLES=203
+ZABBIX_NON_ZABBIX_RELATION_OWNERS=0
+ZABBIX_DBVERSION=7000000/7000030
+NETBOX_PUBLIC_TABLES=198
+ENDPOINTS_AND_AGENT
+NETBOX_HTTPS_CODE=200
+ZABBIX_HTTPS_CODE=200
+AGENT_PING=1
+AGENT_HOSTNAME=netbox-dev
+FIREWALL_STATE
+public (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: ens18
+  sources: 
+  services: cockpit dhcpv6-client ssh
+  ports: 443/tcp 80/tcp
+  protocols: 
+  forward: yes
+  masquerade: no
+  forward-ports: 
+  source-ports: 
+  icmp-blocks: 
+  rich rules: 
+	rule family="ipv4" source address="192.168.1.0/24" port port="10050" protocol="tcp" accept
+	rule family="ipv4" source address="192.168.1.0/24" port port="8443" protocol="tcp" accept
+	rule family="ipv4" source address="192.168.1.0/24" port port="10051" protocol="tcp" accept
+TLS_STATE
+subject=CN=zabbix-01.lab
+issuer=CN=zabbix-01.lab
+notBefore=Sep  1 01:49:16 2026 GMT
+notAfter=Dec  4 01:49:16 2028 GMT
+sha256 Fingerprint=8A:01:A4:4E:27:48:92:3E:CF:9C:28:5E:6F:59:95:44:68:F1:13:E5:6E:9E:77:C4:59:CB:55:40:BA:46:21:73
+X509v3 Subject Alternative Name: 
+    DNS:zabbix-01.lab, IP Address:192.168.1.91
+/etc/pki/tls/certs/zabbix-web.crt: OK
+/etc/pki/tls/certs/zabbix-web.crt root:root 644 regular file
+/etc/pki/tls/private/zabbix-web.key root:root 600 regular file
+SECRET_STATE
+/etc/credstore.encrypted/zabbix-db-password root:root 600 regular file
+/var/lib/systemd/credential.secret root:root 400 regular file
+/run/zabbix-server-credentials/zabbix_server.conf root:zabbix 640 regular file
+/run/zabbix-web/zabbix.conf.php root:apache 640 regular file
+/etc/zabbix/zabbix_server.conf root:zabbix 640 regular file
+/etc/zabbix/web/zabbix.conf.php root:root 777 symbolic link
+PERSISTENT_DB_PASSWORD=ABSENT
+/usr/sbin/zabbix_server -c /run/zabbix-server-credentials/zabbix_server.conf 
+PROCESS_CMDLINE_SECRET=ABSENT
+BACKUP_STATE
+enabled
+active
+NEXT                        LEFT     LAST                        PASSED    UNIT                        ACTIVATES
+Wed 2026-09-02 02:22:47 +03 20h left Tue 2026-09-01 05:28:36 +03 42min ago zabbix-offline-backup.timer zabbix-offline-backup.service
+
+1 timers listed.
+Pass --all to see loaded but inactive timers, too.
+20260901T025738Z-full root:root 700
+20260901T025816Z-full root:root 700
+RECENT_ZABBIX_SERVER_LOG
+Sep 01 05:49:20 netbox-dev zabbix_server[1397]: server #44 started [odbc poller #1]
+Sep 01 05:49:20 netbox-dev zabbix_server[1402]: server #49 started [internal poller #1]
+Sep 01 05:49:20 netbox-dev zabbix_server[1400]: thread started
+Sep 01 05:49:20 netbox-dev zabbix_server[1398]: thread started
+Sep 01 05:49:20 netbox-dev zabbix_server[1399]: thread started
+Sep 01 05:49:20 netbox-dev zabbix_server[1412]: server #50 started [proxy group manager #1]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [6] thread started [preprocessing worker #6]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [5] thread started [preprocessing worker #5]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [7] thread started [preprocessing worker #7]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [4] thread started [preprocessing worker #4]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [3] thread started [preprocessing worker #3]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [2] thread started [preprocessing worker #2]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [1] thread started [preprocessing worker #1]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [12] thread started [preprocessing worker #12]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [13] thread started [preprocessing worker #13]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [15] thread started [preprocessing worker #15]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [11] thread started [preprocessing worker #11]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [16] thread started [preprocessing worker #16]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [14] thread started [preprocessing worker #14]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [10] thread started [preprocessing worker #10]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [9] thread started [preprocessing worker #9]
+Sep 01 05:49:20 netbox-dev zabbix_server[1318]: [8] thread started [preprocessing worker #8]
+Sep 01 05:49:20 netbox-dev zabbix_server[1330]: [discovery worker #1] thread started [discovery worker #1]
+Sep 01 05:49:20 netbox-dev zabbix_server[1330]: [discovery worker #3] thread started [discovery worker #3]
+Sep 01 05:49:20 netbox-dev zabbix_server[1330]: [discovery worker #5] thread started [discovery worker #5]
+Sep 01 05:49:20 netbox-dev zabbix_server[1330]: [discovery worker #2] thread started [discovery worker #2]
+Sep 01 05:49:20 netbox-dev zabbix_server[1330]: [discovery worker #4] thread started [discovery worker #4]
+Sep 01 05:49:21 netbox-dev zabbix_server[1399]: resuming Zabbix agent checks on host "ZABBIX-01": connection restored
+Sep 01 05:49:22 netbox-dev zabbix_server[1399]: Zabbix agent item "system.cpu.util[,guest]" on host "ZABBIX-01" failed: first network error, wait for 15 seconds
+Sep 01 05:49:37 netbox-dev zabbix_server[1399]: resuming Zabbix agent checks on host "ZABBIX-01": connection restored
+FAILED_UNITS
+M3_SAFETY_CLOSEOUT=PASS

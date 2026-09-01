@@ -9,3 +9,4 @@ installer/MANIFEST.sha256 text eol=lf
 installer/** text eol=lf
 installer/roles/*/files/* text eol=lf
 evidence/m1/final-build*/raw/** -text -diff
+evidence/m3/raw/** -text -diff

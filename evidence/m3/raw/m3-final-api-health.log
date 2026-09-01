@@ -1,0 +1,25 @@
+API_VERSION=7.0.30
+HOST=ZABBIX-01 STATUS=0 ACTIVE_AVAILABLE=1
+INTERFACE=127.0.0.1:10050 AVAILABLE=1 ERROR=none
+ITEM=agent.ping LASTCLOCK=1788232137 LASTVALUE=1 STATE=0
+ITEM=system.hostname LASTCLOCK=1788230631 LASTVALUE=netbox-dev STATE=0
+ITEM=system.uptime LASTCLOCK=1788232170 LASTVALUE=1217 STATE=0
+MONITORED_ENABLED_ITEMS=160
+UNSUPPORTED_ENABLED_ITEMS=12 UNSUPPORTED_PERCENT=7.50
+UNSUPPORTED=zabbix[connector_queue] ERROR=connector is not initialized: please check "StartConnectors" configuration parameter
+UNSUPPORTED=zabbix[process,connector manager,avg,busy] ERROR=No "connector manager" processes started.
+UNSUPPORTED=zabbix[process,connector worker,avg,busy] ERROR=No "connector worker" processes started.
+UNSUPPORTED=zabbix[process,ipmi poller,avg,busy] ERROR=No "ipmi poller" processes started.
+UNSUPPORTED=zabbix[process,java poller,avg,busy] ERROR=No "java poller" processes started.
+UNSUPPORTED=zabbix[process,snmp trapper,avg,busy] ERROR=No "snmp trapper" processes started.
+UNSUPPORTED=zabbix[process,ipmi manager,avg,busy] ERROR=No "ipmi manager" processes started.
+UNSUPPORTED=zabbix[process,vmware collector,avg,busy] ERROR=No "vmware collector" processes started.
+UNSUPPORTED=zabbix[vmware,buffer,pused] ERROR=No "vmware collector" processes started.
+UNSUPPORTED=zabbix[process,report writer,avg,busy] ERROR=No "report writer" processes started.
+UNSUPPORTED=zabbix[process,report manager,avg,busy] ERROR=No "report manager" processes started.
+UNSUPPORTED=vfs.file.contents["/sys/class/net/ens18/speed"] ERROR=Value of type "double" is not suitable for value type "Numeric (unsigned)". Value "-1000000"
+QUEUE_INTERNAL_ITEMS=2
+QUEUE_ITEM=zabbix[queue] LASTCLOCK=1788232132 LASTVALUE=0 STATE=0
+QUEUE_ITEM=zabbix[queue,10m] LASTCLOCK=1788232131 LASTVALUE=0 STATE=0
+QUEUE_API=NOT-APPLICABLE reason=queue-api-not-exposed-by-zabbix-7.0.30
+RESULT=PASS

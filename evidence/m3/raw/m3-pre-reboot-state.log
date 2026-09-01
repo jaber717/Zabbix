@@ -1,0 +1,61 @@
+2026-09-01T05:48:53+03:00
+PRE_REBOOT_UPTIME
+ 05:48:53 up  4:30,  0 users,  load average: 0.28, 0.36, 0.31
+INTERACTIVE_SESSIONS
+FAILED_UNITS
+RUNNING_SERVICES
+  auditd.service           loaded active running Security Auditing Service
+  chronyd.service          loaded active running NTP client/server
+  crond.service            loaded active running Command Scheduler
+  dbus-broker.service      loaded active running D-Bus System Message Bus
+  firewalld.service        loaded active running firewalld - dynamic firewall daemon
+  getty@tty1.service       loaded active running Getty on tty1
+  irqbalance.service       loaded active running irqbalance daemon
+  netbox-rq.service        loaded active running NetBox Request Queue Worker
+  netbox.service           loaded active running NetBox WSGI Service
+  NetworkManager.service   loaded active running Network Manager
+  nginx.service            loaded active running The nginx HTTP and reverse proxy server
+  php-fpm.service          loaded active running The PHP FastCGI Process Manager
+  postgresql.service       loaded active running PostgreSQL database server
+  qemu-guest-agent.service loaded active running QEMU Guest Agent
+  redis.service            loaded active running Redis persistent key-value database
+  rhsmcertd.service        loaded active running Enable periodic update of entitlement certificates.
+  rsyslog.service          loaded active running System Logging Service
+  sshd.service             loaded active running OpenSSH server daemon
+  sssd-kcm.service         loaded active running SSSD Kerberos Cache Manager
+  systemd-journald.service loaded active running Journal Service
+  systemd-logind.service   loaded active running User Login Management
+  systemd-udevd.service    loaded active running Rule-based Manager for Device Events and Files
+  user@1000.service        loaded active running User Manager for UID 1000
+  zabbix-agent2.service    loaded active running Zabbix Agent 2
+  zabbix-server.service    loaded active running Zabbix Server
+REQUIRED_SERVICE_STATES
+active
+active
+active
+active
+active
+active
+active
+active
+active
+REQUIRED_SERVICE_ENABLEMENT
+enabled
+enabled
+enabled
+enabled
+enabled
+enabled
+enabled
+enabled
+enabled
+ENDPOINTS
+NETBOX_HTTPS=200
+ZABBIX_HTTPS=200
+SELINUX
+Enforcing
+DATABASES
+netbox
+postgres
+zabbix
+PRE_REBOOT_GATE=PASS

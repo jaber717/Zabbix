@@ -1,0 +1,1 @@
+pg_dump: error: could not open output file "/var/backups/zabbix-offline/.partial.20260901T025352Z.wDSoT6/database.dump": Permission denied
