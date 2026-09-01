@@ -1,8 +1,8 @@
 # Implementation Plan
 
-M0, M0.5, and M1 are complete. M1 passed after a narrowly approved source-policy
-amendment for `fping`. M2 has not started and requires separate explicit
-authorization. Every milestone ends with a stop/review gate.
+M0, M0.5, and M1 are complete. M2 was explicitly authorized on 2026-09-01 and
+is in progress. M3 has not started and is not authorized. Every milestone ends
+with a stop/review gate.
 
 ## M0 — Discovery + Specifications
 
@@ -50,7 +50,7 @@ authorization. Every milestone ends with a stop/review gate.
 ## M1 — Offline Build Pipeline
 
 - **State:** COMPLETE (2026-09-01); the official Zabbix non-supported RHEL 9
-  source supplied only pinned `fping`. M2 is not authorized or started.
+  source supplied only pinned `fping`. M2 was separately authorized afterward.
 - **Scope:** Compatibility profile, clean installroot, RPM/module closure, Python
   wheels, artifact assembly, manifests, hashes, and build verification.
 - **Inputs:** Completed RHEL build evidence; verified usable BaseOS/AppStream and
@@ -72,7 +72,7 @@ authorization. Every milestone ends with a stop/review gate.
 
 ## M2 — Installer
 
-- **State:** NOT STARTED; gate ready for separate explicit authorization.
+- **State:** IN-PROGRESS (authorized 2026-09-01); M3 is not authorized.
 
 - **Scope:** Bootstrap/Ansible for PostgreSQL, Zabbix, nginx/PHP, TLS, SELinux,
   firewalld, systemd, backup, upgrade skeleton, and state model.

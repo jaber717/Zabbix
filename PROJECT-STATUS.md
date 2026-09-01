@@ -2,19 +2,18 @@
 
 ## Current gate
 
-Milestone: **M1 — Offline Build Pipeline**
+Milestone: **M2 — Offline Installer and Configuration Automation**
 
-State: **COMPLETE**
+State: **IN-PROGRESS**
 
 Milestone baseline commit: `62ba3275a3f016b2f07d333684286b59c1188cfa`
 
 M0.5 source-readiness commit: `b2180c00d0a6029a65996055ae7becbcddc5f0b7`
 
-M0.5 source readiness and M1 are complete. The first M1 transaction stopped at
-the missing-`fping` dependency gate. After the owner approved the official
-Zabbix non-supported RHEL 9 x86_64 source for only the pinned `fping` RPM, two
-fresh clean builds completed without EPEL or any broader source expansion.
-M2 has not been started; its gate is ready for separate explicit authorization.
+M0.5 source readiness and M1 are complete. M2 was explicitly authorized on
+2026-09-01. It is limited to building and validating offline installation
+automation; no ZABBIX-01 deployment, NetBox change, synchronization work, or M3
+activity is authorized.
 
 M1 pipeline source commit: `fbf3573`
 
@@ -23,6 +22,18 @@ M1 blocked-run evidence commit: `499f35a`
 M1 fping source-policy commit: `c6dedeb`
 
 M1 accepted build source commit: `91947c3`
+
+M1 closeout commit: `9f764ec8e019e1ac4ed57e9b4f87dea9d6345f28`
+
+## M2 scope
+
+- Consume the accepted M1 repository and lockfile as immutable inputs.
+- Implement a small offline bootstrap plus separated idempotent Ansible roles.
+- Provide database safety, runtime secret injection, TLS, SELinux, firewalld,
+  backup/restore, upgrade preflight, verification, and operational documentation.
+- Use static and disposable offline validation only. Full systemd, SELinux,
+  firewalld, service, converge, and restore execution requires a dedicated RHEL
+  target and must remain `NOT-EXECUTED` if none is available within M2.
 
 ## Gate and blocker matrix
 
