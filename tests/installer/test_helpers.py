@@ -206,6 +206,18 @@ class LockAndPortTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("Detect whether nginx has applied the managed Zabbix listener", web)
 
+    def test_fatal_log_check_excludes_only_known_graceful_shutdown_noise(self):
+        verification = (
+            ROOT / "installer/roles/verification/tasks/main.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "cannot read alert (manager service|syncer) request$", verification
+        )
+        self.assertIn("| reject('equalto', '-- No entries --')", verification)
+        self.assertNotIn(
+            "verification_zabbix_fatal.stdout | trim not in", verification
+        )
+
     def test_selinux_safety_probe_runs_in_check_mode(self):
         baseline = (
             ROOT / "installer/roles/os_baseline/tasks/main.yml"

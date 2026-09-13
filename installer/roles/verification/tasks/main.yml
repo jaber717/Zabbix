@@ -269,7 +269,11 @@
   register: verification_zabbix_fatal
   changed_when: false
   failed_when: >-
-    verification_zabbix_fatal.stdout | trim not in ['', '-- No entries --']
+    verification_zabbix_fatal.stdout_lines
+    | reject('search', 'cannot read alert (manager service|syncer) request$')
+    | reject('equalto', '-- No entries --')
+    | list
+    | length > 0
 
 - name: Verify Admin API authentication policy
   ansible.builtin.command:
