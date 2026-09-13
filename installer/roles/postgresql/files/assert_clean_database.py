@@ -53,12 +53,17 @@ def main() -> int:
         "api tokens": "SELECT count(*) FROM token",
         "discovered hosts": "SELECT count(*) FROM dhosts",
         "discovered services": "SELECT count(*) FROM dservices",
-        "host inventory": "SELECT count(*) FROM host_inventory",
         "problems": "SELECT count(*) FROM problem",
         "alerts": "SELECT count(*) FROM alerts",
     }
     for label, sql in checks.items():
         require(scalar(database, sql) == 0, f"unexpected {label}")
+    inventory_hosts = query(
+        database,
+        "SELECT h.host || '|' || i.inventory_mode FROM host_inventory i "
+        "JOIN hosts h ON h.hostid=i.hostid WHERE h.flags=0 ORDER BY h.host",
+    )
+    require(inventory_hosts == ["Zabbix server|1"], "unexpected real host inventory")
     discovery_rules = query(
         database,
         "SELECT name || '|' || iprange || '|' || status FROM drules ORDER BY druleid",

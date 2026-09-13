@@ -312,6 +312,15 @@ class LockAndPortTests(unittest.TestCase):
         self.assertIn("Local network|9|system.uname|10050|0|1|0|0", guard)
         self.assertNotIn('"network discovery rules": "SELECT count(*) FROM drules"', guard)
 
+    def test_clean_database_guard_excludes_stock_prototype_inventory(self):
+        guard = (
+            ROOT / "installer/roles/postgresql/files/assert_clean_database.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("host_inventory i", guard)
+        self.assertIn("WHERE h.flags=0 ORDER BY h.host", guard)
+        self.assertIn('["Zabbix server|1"]', guard)
+        self.assertNotIn('"host inventory": "SELECT count(*) FROM host_inventory"', guard)
+
     def test_connected_staging_installs_tools_from_rhel_sources_only(self):
         stage = (ROOT / "scripts/stage-offline-bundle.sh").read_text(encoding="utf-8")
         self.assertIn("--disablerepo='*'", stage)
