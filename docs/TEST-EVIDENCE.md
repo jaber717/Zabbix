@@ -91,7 +91,7 @@ ANSIBLE_CONFIG=ansible.cfg ansible-playbook --syntax-check \
   -i inventory/hosts.yml playbooks/verify.yml
 ```
 
-Observed: 25 installer/helper tests and 30 reconciler tests passed; every shell
+Observed: 26 installer/helper tests and 30 reconciler tests passed; every shell
 script passed `bash -n`; all Python parsed as Python 3.9; installer source and
 offline-DNF policies passed; both playbooks passed Ansible syntax parsing; the
 65-entry installer checksum manifest passed. The deterministic scan reviewed
@@ -105,10 +105,11 @@ placed in the command transcript or output. Result: zero matches. Generic
 password/token assignment candidates were reviewed and were limited to variable
 flow, protected standard-input reads, macro placeholders, and test assertions.
 
-The 25-test result includes the runtime-secret regression. It supplies a
+The 26-test result includes the runtime-secret regression. It supplies a
 synthetic password from a file outside the release tree, proves an absent value
 passes, then places the same value in a release file and proves the scan fails
-closed. It also includes the stock-host-prototype database regression.
+closed. It also includes regressions for the stock host prototypes and the
+exact disabled stock network-discovery rule and check.
 The actual deployment-password absence check is executed from the protected
 runtime configuration by both `install.sh` and `verify.sh`; its value is never
 printed, hashed, or placed in an argument.

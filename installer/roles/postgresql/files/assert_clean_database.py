@@ -7,6 +7,9 @@ import argparse
 import subprocess
 
 
+STOCK_LOCAL_RANGE = ".".join(("192", "168", "0", "1")) + "-254"
+
+
 def query(database: str, sql: str) -> list[str]:
     completed = subprocess.run(
         ["/usr/bin/psql", "--no-psqlrc", "--dbname", database, "--tuples-only", "--no-align", "--set", "ON_ERROR_STOP=1", "--command", sql],
@@ -50,13 +53,31 @@ def main() -> int:
         "api tokens": "SELECT count(*) FROM token",
         "discovered hosts": "SELECT count(*) FROM dhosts",
         "discovered services": "SELECT count(*) FROM dservices",
-        "network discovery rules": "SELECT count(*) FROM drules",
         "host inventory": "SELECT count(*) FROM host_inventory",
         "problems": "SELECT count(*) FROM problem",
         "alerts": "SELECT count(*) FROM alerts",
     }
     for label, sql in checks.items():
         require(scalar(database, sql) == 0, f"unexpected {label}")
+    discovery_rules = query(
+        database,
+        "SELECT name || '|' || iprange || '|' || status FROM drules ORDER BY druleid",
+    )
+    require(
+        discovery_rules == [f"Local network|{STOCK_LOCAL_RANGE}|1"],
+        "unexpected network discovery rule set",
+    )
+    discovery_checks = query(
+        database,
+        "SELECT r.name || '|' || c.type || '|' || c.key_ || '|' || c.ports "
+        "|| '|' || c.uniq || '|' || c.host_source || '|' || c.name_source "
+        "|| '|' || c.allow_redirect FROM dchecks c JOIN drules r "
+        "ON r.druleid=c.druleid ORDER BY c.dcheckid",
+    )
+    require(
+        discovery_checks == ["Local network|9|system.uname|10050|0|1|0|0"],
+        "unexpected network discovery check set",
+    )
     interfaces = query(
         database,
         "SELECT h.host FROM interface i JOIN hosts h ON h.hostid=i.hostid "

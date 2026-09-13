@@ -303,6 +303,15 @@ class LockAndPortTests(unittest.TestCase):
         self.assertIn("status IN (0,1) AND flags=0", guard)
         self.assertIn("WHERE h.flags=0 ORDER BY h.host", guard)
 
+    def test_clean_database_guard_allows_only_the_disabled_stock_discovery_rule(self):
+        guard = (
+            ROOT / "installer/roles/postgresql/files/assert_clean_database.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn('STOCK_LOCAL_RANGE = ".".join(("192", "168", "0", "1")) + "-254"', guard)
+        self.assertIn('f"Local network|{STOCK_LOCAL_RANGE}|1"', guard)
+        self.assertIn("Local network|9|system.uname|10050|0|1|0|0", guard)
+        self.assertNotIn('"network discovery rules": "SELECT count(*) FROM drules"', guard)
+
     def test_connected_staging_installs_tools_from_rhel_sources_only(self):
         stage = (ROOT / "scripts/stage-offline-bundle.sh").read_text(encoding="utf-8")
         self.assertIn("--disablerepo='*'", stage)
