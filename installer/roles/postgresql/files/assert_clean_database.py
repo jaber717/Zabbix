@@ -53,7 +53,6 @@ def main() -> int:
         "api tokens": "SELECT count(*) FROM token",
         "discovered hosts": "SELECT count(*) FROM dhosts",
         "discovered services": "SELECT count(*) FROM dservices",
-        "problems": "SELECT count(*) FROM problem",
         "alerts": "SELECT count(*) FROM alerts",
     }
     for label, sql in checks.items():
@@ -90,7 +89,7 @@ def main() -> int:
     )
     require(interfaces == ["Zabbix server"], "unexpected host interface set")
     if args.mode == "seed":
-        for table in ("history", "history_uint", "history_str", "history_text", "history_log", "trends", "trends_uint", "events", "sessions"):
+        for table in ("history", "history_uint", "history_str", "history_text", "history_log", "trends", "trends_uint", "events", "problem", "sessions"):
             require(scalar(database, f"SELECT count(*) FROM {table}") == 0, f"fresh seed contains rows in {table}")
     print(f"PASS: clean Zabbix database ({args.mode})")
     return 0

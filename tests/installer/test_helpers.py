@@ -339,6 +339,25 @@ class LockAndPortTests(unittest.TestCase):
         self.assertIn('["Zabbix server|1"]', guard)
         self.assertNotIn('"host inventory": "SELECT count(*) FROM host_inventory"', guard)
 
+    def test_clean_database_guard_permits_runtime_rows_only_after_seed(self):
+        guard = (
+            ROOT / "installer/roles/postgresql/files/assert_clean_database.py"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn('"problems": "SELECT count(*) FROM problem"', guard)
+        seed_checks = guard[guard.index('if args.mode == "seed":') :]
+        self.assertIn('"events", "problem", "sessions"', seed_checks)
+
+    def test_agent_uses_the_stock_server_host_identity(self):
+        variables = (ROOT / "installer/inventory/group_vars/all.yml").read_text(
+            encoding="utf-8"
+        )
+        config = (
+            ROOT / "installer/roles/zabbix_agent2/templates/zabbix_agent2.conf.j2"
+        ).read_text(encoding="utf-8")
+        self.assertIn('zabbix_agent_hostname: "Zabbix server"', variables)
+        self.assertIn("Hostname={{ zabbix_agent_hostname }}", config)
+        self.assertNotIn("Hostname={{ zabbix_server_hostname }}", config)
+
     def test_connected_staging_installs_tools_from_rhel_sources_only(self):
         stage = (ROOT / "scripts/stage-offline-bundle.sh").read_text(encoding="utf-8")
         self.assertIn("--disablerepo='*'", stage)

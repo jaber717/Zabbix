@@ -2,7 +2,7 @@
 LogType=system
 Server={{ zabbix_agent_allowed_servers | join(',') }}
 ServerActive={{ zabbix_agent_active_servers | join(',') }}
-Hostname={{ zabbix_server_hostname }}
+Hostname={{ zabbix_agent_hostname }}
 ListenIP={{ zabbix_agent_listen_ip }}
 ListenPort={{ zabbix_agent_listen_port }}
 Include=/etc/zabbix/zabbix_agent2.d/*.conf

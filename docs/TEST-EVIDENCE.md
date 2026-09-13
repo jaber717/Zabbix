@@ -91,7 +91,7 @@ ANSIBLE_CONFIG=ansible.cfg ansible-playbook --syntax-check \
   -i inventory/hosts.yml playbooks/verify.yml
 ```
 
-Observed: 29 installer/helper tests and 30 reconciler tests passed; every shell
+Observed: 31 installer/helper tests and 30 reconciler tests passed; every shell
 script passed `bash -n`; all Python parsed as Python 3.9; installer source and
 offline-DNF policies passed; both playbooks passed Ansible syntax parsing; the
 65-entry installer checksum manifest passed. The deterministic scan reviewed
@@ -105,7 +105,7 @@ placed in the command transcript or output. Result: zero matches. Generic
 password/token assignment candidates were reviewed and were limited to variable
 flow, protected standard-input reads, macro placeholders, and test assertions.
 
-The 29-test result includes runtime-secret regressions. They supply a
+The 31-test result includes runtime-secret regressions. They supply a
 synthetic password from a file outside the release tree, proves an absent value
 passes, then places the same value in a release file and proves the scan fails
 closed and prove shell metacharacters remain literal data through the renderer.
@@ -113,6 +113,9 @@ The result also includes regressions for stock host prototypes, prototype
 inventory, and the exact disabled stock network-discovery rule and check.
 It also keeps the fatal-log exception limited to the two observed graceful
 Zabbix alert-pipe shutdown messages; all other priority 0..3 entries fail.
+Seed mode requires empty history, trends, events, problems, and sessions;
+runtime mode permits new stock-host monitoring rows while still requiring the
+exact normal-host, user, interface, inventory, token, and discovery identities.
 The actual deployment-password absence check is executed from the protected
 runtime configuration by both `install.sh` and `verify.sh`; its value is never
 printed, hashed, or placed in an argument.
