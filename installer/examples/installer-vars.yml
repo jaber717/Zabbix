@@ -1,0 +1,18 @@
+---
+# Documentation-only example. Replace every value for the target environment.
+zabbix_server_hostname: zabbix.example.invalid
+zabbix_web_server_name: zabbix.example.invalid
+
+zabbix_db_mode: local
+zabbix_db_manage: true
+
+zabbix_tls_enabled: true
+zabbix_tls_certificate_source: /root/installation-inputs/zabbix-web.crt
+zabbix_tls_private_key_source: /root/installation-inputs/zabbix-web.key
+
+zabbix_firewall_web_sources:
+  - 192.0.2.0/24
+zabbix_firewall_server_sources:
+  - 192.0.2.0/24
+zabbix_firewall_agent_sources:
+  - 192.0.2.0/24

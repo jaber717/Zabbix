@@ -1,0 +1,47 @@
+---
+- name: Install backup and lifecycle scripts
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/usr/local/sbin/{{ item }}"
+    owner: root
+    group: root
+    mode: "0750"
+  loop:
+    - zabbix-offline-backup
+    - zabbix-offline-verify-backup
+    - zabbix-offline-restore-preflight
+    - zabbix-offline-upgrade-preflight
+
+- name: Configure non-secret backup settings
+  ansible.builtin.template:
+    src: backup.env.j2
+    dest: /etc/zabbix-offline/backup.env
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Install the backup service
+  ansible.builtin.template:
+    src: zabbix-offline-backup.service.j2
+    dest: /etc/systemd/system/zabbix-offline-backup.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd for backup units
+
+- name: Install the backup timer
+  ansible.builtin.template:
+    src: zabbix-offline-backup.timer.j2
+    dest: /etc/systemd/system/zabbix-offline-backup.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd for backup units
+
+- name: Enable the backup timer
+  ansible.builtin.systemd:
+    name: zabbix-offline-backup.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not ansible_check_mode

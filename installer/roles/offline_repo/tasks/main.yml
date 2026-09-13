@@ -1,0 +1,92 @@
+---
+- name: Validate immutable offline input paths
+  ansible.builtin.assert:
+    that:
+      - offline_release_root is match('^/')
+      - offline_repository_path is match('^/')
+      - offline_repo_id == 'zabbix-offline'
+    fail_msg: Offline paths must be absolute and the repository ID is fixed.
+
+- name: Check required M1 release files
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ offline_profile_path }}"
+    - "{{ offline_lockfile_path }}"
+    - "{{ offline_repository_path }}/repodata/repomd.xml"
+    - "{{ offline_repository_path }}/gpg/RPM-GPG-KEY-redhat-release"
+    - "{{ offline_repository_path }}/gpg/RPM-GPG-KEY-ZABBIX-B5333005"
+    - "{{ offline_repository_path }}/gpg/RPM-GPG-KEY-ZABBIX-08EFA7DD"
+  register: offline_required_files
+
+- name: Require every immutable M1 input
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.isreg
+    fail_msg: "Missing immutable M1 input: {{ item.item }}"
+  loop: "{{ offline_required_files.results }}"
+
+- name: Read the accepted compatibility profile
+  ansible.builtin.slurp:
+    src: "{{ offline_profile_path }}"
+  register: offline_profile_raw
+
+- name: Decode the compatibility profile
+  ansible.builtin.set_fact:
+    offline_compat_profile: "{{ offline_profile_raw.content | b64decode | from_json }}"
+
+- name: Enforce accepted target and component versions
+  ansible.builtin.assert:
+    that:
+      - offline_compat_profile.target.os == 'rhel'
+      - offline_compat_profile.target.release == '9.6'
+      - offline_compat_profile.target.arch == 'x86_64'
+      - offline_compat_profile.zabbix.version == '7.0.30'
+      - offline_compat_profile.modules.postgresql == '16'
+      - offline_compat_profile.modules.php == '8.3'
+      - offline_compat_profile.modules.nginx == '1.24'
+    fail_msg: The immutable M1 compatibility profile is not the accepted M2 input.
+
+- name: Configure the file-only repository
+  ansible.builtin.template:
+    src: zabbix-offline.repo.j2
+    dest: /etc/yum.repos.d/zabbix-offline.repo
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable required streams from local metadata only
+  ansible.builtin.command:
+    argv:
+      - dnf
+      - --assumeyes
+      - --disablerepo=*
+      - "--enablerepo={{ offline_repo_id }}"
+      - module
+      - enable
+      - "{{ item }}"
+  loop: "{{ offline_required_streams }}"
+  register: offline_module_enable
+  changed_when: "'Nothing to do' not in offline_module_enable.stdout"
+  when: not ansible_check_mode
+
+- name: Prove the isolated repository is readable
+  ansible.builtin.command:
+    argv:
+      - dnf
+      - --disablerepo=*
+      - "--enablerepo={{ offline_repo_id }}"
+      - repolist
+  register: offline_repolist
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Reject unexpected repository visibility
+  ansible.builtin.assert:
+    that:
+      - offline_repo_id in offline_repolist.stdout
+      - "'http://' not in offline_repolist.stdout"
+      - "'https://' not in offline_repolist.stdout"
+    fail_msg: Local-only repository validation failed.
+  when: not ansible_check_mode

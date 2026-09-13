@@ -1,0 +1,10 @@
+[{{ offline_repo_id }}]
+name=Zabbix Offline M1 Repository
+baseurl=file://{{ offline_repository_path }}
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=file://{{ offline_repository_path }}/gpg/RPM-GPG-KEY-redhat-release
+       file://{{ offline_repository_path }}/gpg/RPM-GPG-KEY-ZABBIX-B5333005
+       file://{{ offline_repository_path }}/gpg/RPM-GPG-KEY-ZABBIX-08EFA7DD
+metadata_expire=-1

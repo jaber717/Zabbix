@@ -1,0 +1,26 @@
+---
+- name: Install and configure the offline Zabbix platform
+  hosts: zabbix
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+
+  roles:
+    - offline_repo
+    - os_baseline
+    - postgresql
+    - tls
+    - zabbix_server
+    - zabbix_web
+    - zabbix_admin
+    - zabbix_agent2
+    - selinux
+    - firewall
+    - backup
+    - role: netbox_sync
+      when: nbzsync_enabled | bool
+    - role: verification
+      when:
+        - m2_run_verification | bool
+        - not ansible_check_mode
+    - release_state

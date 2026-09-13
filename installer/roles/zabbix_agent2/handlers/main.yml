@@ -1,0 +1,16 @@
+---
+- name: Validate Zabbix Agent 2 configuration
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/zabbix_agent2
+      - -T
+      - -c
+      - /etc/zabbix/zabbix_agent2.conf
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Restart Zabbix Agent 2
+  ansible.builtin.systemd:
+    name: zabbix-agent2.service
+    state: restarted
+  when: not ansible_check_mode

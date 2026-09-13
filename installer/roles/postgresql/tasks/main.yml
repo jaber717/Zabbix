@@ -1,0 +1,304 @@
+---
+- name: Validate PostgreSQL operating mode and identifiers
+  ansible.builtin.assert:
+    that:
+      - zabbix_db_mode == 'local'
+      - zabbix_db_manage | bool
+      - zabbix_db_name is match('^[a-z_][a-z0-9_]{0,62}$')
+      - zabbix_db_user is match('^[a-z_][a-z0-9_]{0,62}$')
+      - zabbix_db_port | int >= 1
+      - zabbix_db_port | int <= 65535
+    fail_msg: This release supports only a managed local PostgreSQL database.
+
+- name: Install the clean-database policy verifier
+  ansible.builtin.copy:
+    src: assert_clean_database.py
+    dest: /usr/libexec/zabbix-offline/assert-clean-database
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install PostgreSQL 16 from the offline repository
+  ansible.builtin.dnf:
+    name: "{{ postgresql_packages }}"
+    state: present
+    disablerepo: "*"
+    enablerepo: "{{ offline_repo_id }}"
+    install_weak_deps: false
+  when: zabbix_db_mode == 'local'
+
+- name: Detect an initialized PostgreSQL cluster
+  ansible.builtin.stat:
+    path: "{{ postgresql_data_directory }}/PG_VERSION"
+  register: postgresql_cluster
+  when: zabbix_db_mode == 'local'
+
+- name: Initialize PostgreSQL only when no cluster exists
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/postgresql-setup
+      - --initdb
+  register: postgresql_init
+  changed_when: true
+  when:
+    - zabbix_db_mode == 'local'
+    - not postgresql_cluster.stat.exists
+    - not ansible_check_mode
+
+- name: Configure local PostgreSQL listen addresses
+  ansible.builtin.lineinfile:
+    path: "{{ postgresql_data_directory }}/postgresql.conf"
+    regexp: '^#?listen_addresses\s*='
+    line: "listen_addresses = '{{ zabbix_db_listen_addresses }}'"
+    owner: postgres
+    group: postgres
+    mode: "0600"
+  notify: Restart PostgreSQL
+  when:
+    - zabbix_db_mode == 'local'
+    - postgresql_cluster.stat.exists or postgresql_init is changed
+    - not ansible_check_mode or postgresql_cluster.stat.exists
+
+- name: Require SCRAM password storage
+  ansible.builtin.lineinfile:
+    path: "{{ postgresql_data_directory }}/postgresql.conf"
+    regexp: '^#?password_encryption\s*='
+    line: "password_encryption = 'scram-sha-256'"
+    owner: postgres
+    group: postgres
+    mode: "0600"
+  notify: Reload PostgreSQL
+  when:
+    - zabbix_db_mode == 'local'
+    - postgresql_cluster.stat.exists or postgresql_init is changed
+    - not ansible_check_mode or postgresql_cluster.stat.exists
+
+- name: Add bounded Zabbix authentication without replacing existing policy
+  ansible.builtin.blockinfile:
+    path: "{{ postgresql_data_directory }}/pg_hba.conf"
+    block: "{{ lookup('ansible.builtin.template', 'pg_hba.conf.j2') | trim }}"
+    insertbefore: BOF
+    marker: "# {mark} zabbix-platform managed access"
+    owner: postgres
+    group: postgres
+    mode: "0600"
+  notify: Reload PostgreSQL
+  when:
+    - zabbix_db_mode == 'local'
+    - postgresql_cluster.stat.exists or postgresql_init is changed
+    - not ansible_check_mode or postgresql_cluster.stat.exists
+
+- name: Enable and start PostgreSQL
+  ansible.builtin.systemd:
+    name: postgresql.service
+    enabled: true
+    state: started
+  when:
+    - zabbix_db_mode == 'local'
+    - not ansible_check_mode or postgresql_cluster.stat.exists
+
+- name: Apply pending PostgreSQL configuration before database work
+  ansible.builtin.meta: flush_handlers
+
+- name: Check whether the Zabbix database role exists
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/psql
+      - --no-psqlrc
+      - --tuples-only
+      - --no-align
+      - --command
+      - "SELECT 1 FROM pg_roles WHERE rolname='{{ zabbix_db_user }}'"
+  become_user: postgres
+  register: postgresql_role_probe
+  changed_when: false
+  when:
+    - zabbix_db_mode == 'local'
+    - zabbix_db_manage | bool
+    - not ansible_check_mode
+
+- name: Create the least-privilege Zabbix database role once
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/psql
+      - --no-psqlrc
+      - --set
+      - ON_ERROR_STOP=1
+  args:
+    stdin: "CREATE ROLE {{ zabbix_db_user }} LOGIN PASSWORD '{{ zabbix_db_password }}';"
+    stdin_add_newline: true
+  become_user: postgres
+  no_log: true
+  changed_when: true
+  when:
+    - zabbix_db_mode == 'local'
+    - zabbix_db_manage | bool
+    - not ansible_check_mode
+    - postgresql_role_probe.stdout | trim != '1'
+
+- name: Check whether the Zabbix database exists
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/psql
+      - --no-psqlrc
+      - --tuples-only
+      - --no-align
+      - --command
+      - "SELECT 1 FROM pg_database WHERE datname='{{ zabbix_db_name }}'"
+  become_user: postgres
+  register: postgresql_database_probe
+  changed_when: false
+  when:
+    - zabbix_db_mode == 'local'
+    - zabbix_db_manage | bool
+    - not ansible_check_mode
+
+- name: Create the Zabbix database once
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/createdb
+      - --owner
+      - "{{ zabbix_db_user }}"
+      - --encoding
+      - UTF8
+      - --template
+      - template0
+      - "{{ zabbix_db_name }}"
+  become_user: postgres
+  changed_when: true
+  when:
+    - zabbix_db_mode == 'local'
+    - zabbix_db_manage | bool
+    - not ansible_check_mode
+    - postgresql_database_probe.stdout | trim != '1'
+
+- name: Verify the supplied credential against the managed database
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/psql
+      - --no-psqlrc
+      - --host
+      - "{{ zabbix_db_host }}"
+      - --port
+      - "{{ zabbix_db_port | string }}"
+      - --username
+      - "{{ zabbix_db_user }}"
+      - --dbname
+      - "{{ zabbix_db_name }}"
+      - --tuples-only
+      - --no-align
+      - --command
+      - SELECT 1
+  environment:
+    PGPASSWORD: "{{ zabbix_db_password }}"
+  no_log: true
+  changed_when: false
+  when:
+    - zabbix_db_mode == 'local'
+    - zabbix_db_manage | bool
+    - not ansible_check_mode
+
+- name: Check for an existing Zabbix schema
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/psql
+      - --no-psqlrc
+      - --dbname
+      - "{{ zabbix_db_name }}"
+      - --tuples-only
+      - --no-align
+      - --command
+      - "SELECT CASE WHEN to_regclass('public.dbversion') IS NULL THEN 0 ELSE 1 END"
+  become_user: postgres
+  register: postgresql_schema_probe
+  changed_when: false
+  when:
+    - zabbix_db_mode == 'local'
+    - zabbix_db_manage | bool
+    - not ansible_check_mode
+
+- name: Import the accepted Zabbix schema only when absent
+  ansible.builtin.shell: >-
+    set -o pipefail &&
+    gzip -dc -- {{ postgresql_schema_path | quote }} |
+    psql --no-psqlrc --set ON_ERROR_STOP=1
+    --host {{ zabbix_db_host | quote }}
+    --port {{ zabbix_db_port | string | quote }}
+    --username {{ zabbix_db_user | quote }}
+    --dbname {{ zabbix_db_name | quote }}
+  args:
+    executable: /bin/bash
+  environment:
+    PGPASSWORD: "{{ zabbix_db_password }}"
+  no_log: true
+  changed_when: true
+  when:
+    - zabbix_db_mode == 'local'
+    - zabbix_db_manage | bool
+    - not ansible_check_mode
+    - postgresql_schema_probe.stdout | trim == '0'
+
+- name: Verify schema presence after initialization
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/psql
+      - --no-psqlrc
+      - --dbname
+      - "{{ zabbix_db_name }}"
+      - --tuples-only
+      - --no-align
+      - --command
+      - "SELECT CASE WHEN to_regclass('public.dbversion') IS NULL THEN 0 ELSE 1 END"
+  become_user: postgres
+  register: postgresql_schema_verify
+  changed_when: false
+  failed_when: postgresql_schema_verify.stdout | trim != '1'
+  when:
+    - zabbix_db_mode == 'local'
+    - zabbix_db_manage | bool
+    - not ansible_check_mode
+
+- name: Prove a newly imported schema contains only stock seed state
+  ansible.builtin.command:
+    argv:
+      - /usr/libexec/zabbix-offline/assert-clean-database
+      - --database
+      - "{{ zabbix_db_name }}"
+      - --mode
+      - seed
+  become_user: postgres
+  register: postgresql_clean_seed
+  changed_when: false
+  when:
+    - zabbix_db_mode == 'local'
+    - zabbix_db_manage | bool
+    - not ansible_check_mode
+    - postgresql_schema_probe.stdout | trim == '0'
+
+- name: Refuse to converge over operational or migrated monitoring data
+  ansible.builtin.command:
+    argv:
+      - /usr/libexec/zabbix-offline/assert-clean-database
+      - --database
+      - "{{ zabbix_db_name }}"
+      - --mode
+      - runtime
+  become_user: postgres
+  register: postgresql_existing_clean_state
+  changed_when: false
+  when:
+    - zabbix_db_mode == 'local'
+    - zabbix_db_manage | bool
+    - not ansible_check_mode
+    - postgresql_schema_probe.stdout | trim == '1'
+
+- name: Record successful clean-seed qualification
+  ansible.builtin.copy:
+    content: "clean Zabbix 7.0 seed verified before server start\n"
+    dest: /etc/zabbix-offline/clean-seed-verified
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - not ansible_check_mode
+    - postgresql_schema_probe.stdout | trim == '0'

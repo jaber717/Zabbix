@@ -1,0 +1,26 @@
+{
+  "schema": "netbox-zabbix-sync-mapping-v1",
+  "eligibility": {
+    "tag": "monitoring-enabled",
+    "custom_field": "monitoring_enabled"
+  },
+  "object_types": {
+    "device": {"groups": ["Network devices"]},
+    "vm": {"groups": ["Virtual machines"]}
+  },
+  "roles": {
+    "firewall": {"templates": []},
+    "router": {"templates": []},
+    "server": {"templates": ["Linux by Zabbix agent"]},
+    "switch": {"templates": []}
+  },
+  "platforms": {
+    "cisco_nxos": {"templates": ["Cisco Nexus 9000 Series by SNMP"]},
+    "f5_tmos": {"templates": ["F5 Big-IP by SNMP"]},
+    "fortinet_fortios": {"templates": ["FortiGate by SNMP"]},
+    "huawei_vrp": {"templates": ["Huawei VRP by SNMP"]}
+  },
+  "sites": {
+    "example-site": {"groups": ["Network devices"]}
+  }
+}

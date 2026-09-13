@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+[[ $# -eq 1 ]] || { printf 'Usage: %s RELEASE_ROOT\n' "$0" >&2; exit 2; }
+release_root=$(readlink -f -- "$1")
+[[ -d $release_root && $release_root != / ]] || {
+  printf 'ERROR: invalid release root\n' >&2
+  exit 1
+}
+for required in BUILD-INFO.json SHA256SUMS compat/zabbix-7.0.yaml repository/repodata/repomd.xml; do
+  [[ -f $release_root/$required ]] || { printf 'ERROR: missing %s\n' "$required" >&2; exit 1; }
+done
+(
+  cd -- "$release_root"
+  sha256sum --quiet -c SHA256SUMS
+)
+
+readarray -t versions < <(python3 - "$release_root/compat/zabbix-7.0.yaml" <<'PY'
+import json
+import sys
+with open(sys.argv[1], encoding="utf-8") as handle:
+    profile = json.load(handle)
+print(profile["release"]["version"])
+print(profile["zabbix"]["version"])
+if profile["target"] != {"os": "rhel", "release": "9.6", "arch": "x86_64", "selinux": "Enforcing"}:
+    raise SystemExit("unsupported target profile")
+PY
+)
+
+state_json=$(/usr/libexec/zabbix-offline/release-state inspect \
+  --state /etc/zabbix-offline/release.json --target "${versions[0]}" --zabbix "${versions[1]}")
+status=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<<"$state_json")
+[[ $status == converge || $status == upgrade_required ]] || {
+  printf 'ERROR: release state is %s\n' "$status" >&2
+  exit 1
+}
+
+required_bytes=$(( $(du -sb -- "$release_root" | awk '{print $1}') * 2 ))
+available_bytes=$(df -PB1 -- "$release_root" | awk 'NR==2 {print $4}')
+(( available_bytes >= required_bytes )) || {
+  printf 'ERROR: insufficient free space; required=%s available=%s\n' "$required_bytes" "$available_bytes" >&2
+  exit 1
+}
+
+# A verified full backup is mandatory before an upgrade transaction.
+backup_root=$(awk -F= '$1=="BACKUP_ROOT" {print $2}' /etc/zabbix-offline/backup.env)
+latest=$(find "$backup_root" -mindepth 1 -maxdepth 1 -type d -name '*-full' -printf '%T@ %p\n' \
+  | sort -nr | awk 'NR==1 {$1=""; sub(/^ /,""); print}')
+[[ -n $latest ]] || { printf 'ERROR: no full pre-upgrade backup exists\n' >&2; exit 1; }
+/usr/local/sbin/zabbix-offline-verify-backup "$latest" >/dev/null
+
+printf 'STATE=%s\nREQUIRED_BYTES=%s\nAVAILABLE_BYTES=%s\nBACKUP=%s\nRESULT=PASS\n' \
+  "$status" "$required_bytes" "$available_bytes" "$latest"

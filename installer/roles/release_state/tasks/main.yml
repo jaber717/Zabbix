@@ -1,0 +1,8 @@
+---
+- name: Persist successful release state
+  ansible.builtin.template:
+    src: release.json.j2
+    dest: /etc/zabbix-offline/release.json
+    owner: root
+    group: root
+    mode: "0640"

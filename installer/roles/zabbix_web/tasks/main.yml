@@ -1,0 +1,106 @@
+---
+- name: Install nginx, PHP 8.3, and the Zabbix frontend offline
+  ansible.builtin.dnf:
+    name: "{{ zabbix_web_packages }}"
+    state: present
+    disablerepo: "*"
+    enablerepo: "{{ offline_repo_id }}"
+    install_weak_deps: false
+
+- name: Inspect the Apache vendor unit for nginx-only enforcement
+  ansible.builtin.stat:
+    path: /usr/lib/systemd/system/httpd.service
+  register: zabbix_web_httpd_unit
+
+- name: Keep Apache inactive on the selected nginx architecture
+  ansible.builtin.systemd:
+    name: httpd.service
+    state: stopped
+    enabled: false
+    masked: true
+  when: zabbix_web_httpd_unit.stat.exists
+
+- name: Configure the dedicated Zabbix PHP-FPM pool
+  ansible.builtin.template:
+    src: zabbix-php-fpm.conf.j2
+    dest: /etc/php-fpm.d/zabbix.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Validate PHP-FPM configuration
+    - Restart PHP-FPM
+
+- name: Configure the Zabbix nginx virtual host
+  ansible.builtin.template:
+    src: zabbix-nginx.conf.j2
+    dest: /etc/nginx/conf.d/zabbix.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Validate nginx configuration
+    - Reload nginx web service
+
+- name: Create the PHP-FPM systemd drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/php-fpm.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Render frontend database configuration only at service start
+  ansible.builtin.template:
+    src: runtime-credential.conf.j2
+    dest: /etc/systemd/system/php-fpm.service.d/10-runtime-credential.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd for the web stack
+    - Restart PHP-FPM
+
+- name: Replace the package placeholder with a runtime-only configuration link
+  ansible.builtin.file:
+    src: /run/zabbix-web/zabbix.conf.php
+    dest: /etc/zabbix/web/zabbix.conf.php
+    state: link
+    force: true
+    owner: root
+    group: apache
+  notify: Restart PHP-FPM
+
+- name: Enable and start PHP-FPM
+  ansible.builtin.systemd:
+    name: php-fpm.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not ansible_check_mode
+
+- name: Enable and start nginx
+  ansible.builtin.systemd:
+    name: nginx.service
+    enabled: true
+    state: started
+  when: not ansible_check_mode
+
+- name: Detect whether nginx has applied the managed Zabbix listener
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ zabbix_web_https_port if zabbix_tls_enabled else zabbix_web_http_port }}"
+    state: started
+    timeout: 1
+  register: zabbix_web_listener
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: Request nginx reload when the managed listener is absent
+  ansible.builtin.command: /usr/bin/true
+  changed_when: true
+  notify: Reload nginx web service
+  when:
+    - not ansible_check_mode
+    - (zabbix_web_listener.state | default('absent')) != 'started'

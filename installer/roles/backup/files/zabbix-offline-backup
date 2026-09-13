@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+
+readonly CONFIG=/etc/zabbix-offline/backup.env
+[[ $EUID -eq 0 ]] || { printf 'ERROR: root is required\n' >&2; exit 1; }
+[[ -r $CONFIG ]] || { printf 'ERROR: missing %s\n' "$CONFIG" >&2; exit 1; }
+# shellcheck disable=SC1091
+source "$CONFIG"
+
+mode=${1:-full}
+[[ $mode == full || $mode == config ]] || {
+  printf 'ERROR: mode must be full or config\n' >&2
+  exit 1
+}
+[[ $BACKUP_ROOT == /* && $BACKUP_ROOT != / ]] || {
+  printf 'ERROR: unsafe backup root\n' >&2
+  exit 1
+}
+[[ $DB_NAME =~ ^[a-z_][a-z0-9_]{0,62}$ ]] || {
+  printf 'ERROR: unsafe database name\n' >&2
+  exit 1
+}
+
+install -d -o root -g root -m 0700 "$BACKUP_ROOT"
+timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+partial=$(mktemp -d "$BACKUP_ROOT/.partial.${timestamp}.XXXXXX")
+final="$BACKUP_ROOT/${timestamp}-${mode}"
+
+cleanup() {
+  if [[ -n ${partial:-} && -d $partial && $partial == "$BACKUP_ROOT"/.partial.* ]]; then
+    rm -rf -- "$partial"
+  fi
+}
+trap cleanup EXIT HUP INT TERM
+
+paths_file="$partial/config-paths.txt"
+for relative in \
+  etc/zabbix \
+  etc/nginx/conf.d/zabbix.conf \
+  etc/php-fpm.d/zabbix.conf \
+  etc/systemd/system/zabbix-server.service.d \
+  etc/systemd/system/php-fpm.service.d \
+  etc/zabbix-offline; do
+  if [[ -e /$relative || -L /$relative ]]; then
+    printf '%s\n' "$relative" >>"$paths_file"
+  fi
+done
+[[ -s $paths_file ]] || { printf 'ERROR: no managed configuration found\n' >&2; exit 1; }
+
+tar --create --gzip --file "$partial/configuration.tar.gz" --directory / \
+  --files-from "$paths_file"
+
+if [[ $mode == full ]]; then
+  runuser -u postgres -- pg_dump --format=custom "$DB_NAME" >"$partial/database.dump"
+  runuser -u postgres -- pg_restore --list <"$partial/database.dump" >/dev/null
+fi
+
+cat >"$partial/backup-info.txt" <<EOF
+FORMAT_VERSION=1
+CREATED_UTC=${timestamp}
+MODE=${mode}
+DATABASE=${DB_NAME}
+RELEASE_STATE=/etc/zabbix-offline/release.json
+EOF
+
+(
+  cd -- "$partial"
+  checksum_files=(backup-info.txt config-paths.txt configuration.tar.gz)
+  if [[ $mode == full ]]; then
+    checksum_files+=(database.dump)
+  fi
+  sha256sum "${checksum_files[@]}" >SHA256SUMS
+  sha256sum --quiet -c SHA256SUMS
+)
+
+[[ ! -e $final ]] || { printf 'ERROR: final backup already exists\n' >&2; exit 1; }
+mv -- "$partial" "$final"
+partial=""
+trap - EXIT HUP INT TERM
+printf 'BACKUP=%s\nRESULT=PASS\n' "$final"

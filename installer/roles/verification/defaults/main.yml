@@ -1,0 +1,33 @@
+---
+verification_required_packages:
+  - postgresql
+  - postgresql-server
+  - postgresql-contrib
+  - nginx
+  - php
+  - php-fpm
+  - php-pgsql
+  - firewalld
+  - ansible-core
+  - zabbix-server-pgsql
+  - zabbix-web-pgsql
+  - zabbix-nginx-conf
+  - zabbix-sql-scripts
+  - zabbix-agent2
+  - zabbix-sender
+  - zabbix-get
+  - zabbix-selinux-policy
+  - fping
+
+verification_required_services:
+  - postgresql.service
+  - zabbix-server.service
+  - zabbix-agent2.service
+  - php-fpm.service
+  - nginx.service
+  - firewalld.service
+
+verification_expected_zabbix_version: "7.0.30"
+verification_expected_postgresql_major: "16"
+verification_expected_dbversion_mandatory: "7000000"
+verification_expected_dbversion_optional: "7000030"

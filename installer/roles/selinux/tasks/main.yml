@@ -1,0 +1,102 @@
+---
+- name: Read SELinux enforcement before policy verification
+  ansible.builtin.command: getenforce
+  register: selinux_before
+  changed_when: false
+  check_mode: false
+
+- name: Refuse non-enforcing SELinux
+  ansible.builtin.assert:
+    that:
+      - selinux_before.stdout == 'Enforcing'
+
+- name: Verify the vendor Zabbix SELinux policy package
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/rpm
+      - --query
+      - zabbix-selinux-policy
+  register: selinux_policy_package
+  changed_when: false
+
+- name: List installed SELinux modules
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/semodule
+      - --list-modules=full
+  register: selinux_modules
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Require an installed vendor Zabbix policy module
+  ansible.builtin.assert:
+    that:
+      - selinux_modules.stdout is search('zabbix')
+    fail_msg: The vendor Zabbix SELinux policy module is not installed.
+  when: not ansible_check_mode
+
+- name: Read required supported SELinux booleans
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/getsebool
+      - "{{ item }}"
+  loop:
+    - httpd_can_network_connect_db
+    - zabbix_can_network
+  register: selinux_boolean_state
+  changed_when: false
+
+- name: Enable only required supported SELinux booleans
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/setsebool
+      - -P
+      - "{{ item.item }}"
+      - "on"
+  loop: "{{ selinux_boolean_state.results }}"
+  changed_when: true
+  when:
+    - not ansible_check_mode
+    - item.stdout is search('--> off$')
+
+- name: Verify required SELinux booleans
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/getsebool
+      - "{{ item }}"
+  loop:
+    - httpd_can_network_connect_db
+    - zabbix_can_network
+  register: selinux_boolean_ready
+  changed_when: false
+
+- name: Require supported SELinux booleans to be active
+  ansible.builtin.assert:
+    that:
+      - item.stdout is search('--> on$')
+  loop: "{{ selinux_boolean_ready.results }}"
+
+- name: Restore packaged labels on managed Zabbix paths
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/restorecon
+      - -RFv
+      - /etc/zabbix
+      - /usr/share/zabbix
+      - /var/log/zabbix
+      - /run/zabbix-server-credentials
+      - /run/zabbix-web
+  register: selinux_restorecon
+  changed_when: selinux_restorecon.stdout | length > 0
+  when: not ansible_check_mode
+
+- name: Confirm SELinux remains Enforcing
+  ansible.builtin.command: getenforce
+  register: selinux_after
+  changed_when: false
+  check_mode: false
+
+- name: Enforce the SELinux safety invariant
+  ansible.builtin.assert:
+    that:
+      - selinux_after.stdout == 'Enforcing'

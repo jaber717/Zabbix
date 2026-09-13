@@ -1,0 +1,73 @@
+---
+- name: Apply pending web and server handlers before authentication
+  ansible.builtin.meta: flush_handlers
+
+- name: Install the Admin API verifier
+  ansible.builtin.copy:
+    src: verify_admin_api.py
+    dest: /usr/libexec/zabbix-offline/verify-admin-api
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Generate a modern bcrypt hash from protected standard input
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/php
+      - -r
+      - >-
+        $p=stream_get_contents(STDIN); $h=password_hash($p, PASSWORD_BCRYPT);
+        if ($h === false || preg_match('/^\$2[aby]\$/', $h) !== 1) { exit(2); }
+        fwrite(STDOUT, $h);
+  args:
+    stdin: "{{ zabbix_admin_password }}"
+    stdin_add_newline: false
+  register: zabbix_admin_bcrypt
+  changed_when: false
+  no_log: true
+  when: not ansible_check_mode
+
+- name: Set the built-in Admin password without exposing plaintext
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/psql
+      - --no-psqlrc
+      - --dbname
+      - "{{ zabbix_db_name }}"
+      - --set
+      - ON_ERROR_STOP=1
+      - --tuples-only
+      - --no-align
+  args:
+    stdin: >-
+      UPDATE users SET passwd='{{ zabbix_admin_bcrypt.stdout }}'
+      WHERE username='Admin';
+      SELECT count(*) FROM users WHERE username='Admin'
+      AND passwd LIKE '$2%';
+    stdin_add_newline: true
+  become_user: postgres
+  register: zabbix_admin_update
+  changed_when: true
+  failed_when: zabbix_admin_update.stdout_lines | last | trim != '1'
+  no_log: true
+  when: not ansible_check_mode
+
+- name: Verify Admin authentication and rejection of the factory credential
+  ansible.builtin.command:
+    argv:
+      - /usr/libexec/zabbix-offline/verify-admin-api
+      - --server-name
+      - "{{ zabbix_web_server_name }}"
+      - --port
+      - "{{ zabbix_web_https_port if zabbix_tls_enabled else zabbix_web_http_port }}"
+      - --scheme
+      - "{{ 'https' if zabbix_tls_enabled else 'http' }}"
+      - --ca-file
+      - "{{ zabbix_tls_certificate_path if zabbix_tls_enabled else '' }}"
+  args:
+    stdin: "{{ zabbix_admin_password }}"
+    stdin_add_newline: false
+  register: zabbix_admin_api_check
+  changed_when: false
+  no_log: true
+  when: not ansible_check_mode

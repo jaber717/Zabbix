@@ -1,0 +1,26 @@
+{
+  "device": {
+    "id": 101,
+    "name": "fixture-device-01",
+    "display": "Fixture Device 01",
+    "primary_ip4": {"id": 501, "address": "192.0.2.10/24"},
+    "site": {"slug": "fixture-site"},
+    "role": {"slug": "fixture-role"},
+    "platform": {"slug": "fixture-linux"},
+    "tenant": {"slug": "fixture-tenant"},
+    "tags": [{"slug": "monitoring-enabled"}],
+    "custom_fields": {"monitoring_enabled": true}
+  },
+  "vm": {
+    "id": 101,
+    "name": "fixture-vm-01",
+    "display": "Fixture VM 01",
+    "primary_ip4": {"id": 502, "address": "192.0.2.20/24"},
+    "site": {"slug": "fixture-site"},
+    "role": {"slug": "fixture-role"},
+    "platform": {"slug": "fixture-linux"},
+    "tenant": {"slug": "fixture-tenant"},
+    "tags": [{"slug": "monitoring-enabled"}],
+    "custom_fields": {"monitoring_enabled": true}
+  }
+}

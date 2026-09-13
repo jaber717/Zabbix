@@ -1,0 +1,32 @@
+# Runtime configuration and credentials
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.pgpass
+*token*
+*password*
+
+# Generated payloads, evidence, and caches
+*.rpm
+*.sql
+*.sql.gz
+*.dump
+*.bak
+*.log
+*.tar
+*.tar.gz
+*.zip
+build/out/
+build/work/
+dist/
+artifacts/
+evidence/
+node_modules/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/

@@ -1,0 +1,31 @@
+{
+  "schema": "netbox-zabbix-sync-runtime-v1",
+  "netbox_url": "https://netbox.example.invalid",
+  "zabbix_url": "https://zabbix.example.invalid/api_jsonrpc.php",
+  "zabbix_user": "nbzsync",
+  "zabbix_credential_scope": "dedicated-api-allow-list-and-mapped-group-scope",
+  "timeout_seconds": 10,
+  "retries": 2,
+  "tls": {
+    "allow_insecure_netbox_http": false,
+    "netbox_ca": "/etc/netbox-zabbix-sync/netbox-ca.crt",
+    "zabbix_ca": "/etc/netbox-zabbix-sync/zabbix-ca.crt"
+  },
+  "policy": {
+    "change_budget": 0.10,
+    "allow_apply_with_current_zabbix_credential": false,
+    "required_endpoints": [
+      "devices",
+      "interfaces",
+      "virtualization_interfaces",
+      "ip_addresses",
+      "virtual_machines",
+      "tags",
+      "custom_fields",
+      "device_roles",
+      "platforms",
+      "sites",
+      "tenants"
+    ]
+  }
+}

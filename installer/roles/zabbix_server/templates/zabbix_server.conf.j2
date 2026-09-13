@@ -1,0 +1,17 @@
+# Managed by zabbix-platform M2.
+LogType={{ zabbix_log_type }}
+PidFile=/run/zabbix/zabbix_server.pid
+ListenIP={{ zabbix_server_listen_ip }}
+ListenPort={{ zabbix_server_listen_port }}
+DBHost={{ zabbix_db_host }}
+DBPort={{ zabbix_db_port }}
+DBName={{ zabbix_db_name }}
+DBUser={{ zabbix_db_user }}
+CacheSize={{ zabbix_cache_size }}
+HistoryCacheSize={{ zabbix_history_cache_size }}
+TrendCacheSize={{ zabbix_trend_cache_size }}
+ValueCacheSize={{ zabbix_value_cache_size }}
+StartPollers={{ zabbix_start_pollers }}
+StartPingers={{ zabbix_start_pingers }}
+Timeout={{ zabbix_timeout }}
+Include=/etc/zabbix/zabbix_server.d/*.conf

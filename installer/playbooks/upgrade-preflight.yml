@@ -1,0 +1,19 @@
+---
+- name: Run the non-mutating Zabbix upgrade preflight
+  hosts: zabbix
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+
+  tasks:
+    - name: Validate upgrade inputs and rollback prerequisites
+      ansible.builtin.command:
+        argv:
+          - /usr/local/sbin/zabbix-offline-upgrade-preflight
+          - "{{ offline_release_root }}"
+      register: upgrade_preflight
+      changed_when: false
+
+    - name: Show sanitized preflight result
+      ansible.builtin.debug:
+        var: upgrade_preflight.stdout_lines

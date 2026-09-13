@@ -1,0 +1,14 @@
+---
+zabbix_web_packages:
+  - nginx
+  - php
+  - php-cli
+  - php-fpm
+  - php-pgsql
+  - php-gd
+  - php-bcmath
+  - php-mbstring
+  - php-xml
+  - php-ldap
+  - zabbix-web-pgsql
+  - zabbix-nginx-conf

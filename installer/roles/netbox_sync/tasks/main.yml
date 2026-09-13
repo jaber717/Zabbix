@@ -1,0 +1,106 @@
+---
+- name: Validate NetBox sync encrypted credential inputs
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ nbzsync_netbox_credential }}"
+    - "{{ nbzsync_zabbix_credential }}"
+  register: nbzsync_credentials
+  no_log: true
+
+- name: Require existing protected encrypted credentials
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.isreg
+      - item.stat.pw_name == 'root'
+      - item.stat.mode == '0600'
+    fail_msg: NetBox sync requires pre-provisioned root-only systemd encrypted credentials.
+  loop: "{{ nbzsync_credentials.results }}"
+  no_log: true
+
+- name: Create dedicated NetBox sync group
+  ansible.builtin.group:
+    name: nbzsync
+    system: true
+
+- name: Create dedicated NetBox sync account
+  ansible.builtin.user:
+    name: nbzsync
+    group: nbzsync
+    system: true
+    create_home: false
+    home: /nonexistent
+    shell: /sbin/nologin
+
+- name: Create NetBox sync installation directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - {path: "{{ nbzsync_install_root }}", owner: root, group: root, mode: '0755'}
+    - {path: "{{ nbzsync_config_root }}", owner: root, group: nbzsync, mode: '0750'}
+    - {path: "{{ nbzsync_state_root }}", owner: nbzsync, group: nbzsync, mode: '0700'}
+
+- name: Install the NetBox sync Python package
+  ansible.builtin.copy:
+    src: "{{ nbzsync_source_root }}/netbox_zabbix_sync"
+    dest: "{{ nbzsync_install_root }}/"
+    owner: root
+    group: root
+    mode: preserve
+  notify: Reload systemd for NetBox sync
+
+- name: Install the operator-reviewed runtime configuration
+  ansible.builtin.copy:
+    src: "{{ nbzsync_source_root }}/config/runtime.json"
+    dest: "{{ nbzsync_config_root }}/runtime.json"
+    owner: root
+    group: nbzsync
+    mode: "0640"
+
+- name: Install the operator-reviewed mappings
+  ansible.builtin.copy:
+    src: "{{ nbzsync_source_root }}/config/mappings.json"
+    dest: "{{ nbzsync_config_root }}/mappings.json"
+    owner: root
+    group: nbzsync
+    mode: "0640"
+
+- name: Install the Zabbix API public certificate
+  ansible.builtin.copy:
+    src: "{{ nbzsync_zabbix_ca_source }}"
+    dest: "{{ nbzsync_config_root }}/zabbix-ca.crt"
+    remote_src: true
+    owner: root
+    group: nbzsync
+    mode: "0640"
+
+- name: Install the NetBox sync service
+  ansible.builtin.template:
+    src: netbox-zabbix-sync.service.j2
+    dest: /etc/systemd/system/netbox-zabbix-sync.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd for NetBox sync
+
+- name: Install the NetBox sync timer
+  ansible.builtin.template:
+    src: netbox-zabbix-sync.timer.j2
+    dest: /etc/systemd/system/netbox-zabbix-sync.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd for NetBox sync
+
+- name: Keep the optional NetBox sync timer in the requested state
+  ansible.builtin.systemd:
+    name: netbox-zabbix-sync.timer
+    enabled: "{{ nbzsync_timer_enabled | bool }}"
+    state: "{{ 'started' if nbzsync_timer_enabled | bool else 'stopped' }}"
+    daemon_reload: true
+  when: not ansible_check_mode
