@@ -276,23 +276,11 @@
     fail_msg: Relevant SELinux AVCs remain; diagnose rather than suppress them.
 
 - name: Inspect fatal Zabbix server messages since boot
-  ansible.builtin.command:
-    argv:
-      - /usr/bin/journalctl
-      - --unit
-      - zabbix-server.service
-      - --boot
-      - --priority
-      - 0..3
-      - --no-pager
+  ansible.builtin.script:
+    cmd: verify_current_service_journal.py
+    executable: /usr/bin/python3
   register: verification_zabbix_fatal
   changed_when: false
-  failed_when: >-
-    verification_zabbix_fatal.stdout_lines
-    | reject('search', 'cannot read alert (manager service|syncer) request$')
-    | reject('equalto', '-- No entries --')
-    | list
-    | length > 0
 
 - name: Verify Admin API authentication policy
   ansible.builtin.command:

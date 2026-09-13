@@ -111,8 +111,9 @@ passes, then places the same value in a release file and proves the scan fails
 closed and prove shell metacharacters remain literal data through the renderer.
 The result also includes regressions for stock host prototypes, prototype
 inventory, and the exact disabled stock network-discovery rule and check.
-It also keeps the fatal-log exception limited to the two observed graceful
-Zabbix alert-pipe shutdown messages; all other priority 0..3 entries fail.
+The fatal-log check uses the current service process's monotonic start boundary,
+so intentional prior-process shutdown messages are excluded while every
+priority 0..3 entry from the running Zabbix process fails.
 Seed mode requires empty history, trends, events, problems, and sessions;
 runtime mode permits new stock-host monitoring rows while still requiring the
 exact normal-host, user, interface, inventory, token, and discovery identities.

@@ -35,6 +35,10 @@ listening_ports = load_module(
     "listening_ports",
     ROOT / "installer/roles/verification/files/verify_listening_ports.py",
 )
+service_journal = load_module(
+    "service_journal",
+    ROOT / "installer/roles/verification/files/verify_current_service_journal.py",
+)
 firewall_lock = load_module(
     "firewall_lock",
     ROOT / "installer/roles/firewall/files/locked_nevra.py",
@@ -206,17 +210,16 @@ class LockAndPortTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("Detect whether nginx has applied the managed Zabbix listener", web)
 
-    def test_fatal_log_check_excludes_only_known_graceful_shutdown_noise(self):
+    def test_fatal_log_check_is_scoped_to_the_current_service_process(self):
         verification = (
             ROOT / "installer/roles/verification/tasks/main.yml"
         ).read_text(encoding="utf-8")
-        self.assertIn(
-            "cannot read alert (manager service|syncer) request$", verification
-        )
-        self.assertIn("| reject('equalto', '-- No entries --')", verification)
-        self.assertNotIn(
-            "verification_zabbix_fatal.stdout | trim not in", verification
-        )
+        self.assertIn("verify_current_service_journal.py", verification)
+        rows = [
+            {"__MONOTONIC_TIMESTAMP": "99", "MESSAGE": "stopped process"},
+            {"__MONOTONIC_TIMESTAMP": "101", "MESSAGE": "current process"},
+        ]
+        self.assertEqual(service_journal.entries_at_or_after(rows, 100), [rows[1]])
 
     def test_standalone_verification_loads_the_protected_admin_credential(self):
         verification = (
