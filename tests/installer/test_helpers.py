@@ -100,6 +100,12 @@ class RuntimeSecretTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             runtime_secret.render_server_config("DBPassword=persistent\n", "safe")
 
+    def test_runtime_secret_accepts_shell_metacharacters_as_literal_data(self):
+        fixture_value = "Literal-" + chr(36) + "h&;#'\\-2030"
+        self.assertEqual(runtime_secret.validate_secret(fixture_value), fixture_value)
+        rendered = runtime_secret.render("zabbix-server", fixture_value, {})
+        self.assertEqual(rendered, "DBPassword=" + fixture_value + "\n")
+
     def test_runtime_directory_is_group_traversable(self):
         source = inspect.getsource(runtime_secret.atomic_write)
         self.assertIn("os.chmod(path.parent, 0o755)", source)

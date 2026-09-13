@@ -15,7 +15,11 @@ except ImportError:  # pragma: no cover - enables platform-neutral unit tests
     grp = None
 
 
-SAFE_SECRET = re.compile(r"^[A-Za-z0-9_!@%^+=.,:-]{24,128}$")
+# The protected input parser never evaluates this value in a shell. Accept the
+# full printable ASCII password alphabet so operator passwords containing shell
+# metacharacters survive the encrypted-credential path unchanged. Newlines,
+# spaces, NULs, and other control/non-ASCII characters remain fail-closed.
+SAFE_SECRET = re.compile(r"^[\x21-\x7e]{12,128}$")
 
 
 def validate_secret(value: str) -> str:
