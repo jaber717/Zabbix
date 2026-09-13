@@ -218,6 +218,15 @@ class LockAndPortTests(unittest.TestCase):
             "verification_zabbix_fatal.stdout | trim not in", verification
         )
 
+    def test_standalone_verification_loads_the_protected_admin_credential(self):
+        verification = (
+            ROOT / "installer/roles/verification/tasks/main.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("verification_admin_secret_raw.content | b64decode", verification)
+        self.assertIn("zabbix_admin_secret_input_file", verification)
+        pre_auth = verification[: verification.index("Verify Admin API authentication policy")]
+        self.assertGreaterEqual(pre_auth.count("no_log: true"), 3)
+
     def test_selinux_safety_probe_runs_in_check_mode(self):
         baseline = (
             ROOT / "installer/roles/os_baseline/tasks/main.yml"

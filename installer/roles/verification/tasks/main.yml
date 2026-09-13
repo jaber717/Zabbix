@@ -2,6 +2,25 @@
 - name: Apply notified service configuration before runtime verification
   ansible.builtin.meta: flush_handlers
 
+- name: Read protected Admin credential for standalone verification
+  ansible.builtin.slurp:
+    src: "{{ zabbix_admin_secret_input_file }}"
+  register: verification_admin_secret_raw
+  no_log: true
+
+- name: Hold standalone verification credential only in memory
+  ansible.builtin.set_fact:
+    zabbix_admin_password: "{{ verification_admin_secret_raw.content | b64decode }}"
+  no_log: true
+
+- name: Validate standalone verification credential transport
+  ansible.builtin.assert:
+    that:
+      - zabbix_admin_password | length >= 12
+      - "'\n' not in zabbix_admin_password"
+      - "'\r' not in zabbix_admin_password"
+  no_log: true
+
 - name: Verify installed package versions against the M1 lock
   ansible.builtin.script:
     cmd: >-

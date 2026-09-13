@@ -91,7 +91,7 @@ ANSIBLE_CONFIG=ansible.cfg ansible-playbook --syntax-check \
   -i inventory/hosts.yml playbooks/verify.yml
 ```
 
-Observed: 31 installer/helper tests and 30 reconciler tests passed; every shell
+Observed: 32 installer/helper tests and 30 reconciler tests passed; every shell
 script passed `bash -n`; all Python parsed as Python 3.9; installer source and
 offline-DNF policies passed; both playbooks passed Ansible syntax parsing; the
 65-entry installer checksum manifest passed. The deterministic scan reviewed
@@ -105,7 +105,7 @@ placed in the command transcript or output. Result: zero matches. Generic
 password/token assignment candidates were reviewed and were limited to variable
 flow, protected standard-input reads, macro placeholders, and test assertions.
 
-The 31-test result includes runtime-secret regressions. They supply a
+The 32-test result includes runtime-secret regressions. They supply a
 synthetic password from a file outside the release tree, proves an absent value
 passes, then places the same value in a release file and proves the scan fails
 closed and prove shell metacharacters remain literal data through the renderer.
