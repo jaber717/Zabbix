@@ -36,7 +36,13 @@ def main() -> int:
     parser.add_argument("--mode", required=True, choices=("seed", "runtime"))
     args = parser.parse_args()
     database = args.database
-    real_hosts = query(database, "SELECT host FROM hosts WHERE status IN (0,1) ORDER BY host")
+    # Zabbix ships host prototypes as stock template data.  They share enabled or
+    # disabled status values with real hosts, but flags=2 identifies them as
+    # prototypes.  Only normal hosts (flags=0) are operational inventory.
+    real_hosts = query(
+        database,
+        "SELECT host FROM hosts WHERE status IN (0,1) AND flags=0 ORDER BY host",
+    )
     require(real_hosts == ["Zabbix server"], "unexpected real host set")
     users = query(database, "SELECT username FROM users ORDER BY username")
     require(users == ["Admin", "guest"], "unexpected user set")
@@ -51,7 +57,11 @@ def main() -> int:
     }
     for label, sql in checks.items():
         require(scalar(database, sql) == 0, f"unexpected {label}")
-    interfaces = query(database, "SELECT h.host FROM interface i JOIN hosts h ON h.hostid=i.hostid ORDER BY h.host")
+    interfaces = query(
+        database,
+        "SELECT h.host FROM interface i JOIN hosts h ON h.hostid=i.hostid "
+        "WHERE h.flags=0 ORDER BY h.host",
+    )
     require(interfaces == ["Zabbix server"], "unexpected host interface set")
     if args.mode == "seed":
         for table in ("history", "history_uint", "history_str", "history_text", "history_log", "trends", "trends_uint", "events", "sessions"):

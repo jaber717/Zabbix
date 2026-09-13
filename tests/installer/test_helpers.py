@@ -296,6 +296,13 @@ class LockAndPortTests(unittest.TestCase):
         self.assertIn("verify-admin-api", verify)
         self.assertIn("clean-seed-verified", verify)
 
+    def test_clean_database_guard_excludes_stock_host_prototypes(self):
+        guard = (
+            ROOT / "installer/roles/postgresql/files/assert_clean_database.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("status IN (0,1) AND flags=0", guard)
+        self.assertIn("WHERE h.flags=0 ORDER BY h.host", guard)
+
     def test_connected_staging_installs_tools_from_rhel_sources_only(self):
         stage = (ROOT / "scripts/stage-offline-bundle.sh").read_text(encoding="utf-8")
         self.assertIn("--disablerepo='*'", stage)
