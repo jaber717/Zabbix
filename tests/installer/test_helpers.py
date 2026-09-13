@@ -133,7 +133,27 @@ class RuntimeSecretTests(unittest.TestCase):
             self.assertNotIn("eval ", text)
 
     def test_repository_scan_passes_current_tree(self):
-        self.assertEqual(repository_scan.main(), 0)
+        self.assertEqual(repository_scan.main([]), 0)
+
+    def test_repository_scan_fails_closed_on_runtime_password_match(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            release = temporary / "release"
+            release.mkdir()
+            (release / ".env.example").write_text("ZABBIX_DB_PASSWORD=\n", encoding="utf-8")
+            (release / "README.md").write_text("safe release content\n", encoding="utf-8")
+            fixture_secret = "Fixture-" + chr(36) + "special-value-2030"
+            config = temporary / "runtime.env"
+            config.write_text(
+                "ZABBIX_DB_PASSWORD=" + fixture_secret + "\n"
+                "ZABBIX_ADMIN_PASSWORD=" + fixture_secret + "\n",
+                encoding="utf-8",
+            )
+            failures, _ = repository_scan.scan(release, config)
+            self.assertEqual(failures, [])
+            (release / "README.md").write_text(fixture_secret + "\n", encoding="utf-8")
+            failures, _ = repository_scan.scan(release, config)
+            self.assertIn("runtime password occurs in release file: README.md", failures)
 
 
 class LockAndPortTests(unittest.TestCase):

@@ -18,7 +18,7 @@ elif (($#)); then
   fail "usage: sudo ./verify.sh [--config /root/zabbix-install.env]"
 fi
 [[ $EUID -eq 0 ]] || fail "root is required"
-python3 "$PROJECT_ROOT/scripts/repository-scan.py" \
+python3 "$PROJECT_ROOT/scripts/repository-scan.py" --runtime-config "$CONFIG" \
   || fail "repository secret/data/payload scan failed"
 runtime_dir=$(mktemp -d /run/zabbix-release.XXXXXX)
 python3 "$PROJECT_ROOT/scripts/prepare-runtime.py" \

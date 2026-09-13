@@ -20,6 +20,8 @@ elif (($#)); then
 fi
 [[ $EUID -eq 0 ]] || fail "root is required"
 [[ -f $CONFIG ]] || fail "runtime configuration not found: $CONFIG"
+python3 "$PROJECT_ROOT/scripts/repository-scan.py" --runtime-config "$CONFIG" \
+  || fail "repository secret/data/payload scan failed"
 runtime_dir=$(mktemp -d /run/zabbix-release.XXXXXX)
 python3 "$PROJECT_ROOT/scripts/prepare-runtime.py" \
   --config "$CONFIG" --output "$runtime_dir" --repo-root "$PROJECT_ROOT"

@@ -9,6 +9,10 @@ does no shell expansion, so special characters are preserved.
 
 During installation, secret copies exist only in a mode-0600 directory under
 `/run` and are removed on exit. Ansible uses `no_log` on secret-bearing tasks.
+Both installer entry points pass the protected runtime configuration to the
+repository scanner. It compares the deployment password in memory against every
+release file and fails closed on an unreadable/invalid input or an exact match;
+the password is never printed, hashed, or placed directly in command arguments.
 The DB credential is encrypted using the host systemd credential key. The Admin
 password is converted to bcrypt using PHP's current password API and is passed
 to PostgreSQL on standard input. Direct DB initialization is used because a
