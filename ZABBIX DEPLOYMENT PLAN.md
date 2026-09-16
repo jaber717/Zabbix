@@ -3,7 +3,72 @@
 Use this plan for the first production deployment on a fresh VM.
 
 > Replace only values inside `< >`.
-> Do not change anything else unless required by your environment.
+> The deployment account does **not** require direct root login or unrestricted sudo.
+> The commands below are the required administrative commands for the deployment.
+
+## 0. System Team Requirements
+
+### VM
+
+```text
+OS: RHEL 9.6 x86_64
+CPU: 6 vCPU
+RAM: 16 GB
+Disk: 100 GB total
+SELinux: Enforcing
+```
+
+### Partitioning
+
+```text
+/boot              2 GB
+swap                6 GB
+/var/lib/pgsql     55 GB
+/                  remaining space (~37 GB)
+```
+
+- XFS and LVM are preferred.
+- No separate `/opt` partition is required. `/opt` remains under `/`.
+- The 100 GB is the **total VM disk**, not an additional Zabbix data disk.
+- PostgreSQL/Zabbix database data is stored under `/var/lib/pgsql`.
+
+### Deployment Account
+
+```text
+Username: <USE YOUR CORPORATE / DEPLOYMENT USERNAME HERE>
+SSH access: Required
+Direct root SSH: Not required
+Full unrestricted sudo: Not required
+```
+
+The system team should permit this account to run the following deployment commands with sudo:
+
+```text
+/usr/bin/git clone --branch main https://github.com/jaber717/Zabbix.git /opt/Zabbix
+/usr/bin/install -d -o root -g root -m 0755 /opt/zabbix-offline/release-tree
+/usr/bin/tar -xzf /tmp/zabbix-offline-bundle.tar.gz -C /opt/zabbix-offline/release-tree
+/usr/bin/install -d -o root -g root -m 0750 /etc/zabbix-deployment
+/usr/bin/install -o root -g root -m 0600 /opt/Zabbix/.env.example /etc/zabbix-deployment/zabbix-install.env
+sudoedit /etc/zabbix-deployment/zabbix-install.env
+/opt/Zabbix/install.sh --config /etc/zabbix-deployment/zabbix-install.env
+/opt/Zabbix/verify.sh --config /etc/zabbix-deployment/zabbix-install.env
+/usr/sbin/ausearch -m AVC,USER_AVC -ts boot
+/usr/bin/systemctl restart zabbix-server.service
+/usr/bin/systemctl restart zabbix-agent2.service
+/usr/bin/systemctl restart nginx.service
+/usr/bin/systemctl restart php-fpm.service
+/usr/bin/systemctl restart postgresql-16.service
+/usr/bin/systemctl status zabbix-server.service
+/usr/bin/systemctl status zabbix-agent2.service
+/usr/bin/systemctl status nginx.service
+/usr/bin/systemctl status php-fpm.service
+/usr/bin/systemctl status postgresql-16.service
+/usr/bin/systemctl reboot
+```
+
+`/opt/Zabbix` must remain root-owned and must not be writable by the deployment account.
+
+---
 
 ## 1. Validate the VM
 
@@ -39,7 +104,7 @@ ZABBIX-PRE-INSTALL-CLEAN
 ## 2. Clone the Qualified Release
 
 ```bash
-sudo git clone --branch main https://github.com/jaber717/Zabbix.git /opt/Zabbix
+sudo /usr/bin/git clone --branch main https://github.com/jaber717/Zabbix.git /opt/Zabbix
 cd /opt/Zabbix
 git rev-parse HEAD
 ```
@@ -79,8 +144,8 @@ If the checksum is different: **STOP**.
 Extract it:
 
 ```bash
-sudo install -d -m 0755 /opt/zabbix-offline/release-tree
-sudo tar -xzf /tmp/zabbix-offline-bundle.tar.gz \
+sudo /usr/bin/install -d -o root -g root -m 0755 /opt/zabbix-offline/release-tree
+sudo /usr/bin/tar -xzf /tmp/zabbix-offline-bundle.tar.gz \
   -C /opt/zabbix-offline/release-tree
 ```
 
@@ -88,18 +153,20 @@ sudo tar -xzf /tmp/zabbix-offline-bundle.tar.gz \
 
 ## 4. Create the Production Configuration
 
-Copy the template:
+Create the protected configuration directory and file:
 
 ```bash
-sudo install -o root -g root -m 0600 \
+sudo /usr/bin/install -d -o root -g root -m 0750 /etc/zabbix-deployment
+
+sudo /usr/bin/install -o root -g root -m 0600 \
   /opt/Zabbix/.env.example \
-  /root/zabbix-install.env
+  /etc/zabbix-deployment/zabbix-install.env
 ```
 
 Edit it:
 
 ```bash
-sudoedit /root/zabbix-install.env
+sudoedit /etc/zabbix-deployment/zabbix-install.env
 ```
 
 Replace the file contents with the following and change only values inside `< >`:
@@ -158,17 +225,16 @@ Do **not** use spaces or characters such as:
 
 ---
 
-## 5. Verify Configuration Permissions
+## 5. Verify the Configuration File
 
 ```bash
-sudo chown root:root /root/zabbix-install.env
-sudo chmod 600 /root/zabbix-install.env
-sudo ls -l /root/zabbix-install.env
+sudo ls -l /etc/zabbix-deployment/zabbix-install.env
 ```
 
-Expected permissions:
+Expected owner and permissions:
 
 ```text
+root root
 -rw-------
 ```
 
@@ -177,7 +243,8 @@ Expected permissions:
 ## 6. Install Zabbix
 
 ```bash
-sudo /opt/Zabbix/install.sh
+sudo /opt/Zabbix/install.sh \
+  --config /etc/zabbix-deployment/zabbix-install.env
 ```
 
 Expected result:
@@ -193,7 +260,8 @@ If installation returns **FAIL**: **STOP**. Do not manually modify the deploymen
 ## 7. Run Verification
 
 ```bash
-sudo /opt/Zabbix/verify.sh
+sudo /opt/Zabbix/verify.sh \
+  --config /etc/zabbix-deployment/zabbix-install.env
 ```
 
 Expected result:
@@ -207,7 +275,7 @@ ZABBIX DEPLOYMENT VERIFICATION: PASS
 ## 8. Check SELinux AVCs Manually
 
 ```bash
-sudo ausearch -m AVC,USER_AVC -ts boot
+sudo /usr/sbin/ausearch -m AVC,USER_AVC -ts boot
 ```
 
 Expected:
@@ -260,15 +328,18 @@ cat /proc/sys/kernel/random/boot_id
 Reboot:
 
 ```bash
-sudo reboot
+sudo /usr/bin/systemctl reboot
 ```
 
 After the VM returns:
 
 ```bash
 cat /proc/sys/kernel/random/boot_id
-sudo /opt/Zabbix/verify.sh
-sudo ausearch -m AVC,USER_AVC -ts boot
+
+sudo /opt/Zabbix/verify.sh \
+  --config /etc/zabbix-deployment/zabbix-install.env
+
+sudo /usr/sbin/ausearch -m AVC,USER_AVC -ts boot
 ```
 
 Required result:
