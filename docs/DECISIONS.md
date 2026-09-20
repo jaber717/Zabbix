@@ -2,7 +2,7 @@
 
 | Decision | Result |
 |---|---|
-| Target | RHEL 9.6 x86_64 only. |
+| Target | RHEL 9.x x86_64; offline bundles remain target-minor/content specific. |
 | Zabbix | Exact 7.0.30 (`7.0.30-release1.el9`) pin. |
 | Database | Local PostgreSQL 16, TCP loopback, SCRAM-SHA-256, UTF8/template0. |
 | Frontend | nginx/PHP-FPM; port is explicit, 80 recommended for non-TLS lab use and TLS required for production. |

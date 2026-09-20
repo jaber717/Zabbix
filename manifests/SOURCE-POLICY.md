@@ -10,5 +10,9 @@
 - EPEL is neither enabled nor used.
 
 `rpm-lockfile.txt` records exact NEVRA, architecture, repository ID, and SHA-256.
+CONNECTED staging generates that lock from the selected host's authorized
+repository content. The tracked historical lock is used only by explicit frozen
+build comparison, never imposed on another minor's CONNECTED dependency set.
+Application versions and streams remain pinned by the compatibility profile.
 The staging pipeline independently validates repository metadata, signing-key
 fingerprints, every RPM signature, the `fping` exception, and source isolation.

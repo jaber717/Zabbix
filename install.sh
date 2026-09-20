@@ -19,6 +19,8 @@ elif (($#)); then
   fail "usage: sudo ./install.sh [--config /root/zabbix-install.env]"
 fi
 [[ $EUID -eq 0 ]] || fail "root is required"
+source "$PROJECT_ROOT/installer/lib/platform.sh"
+validate_rhel_platform || exit 1
 [[ -f $CONFIG ]] || fail "runtime configuration not found: $CONFIG"
 python3 "$PROJECT_ROOT/scripts/repository-scan.py" --runtime-config "$CONFIG" \
   || fail "repository secret/data/payload scan failed"
@@ -28,12 +30,12 @@ python3 "$PROJECT_ROOT/scripts/prepare-runtime.py" \
 
 mode=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["install_mode"])' "$runtime_dir/paths.json")
 release_root=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["offline_bundle_root"])' "$runtime_dir/paths.json")
-if [[ $mode == connected && -z $release_root && -f /etc/zabbix-offline/bundle-root ]]; then
-  IFS= read -r release_root </etc/zabbix-offline/bundle-root
-  [[ -d $release_root ]] || release_root=""
-fi
+# Connected installs always stage from this clean source commit. The installed
+# pointer remains useful to verify.sh, but is never an implicit build input.
 if [[ $mode == connected && -z $release_root ]]; then
   stage_root="/var/tmp/zabbix-release-build-$(date -u +%Y%m%dT%H%M%SZ)"
+  BASEOS_REPO=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["baseos_repo"])' "$runtime_dir/paths.json") \
+  APPSTREAM_REPO=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["appstream_repo"])' "$runtime_dir/paths.json") \
   OUTPUT_DIR=$stage_root "$PROJECT_ROOT/scripts/stage-offline-bundle.sh"
   release_root="$stage_root/release-tree"
 fi

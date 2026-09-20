@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "release": {
-    "name": "zabbix-rhel96-offline",
+    "name": "zabbix-rhel9-offline",
     "version": "1.0.0",
     "build": 1,
     "designation": "M1 pre-install release candidate"
   },
   "target": {
     "os": "rhel",
-    "release": "9.6",
+    "release": "9.x",
     "arch": "x86_64",
     "selinux": "Enforcing"
   },

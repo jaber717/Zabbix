@@ -69,6 +69,8 @@ while (($#)); do
 done
 
 [[ $EUID -eq 0 ]] || die "bootstrap must run as root"
+source "$SCRIPT_DIR/lib/platform.sh"
+validate_rhel_platform || exit 1
 [[ -n $RELEASE_ROOT ]] || die "release root is required"
 RELEASE_ROOT="$(readlink -f -- "$RELEASE_ROOT")"
 [[ -d $RELEASE_ROOT ]] || die "release root does not exist: $RELEASE_ROOT"
@@ -91,19 +93,14 @@ done
   sha256sum --quiet -c MANIFEST.sha256
 ) || die "installer checksum verification failed"
 
-python3 - "$RELEASE_ROOT/BUILD-INFO.json" "$DB_PASSWORD_FILE" <<'PY'
+python3 "$SCRIPT_DIR/lib/validate_bundle.py" "$RELEASE_ROOT" "$RHEL_VERSION_ID"
+python3 - "$DB_PASSWORD_FILE" <<'PY'
 import json
 import os
 import stat
 import sys
 
-info_path, secret_path = sys.argv[1:]
-with open(info_path, encoding="utf-8") as handle:
-    info = json.load(handle)
-if info.get("target") != {"rhel_release": "9.6", "arch": "x86_64"}:
-    raise SystemExit("unexpected target compatibility")
-if info.get("zabbix") != "7.0.30-release1.el9":
-    raise SystemExit("unexpected pinned Zabbix version")
+secret_path = sys.argv[1]
 secret_stat = os.stat(secret_path)
 if secret_stat.st_uid != 0:
     raise SystemExit("database password input must be owned by root")
@@ -111,9 +108,6 @@ if stat.S_IMODE(secret_stat.st_mode) & 0o077:
     raise SystemExit("database password input must not be group/world accessible")
 PY
 
-grep -Fqx 'Red Hat Enterprise Linux release 9.6 (Plow)' /etc/redhat-release \
-  || die "target must be RHEL 9.6"
-[[ $(uname -m) == x86_64 ]] || die "target architecture must be x86_64"
 [[ $(getenforce) == Enforcing ]] || die "SELinux must already be Enforcing"
 
 if [[ $MODE == preflight ]]; then
@@ -165,4 +159,5 @@ ansible-playbook "$playbook" \
   --inventory "$SCRIPT_DIR/inventory/hosts.yml" \
   --extra-vars "@$VARS_FILE" \
   --extra-vars "offline_release_root=$RELEASE_ROOT" \
+  --extra-vars "validated_rhel_version=$RHEL_VERSION_ID" \
   "${extra_args[@]}"

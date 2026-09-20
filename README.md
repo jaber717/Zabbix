@@ -1,13 +1,14 @@
-# Zabbix 7.0 on RHEL 9.6
+# Zabbix 7.0 on RHEL 9.x
 
 Reproducible deployment source for Zabbix 7.0.30, PostgreSQL 16, nginx,
-PHP-FPM, and Agent 2 on RHEL 9.6 x86_64. It supports connected staging and
+PHP-FPM, and Agent 2 on RHEL 9.x x86_64. It supports connected staging and
 airgapped installation while keeping every RPM and every runtime secret out of
 Git.
 
-Status: **staging**. Package staging and official template structure are
-verified. A clean install and reboot on a disposable RHEL 9.6 VM are still
-required before promotion to `main`.
+Branch: **staging**. Historical RHEL 9.6 qualification is recorded separately
+from the current portability changes. RHEL 9.7 production has not been tested
+end to end. See [production readiness](docs/PRODUCTION-READINESS.md) for the
+current blockers, test boundaries, and production prerequisites.
 
 ## Quick start
 

@@ -6,3 +6,5 @@
 *.json text eol=lf
 *.md text eol=lf
 .env.example text eol=lf
+installer/roles/*/files/* text eol=lf
+installer/MANIFEST.sha256 text eol=lf

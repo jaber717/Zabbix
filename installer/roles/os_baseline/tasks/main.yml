@@ -1,11 +1,14 @@
 ---
-- name: Enforce the accepted target platform
-  ansible.builtin.assert:
-    that:
-      - ansible_distribution == 'RedHat'
-      - ansible_distribution_version == '9.6'
-      - ansible_architecture == 'x86_64'
-    fail_msg: M2 supports only RHEL 9.6 x86_64.
+- name: Enforce the shared target platform control
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -c
+      - 'source "$1"; validate_rhel_platform'
+      - platform-check
+      - "{{ playbook_dir }}/../lib/platform.sh"
+  changed_when: false
+  check_mode: false
 
 - name: Read current SELinux enforcement
   ansible.builtin.command: getenforce

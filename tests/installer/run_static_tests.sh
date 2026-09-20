@@ -7,6 +7,7 @@ PYTHON_BIN=${PYTHON_BIN:-python3}
 
 "$PYTHON_BIN" tests/installer/validate_installer.py
 "$PYTHON_BIN" -m unittest -v tests/installer/test_helpers.py
+"$PYTHON_BIN" -m unittest -v tests/installer/test_portability.py
 PYTHONPATH="$ROOT/integrations/netbox-zabbix-sync" \
   "$PYTHON_BIN" -m unittest -v integrations/netbox-zabbix-sync/tests/test_sync.py
 

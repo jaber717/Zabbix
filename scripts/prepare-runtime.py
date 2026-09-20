@@ -27,8 +27,10 @@ ALLOWED = {
     "FIREWALL_WEB_SOURCES",
     "FIREWALL_SERVER_SOURCES",
     "FIREWALL_AGENT_SOURCES",
+    "BASEOS_REPO",
+    "APPSTREAM_REPO",
 }
-REQUIRED = ALLOWED - {"OFFLINE_BUNDLE_ROOT", "TLS_CERTIFICATE_FILE", "TLS_PRIVATE_KEY_FILE"}
+REQUIRED = ALLOWED - {"OFFLINE_BUNDLE_ROOT", "TLS_CERTIFICATE_FILE", "TLS_PRIVATE_KEY_FILE", "BASEOS_REPO", "APPSTREAM_REPO"}
 HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.-]{0,252}$")
 
 
@@ -86,6 +88,24 @@ def protected_input(path: Path, repo: Path) -> None:
     die("configuration must be outside the Git repository")
 
 
+def validate_values(values: dict[str, str]) -> None:
+    if values['INSTALL_MODE'] == 'connected' and values.get('OFFLINE_BUNDLE_ROOT'):
+        die('CONNECTED requires an empty OFFLINE_BUNDLE_ROOT so staging uses the current source and repositories')
+    if values['INSTALL_MODE'] == 'airgapped' and not values.get('OFFLINE_BUNDLE_ROOT'):
+        die('AIRGAPPED requires OFFLINE_BUNDLE_ROOT')
+    for key in ('BASEOS_REPO', 'APPSTREAM_REPO'):
+        if values.get(key) and not re.fullmatch(r'[A-Za-z0-9_-]+', values[key]):
+            die(f'{key} must be a single configured repository ID')
+    timezone = values['ZABBIX_TIMEZONE']
+    zone = Path('/usr/share/zoneinfo') / timezone
+    if timezone.startswith('/') or '..' in timezone.split('/') or not zone.is_file():
+        die('ZABBIX_TIMEZONE must identify an installed IANA timezone')
+    # Keep the existing database transport character policy; reject early,
+    # before staging/package/configuration changes rather than later in Ansible.
+    if not re.fullmatch(r'[A-Za-z0-9_!@%^+=.,:$-]{12,128}', values['ZABBIX_DB_PASSWORD']):
+        die('ZABBIX_DB_PASSWORD must use 12-128 documented transport-safe characters')
+
+
 def write_private(path: Path, value: str) -> None:
     flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
     descriptor = os.open(path, flags, 0o600)
@@ -109,11 +129,10 @@ def main() -> int:
     values = parse_file(args.config)
     if values["INSTALL_MODE"] not in {"connected", "airgapped"}:
         die("INSTALL_MODE must be connected or airgapped")
+    validate_values(values)
     for key in ("ZABBIX_SERVER_HOSTNAME", "ZABBIX_WEB_SERVER_NAME"):
         if not HOST_RE.fullmatch(values[key]):
             die(f"{key} is invalid")
-    if values["ZABBIX_TIMEZONE"] != "Asia/Riyadh":
-        die("this release requires ZABBIX_TIMEZONE=Asia/Riyadh")
     try:
         frontend_port = int(values["ZABBIX_FRONTEND_PORT"])
     except ValueError:
@@ -154,6 +173,8 @@ def main() -> int:
     safe = {
         "install_mode": values["INSTALL_MODE"],
         "offline_bundle_root": values.get("OFFLINE_BUNDLE_ROOT", ""),
+        "baseos_repo": values.get("BASEOS_REPO") or 'rhel-9-for-x86_64-baseos-rpms',
+        "appstream_repo": values.get("APPSTREAM_REPO") or 'rhel-9-for-x86_64-appstream-rpms',
     }
     write_private(args.output / "paths.json", json.dumps(safe, separators=(",", ":")))
     print("PASS: protected runtime configuration prepared")

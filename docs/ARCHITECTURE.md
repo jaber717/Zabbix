@@ -2,7 +2,7 @@
 
 ## Deployment
 
-One RHEL 9.6 x86_64 host runs Zabbix Server 7.0.30, PostgreSQL 16, nginx,
+One RHEL 9.x x86_64 host runs Zabbix Server 7.0.30, PostgreSQL 16, nginx,
 PHP-FPM, and Zabbix Agent 2 under systemd. PostgreSQL listens only on loopback;
 the server uses `DBHost=127.0.0.1` with SCRAM-SHA-256. This release does not add
 containers, an external database, Zabbix HA, traps, or a second orchestrator.
@@ -16,7 +16,7 @@ every repository except the generated `file://` repository.
 
 Both modes converge on the same local bundle:
 
-- `connected`: an authorized subscribed RHEL 9.6 staging host runs
+- `connected`: an authorized RHEL 9.x staging host runs
   `scripts/stage-offline-bundle.sh`. If `OFFLINE_BUNDLE_ROOT` is empty,
   `install.sh` stages locally first.
 - `airgapped`: the operator transfers an already generated bundle and sets

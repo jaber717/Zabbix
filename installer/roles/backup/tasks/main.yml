@@ -1,4 +1,15 @@
 ---
+- name: Install shared lifecycle platform controls
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../lib/{{ item }}"
+    dest: "/usr/libexec/zabbix-offline/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - platform.sh
+    - validate_bundle.py
+
 - name: Install backup and lifecycle scripts
   ansible.builtin.copy:
     src: "{{ item }}"

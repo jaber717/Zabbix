@@ -16,6 +16,10 @@
 *.sql.gz
 *.dump
 *.bak
+*.orig
+*~
+*.swp
+zabbix-install.env
 *.log
 *.tar
 *.tar.gz

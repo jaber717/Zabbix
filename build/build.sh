@@ -2,6 +2,9 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "$0")" && pwd -P)/lib/common.sh"
+validate_rhel_platform || exit 1
+detect_release_context || exit 1
+RHEL_RELEASE=$RHEL_VERSION_ID
 
 for command in curl createrepo_c modifyrepo_c modulemd-merge gpg rpm rpmkeys sha256sum tar jq; do
   need "$command"
@@ -11,8 +14,17 @@ sudo -n true || die "passwordless sudo is required for the isolated build contex
 RUN_ID=${RUN_ID:-"build$(date -u +%Y%m%dT%H%M%SZ)"}
 OUTPUT_DIR=${OUTPUT_DIR:-"$PROJECT_ROOT/build/out/$RUN_ID"}
 UPDATE_LOCK=${UPDATE_LOCK:-0}
+LOCK_MODE=${LOCK_MODE:-frozen}
+[[ $LOCK_MODE == frozen || $LOCK_MODE == resolve ]] || die "LOCK_MODE must be frozen or resolve"
+[[ $UPDATE_LOCK == 0 ]] || die "tracked historical lock is immutable; retain the generated candidate outside Git"
 BUILD_GIT_COMMIT=${BUILD_GIT_COMMIT:-UNKNOWN}
 BUILD_GIT_DIRTY=${BUILD_GIT_DIRTY:-UNKNOWN}
+git_cmd=(git -c "safe.directory=$PROJECT_ROOT" -C "$PROJECT_ROOT")
+actual_commit=$("${git_cmd[@]}" rev-parse --verify HEAD)
+[[ -z $("${git_cmd[@]}" status --porcelain) ]] || die "build requires a clean Git working tree"
+[[ $BUILD_GIT_COMMIT == UNKNOWN || $BUILD_GIT_COMMIT == "$actual_commit" ]] || die "build commit does not match source HEAD"
+BUILD_GIT_COMMIT=$actual_commit
+BUILD_GIT_DIRTY=false
 SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(date -u +%s)}
 
 [[ ! -e "$OUTPUT_DIR" ]] || die "output directory already exists: $OUTPUT_DIR"
@@ -37,9 +49,6 @@ PRE_MODULE_HASH=$(host_module_hash)
 log "run=$RUN_ID output=$OUTPUT_DIR clean_root=$CLEAN_ROOT"
 log "pre_host_rpm_hash=$PRE_RPM_HASH pre_host_module_hash=$PRE_MODULE_HASH"
 
-[[ $(cat /etc/redhat-release) == "Red Hat Enterprise Linux release $RHEL_RELEASE (Plow)" ]] || die "unexpected RHEL release"
-[[ $(uname -m) == "$TARGET_ARCH" ]] || die "unexpected architecture"
-[[ $(sudo -n subscription-manager release --show | awk '{print $2}') == "$RHEL_RELEASE" ]] || die "RHEL release pin changed"
 [[ $(getenforce) == Enforcing ]] || die "SELinux is not Enforcing"
 
 KEY_DIR="$OUTPUT_DIR/work/keys"
@@ -93,6 +102,10 @@ source_dnf download --resolve --alldeps --arch=x86_64,noarch \
 
 mapfile -t RPM_FILES < <(find "$OUTPUT_DIR/work/downloaded" -maxdepth 1 -type f -name '*.rpm' -print | LC_ALL=C sort)
 ((${#RPM_FILES[@]} > 0)) || die "no RPMs downloaded"
+# Do not label newer/older BaseOS content as the host minor. Repository access
+# alone does not prove that the administrator's selected content matches it.
+content_release=$(rpm -qp --qf '%{NAME}|%{VERSION}\n' "${RPM_FILES[@]}" 2>/dev/null | awk -F'|' '$1=="redhat-release" {print $2}')
+[[ $content_release == "$RHEL_VERSION_ID" ]] || die "selected BaseOS content release ${content_release:-missing} differs from host $RHEL_VERSION_ID; review authorized repository content (no release setting was changed)"
 if printf '%s\n' "${RPM_FILES[@]}" | grep -Eq '\.(i686|src)\.rpm$'; then
   die "non-target i686/source RPM entered runtime closure"
 fi
@@ -136,13 +149,12 @@ done
 mv "$LOCK_CANDIDATE.sorted" "$LOCK_CANDIDATE"
 assert_lock_source_policy "$LOCK_CANDIDATE"
 
-if [[ "$UPDATE_LOCK" == 1 ]]; then
-  cp "$LOCK_CANDIDATE" "$PROJECT_ROOT/manifests/rpm-lockfile.txt"
-  log "manifests/rpm-lockfile.txt intentionally refreshed"
-else
-  [[ -f "$PROJECT_ROOT/manifests/rpm-lockfile.txt" ]] || die "RPM lock absent; run once with UPDATE_LOCK=1"
+if [[ "$LOCK_MODE" == frozen ]]; then
+  [[ -f "$PROJECT_ROOT/manifests/rpm-lockfile.txt" ]] || die "historical RPM lock absent; restore it from Git or use approved resolve staging"
   cmp -s "$PROJECT_ROOT/manifests/rpm-lockfile.txt" "$LOCK_CANDIDATE" || die "RPM lock drift detected"
 fi
+# In resolve mode application versions and streams remain pinned by the
+# compatibility profile; the new exact dependency lock belongs to this build.
 
 MODULE_DIR="$OUTPUT_DIR/work/module-metadata"
 mkdir -p "$MODULE_DIR"
@@ -197,7 +209,7 @@ done
 
 cat > "$REPO_DIR/zabbix-offline.repo" <<'EOF'
 [zabbix-offline]
-name=Zabbix RHEL 9.6 controlled offline repository
+name=Zabbix RHEL 9 controlled offline repository
 baseurl=file:///opt/zabbix-offline/repository
 enabled=1
 gpgcheck=1
@@ -264,10 +276,17 @@ RELEASE_TREE="$OUTPUT_DIR/release-tree"
 mkdir -p "$RELEASE_TREE"/{compat,docs,integration/wheels}
 cp -a "$REPO_DIR" "$RELEASE_TREE/repository"
 cp "$PROFILE_PATH" "$RELEASE_TREE/compat/zabbix-7.0.yaml"
+python3 - "$RELEASE_TREE/compat/zabbix-7.0.yaml" "$RHEL_RELEASE" <<'PY'
+import json, pathlib, sys
+path = pathlib.Path(sys.argv[1])
+profile = json.loads(path.read_text())
+profile['target']['release'] = sys.argv[2]
+path.write_text(json.dumps(profile, indent=2) + '\n')
+PY
 cp "$PROJECT_ROOT/integrations/netbox-zabbix-sync/wheels/requirements.in" "$PROJECT_ROOT/integrations/netbox-zabbix-sync/wheels/requirements.lock" "$PROJECT_ROOT/integrations/netbox-zabbix-sync/wheels/README.md" "$RELEASE_TREE/integration/wheels/"
 cp -a "$OUTPUT_DIR/wheelhouse/." "$RELEASE_TREE/integration/wheels/"
 cp "$PROJECT_ROOT/docs/OFFLINE-INSTALL.md" "$PROJECT_ROOT/docs/ARCHITECTURE.md" "$PROJECT_ROOT/docs/DECISIONS.md" "$RELEASE_TREE/docs/"
-cp "$PROJECT_ROOT/manifests/rpm-lockfile.txt" "$RELEASE_TREE/rpm-lockfile.txt"
+cp "$LOCK_CANDIDATE" "$RELEASE_TREE/rpm-lockfile.txt"
 cp "$LOCK_CANDIDATE" "$RELEASE_TREE/RPM-MANIFEST.txt"
 
 RPM_COUNT=${#RPM_FILES[@]}
@@ -275,17 +294,18 @@ WHEEL_COUNT=$(find "$RELEASE_TREE/integration/wheels" -maxdepth 1 -type f -name 
 BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 jq -n \
   --arg release "$RELEASE_NAME-$RELEASE_VERSION-build$RELEASE_BUILD" \
-  --arg designation "Zabbix RHEL 9.6 offline deployment bundle" \
+  --arg designation "Zabbix RHEL $RHEL_RELEASE offline deployment bundle" \
   --arg timestamp "$BUILD_TIMESTAMP" \
   --arg git_commit "$BUILD_GIT_COMMIT" --arg git_dirty "$BUILD_GIT_DIRTY" \
   --arg host "$(hostname -f)" --arg rhel "$RHEL_RELEASE" --arg arch "$TARGET_ARCH" \
+  --arg effective_release "$DNF_EFFECTIVE_RELEASE" --arg explicit_pin "$RHEL_EXPLICIT_PIN" \
   --arg zabbix "$ZABBIX_VERSION-$ZABBIX_RELEASE" --arg postgresql "$POSTGRESQL_STREAM" \
   --arg php "$PHP_STREAM" --arg nginx "$NGINX_STREAM" --arg python "$PYTHON_ABI" \
   --arg modulemd_sha "$(sha256sum "$MODULE_DIR/upstream-modules.yaml.gz" | awk '{print $1}')" \
   --arg local_repomd_sha "$(sha256sum "$REPO_DIR/repodata/repomd.xml" | awk '{print $1}')" \
   --argjson rpm_count "$RPM_COUNT" --argjson wheel_count "$WHEEL_COUNT" \
   --argjson repos "$(printf '%s\n' "$BASEOS_REPO" "$APPSTREAM_REPO" "$ZABBIX_REPO" "$NON_SUPPORTED_REPO" | jq -R . | jq -s .)" \
-  '{release:$release,designation:$designation,build_timestamp_utc:$timestamp,git:{commit:$git_commit,dirty:$git_dirty},build_host:$host,target:{rhel_release:$rhel,arch:$arch},zabbix:$zabbix,streams:{postgresql:$postgresql,php:$php,nginx:$nginx},python:{abi:$python,status:"standard-library integration; no third-party wheels"},source_repository_ids:$repos,metadata:{upstream_appstream_modulemd_sha256:$modulemd_sha,local_repomd_sha256:$local_repomd_sha},rpm_count:$rpm_count,wheel_count:$wheel_count,artifact_sha256:null}' \
+  '{release:$release,designation:$designation,build_timestamp_utc:$timestamp,git:{commit:$git_commit,dirty:$git_dirty},build_host:$host,target:{rhel_release:$rhel,arch:$arch},repository_context:{effective_release:$effective_release,explicit_pin:$explicit_pin},zabbix:$zabbix,streams:{postgresql:$postgresql,php:$php,nginx:$nginx},python:{abi:$python,status:"standard-library integration; no third-party wheels"},source_repository_ids:$repos,metadata:{upstream_appstream_modulemd_sha256:$modulemd_sha,local_repomd_sha256:$local_repomd_sha},rpm_count:$rpm_count,wheel_count:$wheel_count,artifact_sha256:null}' \
   > "$RELEASE_TREE/BUILD-INFO.json"
 
 touch "$RELEASE_TREE/MANIFEST.txt" "$RELEASE_TREE/SHA256SUMS"

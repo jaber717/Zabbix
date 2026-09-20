@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+[[ $EUID -eq 0 ]] || { printf 'ERROR: root is required\n' >&2; exit 1; }
+source /usr/libexec/zabbix-offline/platform.sh
+validate_rhel_platform || exit 1
 
 [[ $# -eq 1 ]] || { printf 'Usage: %s RELEASE_ROOT\n' "$0" >&2; exit 2; }
 release_root=$(readlink -f -- "$1")
@@ -15,17 +18,17 @@ done
   sha256sum --quiet -c SHA256SUMS
 )
 
-readarray -t versions < <(python3 - "$release_root/compat/zabbix-7.0.yaml" <<'PY'
+python3 /usr/libexec/zabbix-offline/validate_bundle.py "$release_root" "$RHEL_VERSION_ID"
+version_output=$(python3 - "$release_root/compat/zabbix-7.0.yaml" <<'PY'
 import json
 import sys
 with open(sys.argv[1], encoding="utf-8") as handle:
     profile = json.load(handle)
 print(profile["release"]["version"])
 print(profile["zabbix"]["version"])
-if profile["target"] != {"os": "rhel", "release": "9.6", "arch": "x86_64", "selinux": "Enforcing"}:
-    raise SystemExit("unsupported target profile")
 PY
 )
+readarray -t versions <<< "$version_output"
 
 state_json=$(/usr/libexec/zabbix-offline/release-state inspect \
   --state /etc/zabbix-offline/release.json --target "${versions[0]}" --zabbix "${versions[1]}")

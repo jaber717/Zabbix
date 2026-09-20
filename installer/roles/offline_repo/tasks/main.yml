@@ -40,7 +40,7 @@
   ansible.builtin.assert:
     that:
       - offline_compat_profile.target.os == 'rhel'
-      - offline_compat_profile.target.release == '9.6'
+      - offline_compat_profile.target.release == ansible_distribution_version
       - offline_compat_profile.target.arch == 'x86_64'
       - offline_compat_profile.zabbix.version == '7.0.30'
       - offline_compat_profile.modules.postgresql == '16'

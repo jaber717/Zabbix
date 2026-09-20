@@ -1,6 +1,6 @@
 # Offline Installer
 
-This directory contains the installer for the immutable RHEL 9.6 x86_64
+This directory contains the installer for an immutable RHEL 9.x x86_64
 offline bundle. `bootstrap.sh` verifies both release and installer checksums, enforces
 the target/SELinux prerequisites, creates one `file://` repository, installs
 `ansible-core` from that repository with every other repository disabled, and

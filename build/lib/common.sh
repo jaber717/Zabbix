@@ -2,6 +2,7 @@
 set -euo pipefail
 
 PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
+source "$PROJECT_ROOT/installer/lib/platform.sh"
 PROFILE_PATH=${PROFILE_PATH:-"$PROJECT_ROOT/compat/zabbix-7.0.yaml"}
 eval "$(python3 "$PROJECT_ROOT/build/lib/profile.py" env "$PROFILE_PATH")"
 
@@ -32,10 +33,12 @@ safe_remove_root() {
 source_dnf() {
   sudo -n dnf \
     --installroot="$CLEAN_ROOT" \
-    --releasever="$RHEL_RELEASE" \
+    --releasever="${DNF_EFFECTIVE_RELEASE:?effective host DNF release required}" \
     --forcearch="$TARGET_ARCH" \
     --setopt=module_platform_id=platform:el9 \
     --setopt=install_weak_deps=False \
+    --setopt="$BASEOS_REPO.skip_if_unavailable=False" \
+    --setopt="$APPSTREAM_REPO.skip_if_unavailable=False" \
     --disablerepo='*' \
     --enablerepo="$BASEOS_REPO" \
     --enablerepo="$APPSTREAM_REPO" \
@@ -54,7 +57,7 @@ source_dnf() {
 fping_source_dnf() {
   sudo -n dnf \
     --installroot="$CLEAN_ROOT" \
-    --releasever="$RHEL_RELEASE" \
+    --releasever="${DNF_EFFECTIVE_RELEASE:?effective host DNF release required}" \
     --forcearch="$TARGET_ARCH" \
     --disablerepo='*' \
     --repofrompath="$NON_SUPPORTED_REPO,$NON_SUPPORTED_REPO_URL" \
@@ -70,7 +73,7 @@ local_dnf() {
   shift 2
   sudo -n dnf \
     --installroot="$root" \
-    --releasever="$RHEL_RELEASE" \
+    --releasever="${DNF_EFFECTIVE_RELEASE:?effective host DNF release required}" \
     --forcearch="$TARGET_ARCH" \
     --setopt=module_platform_id=platform:el9 \
     --setopt=install_weak_deps=False \

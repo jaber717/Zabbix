@@ -373,13 +373,13 @@ class LockAndPortTests(unittest.TestCase):
     def test_connected_staging_installs_tools_from_rhel_sources_only(self):
         stage = (ROOT / "scripts/stage-offline-bundle.sh").read_text(encoding="utf-8")
         self.assertIn("--disablerepo='*'", stage)
-        self.assertIn("--enablerepo=rhel-9-for-x86_64-baseos-rpms", stage)
-        self.assertIn("--enablerepo=rhel-9-for-x86_64-appstream-rpms", stage)
+        self.assertIn('--enablerepo="$BASEOS_REPO"', stage)
+        self.assertIn('--enablerepo="$APPSTREAM_REPO"', stage)
         self.assertNotIn("epel", stage.lower())
 
     def test_exact_platform_profile_is_pinned(self):
         profile = (ROOT / "compat/zabbix-7.0.yaml").read_text(encoding="utf-8")
-        self.assertIn('"release": "9.6"', profile)
+        self.assertIn('"release": "9.x"', profile)
         self.assertIn('"version": "7.0.30"', profile)
         self.assertIn('"postgresql": "16"', profile)
         self.assertIn('"purpose": "fping-only"', profile)
