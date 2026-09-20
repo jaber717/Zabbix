@@ -174,6 +174,15 @@ detect_release_context || exit $?
                 sourced = name in ('installer/lib/platform.sh', 'build/lib/common.sh')
                 self.assertEqual(meta.split()[0], '100644' if sourced else '100755')
 
+    def test_manifest_files_have_deterministic_lf_checkout(self):
+        for row in (ROOT / 'installer/MANIFEST.sha256').read_text().splitlines():
+            name = 'installer/' + row.split(None, 1)[1].lstrip('*')
+            with self.subTest(path=name):
+                attribute = subprocess.check_output(
+                    ['git', 'check-attr', 'eol', '--', name], cwd=ROOT, text=True).strip()
+                self.assertEqual(attribute, name + ': eol: lf')
+                self.assertNotIn(b'\r\n', (ROOT / name).read_bytes())
+
     def test_required_files_are_tracked(self):
         tracked = set(subprocess.check_output(['git', 'ls-files'], cwd=ROOT, text=True).splitlines())
         for directory in ('installer', 'scripts', 'build', 'compat', 'tests'):
