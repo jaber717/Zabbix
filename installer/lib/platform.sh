@@ -54,7 +54,7 @@ detect_release_context() {
   else
     # Empty installroots cannot detect releasever. Inherit the real host DNF
     # substitution (normally major 9), never substitute our own minor version.
-    DNF_EFFECTIVE_RELEASE=$(python3 -c 'import dnf; b=dnf.Base(); b.conf.read(); print(b.conf.substitutions["releasever"])') || return 1
+    DNF_EFFECTIVE_RELEASE=$(python3 -c 'import dnf; b=dnf.Base(); b.conf.read(); b.conf.substitutions.update_from_etc("/", varsdir=b.conf.varsdir); print(b.conf.substitutions["releasever"])') || return 1
   fi
   [[ $DNF_EFFECTIVE_RELEASE =~ ^9(\.[0-9]+)?$ ]] || {
     printf 'FAIL: unsupported effective DNF release: %s\n' "$DNF_EFFECTIVE_RELEASE" >&2

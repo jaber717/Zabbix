@@ -67,6 +67,7 @@ class PlatformTests(unittest.TestCase):
                 self.assertEqual(result.stdout.strip(), expected)
 
     def test_release_context_uses_host_dnf_without_pin(self):
+        self.assertIn('substitutions.update_from_etc("/", varsdir=b.conf.varsdir)', HELPER.read_text())
         script = '''source "$1"
 RHEL_VERSION_ID=9.7
 timeout() { printf 'Release not set'; }
