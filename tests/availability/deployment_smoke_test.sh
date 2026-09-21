@@ -31,7 +31,7 @@ grep -q '^PREFLIGHT=PASS$' <<< "$PREFLIGHT_OUTPUT"
 cp -a "$ROOT/frontend/modules/NetworkAvailability" \
   "$TEMP_ROOT/frontend/modules/NetworkAvailability"
 VERIFY_OUTPUT=$(run_in_fixture "$ROOT/scripts/verify-network-availability.sh")
-grep -q '^MODULE_RELEASE=1.0.1$' <<< "$VERIFY_OUTPUT"
+grep -q '^MODULE_RELEASE=1.0.2$' <<< "$VERIFY_OUTPUT"
 grep -q '^PASS$' <<< "$VERIFY_OUTPUT"
 
 printf '\n// isolated checksum tamper test\n' \

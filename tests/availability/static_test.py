@@ -19,7 +19,7 @@ def require(condition: bool, message: str) -> None:
 manifest = json.loads((MODULE / "manifest.json").read_text(encoding="utf-8"))
 require(manifest["manifest_version"] == 2.0, "Zabbix 7.0 manifest v2 is required")
 require(manifest["type"] == "widget", "module must be a widget")
-require(manifest["version"] == "1.0.1", "module release must be 1.0.1")
+require(manifest["version"] == "1.0.2", "module release must be 1.0.2")
 require(manifest["widget"]["refresh_rate"] >= 10, "refresh must respect the configured floor")
 
 definitions = json.loads((MODULE / "config" / "node-definitions.json").read_text(encoding="utf-8"))

@@ -2,7 +2,7 @@
 
 This directory is a Zabbix 7.0 frontend widget module. It is an incremental,
 read-only implementation of platform-neutral Site, Node and Member availability.
-Release `1.0.1` adds production-safe installation, verification, and rollback
+Release `1.0.2` adds production-safe installation, verification, and rollback
 tooling without changing the validated widget behavior.
 
 ## Model and configuration

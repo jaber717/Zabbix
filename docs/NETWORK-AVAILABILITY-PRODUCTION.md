@@ -1,7 +1,7 @@
 # Network Availability production deployment
 
 This procedure installs the LAB-validated Network Availability widget from the
-immutable `availability-v1.0.1` tag. It does not modify Zabbix core files,
+immutable `availability-v1.0.2` tag. It does not modify Zabbix core files,
 restart services, or invent production Node topology.
 
 ## Install from GitHub
@@ -12,8 +12,8 @@ Run on the production Zabbix frontend VM:
 git clone https://github.com/jaber717/Zabbix.git
 cd Zabbix
 git fetch --tags origin
-git checkout --detach availability-v1.0.1
-test "$(git rev-parse HEAD)" = "$(git rev-list -n 1 availability-v1.0.1)"
+git checkout --detach availability-v1.0.2
+test "$(git rev-parse HEAD)" = "$(git rev-list -n 1 availability-v1.0.2)"
 sha256sum --check scripts/network-availability-release.sha256
 sudo ./scripts/install-network-availability.sh
 sudo ./scripts/verify-network-availability.sh
@@ -59,8 +59,11 @@ Modules**. Restore the newest installer-created backup:
 
 ```bash
 sudo ./scripts/rollback-network-availability.sh --confirm-module-disabled --restore-latest
-sudo ./scripts/verify-network-availability.sh
 ```
+
+Rollback validates the backup's structure and PHP syntax before restoring it.
+An older backup may predate the `VERSION` and `RELEASE.sha256` markers, so the
+current release verifier is not expected to pass against such a legacy module.
 
 If this was the first installation and no backup exists, move the module out of
 the Zabbix scan path without deleting it:

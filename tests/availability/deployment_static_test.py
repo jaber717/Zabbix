@@ -21,7 +21,7 @@ def require(condition: bool, message: str) -> None:
 
 manifest = json.loads((MODULE / "manifest.json").read_text(encoding="utf-8"))
 version = (MODULE / "VERSION").read_text(encoding="utf-8").strip()
-require(version == "1.0.1", "production release marker must be 1.0.1")
+require(version == "1.0.2", "production release marker must be 1.0.2")
 require(manifest["version"] == version, "manifest and release marker must match")
 
 default_config = json.loads((MODULE / "config" / "node-definitions.json").read_text(encoding="utf-8"))

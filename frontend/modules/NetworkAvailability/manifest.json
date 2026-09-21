@@ -4,7 +4,7 @@
   "type": "widget",
   "name": "Network Availability v1",
   "namespace": "NetworkAvailability",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "NetOps",
   "description": "Platform-neutral Site, Node and Member availability with freshness and monitoring visibility.",
   "widget": {
