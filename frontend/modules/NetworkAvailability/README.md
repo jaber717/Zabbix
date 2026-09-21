@@ -2,7 +2,8 @@
 
 This directory is a Zabbix 7.0 frontend widget module. It is an incremental,
 read-only implementation of platform-neutral Site, Node and Member availability.
-It has not yet been loaded into or enabled on the lab Zabbix 7.0.30 frontend.
+Release `1.0.1` adds production-safe installation, verification, and rollback
+tooling without changing the validated widget behavior.
 
 ## Model and configuration
 
@@ -14,7 +15,8 @@ from independent Host Tags.
 
 Logical Nodes live in the centrally shared
 `config/node-definitions.json`. The repository default is intentionally empty.
-A production definition has this shape:
+`config/node-definitions.example.json` is a fake, non-production example. A
+definition has this shape:
 
 ```json
 {
@@ -126,3 +128,7 @@ Run the repository/static contracts:
 ```bash
 python3 tests/availability/static_test.py
 ```
+
+Production operators should follow `docs/NETWORK-AVAILABILITY-PRODUCTION.md`.
+The installer preserves an existing `config/node-definitions.json` during an
+upgrade and validates all immutable module files against `RELEASE.sha256`.
