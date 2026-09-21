@@ -1,0 +1,23 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 36bff6c29af64692839d077febfc7079
+      name: 'Templates/Network devices'
+  templates:
+    - uuid: 6152ba025ed447398b80bff4e80e8ed1
+      template: 'Huawei AR8100 Extensions by SNMP'
+      name: 'Huawei AR8100 Extensions by SNMP'
+      description: |
+        NON-PRODUCTION SCAFFOLD. DO NOT LINK OR DEPLOY YET.
+
+        This empty extension is reserved for AR8100 behavior proven by output
+        from scripts/diagnose-huawei-ar8100-snmp.sh. It is designed to coexist
+        with the official Huawei VRP by SNMP template.
+
+        No AR8100-specific counter OID, index relationship, value type, or
+        preprocessing chain has been verified against production hardware.
+        Consequently this scaffold deliberately defines no items, discovery
+        rules, item prototypes, triggers, or graphs. Unresolved OIDs must not be
+        made active merely because a related Huawei family exposes them.
+      groups:
+        - name: 'Templates/Network devices'
