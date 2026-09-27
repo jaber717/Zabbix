@@ -45,7 +45,7 @@ def percentile(values):
     values=sorted(values); rank=(len(values)-1)*.95; low=int(rank); high=min(low+1,len(values)-1); return values[low]+(values[high]-values[low])*(rank-low)
 def document(revision, capacity=None):
     link={'id':'lab-zabbix-ens18','display_name':'LAB Zabbix ens18','site_id':'lab','host':'ZABBIX-01','interface':{'if_name':'ens18','if_alias':'','if_descr':''},'role':'SERVER','order':0,'visible':True,'required':True}
-    if capacity is not None: link.update({'capacity_source':'service_override','service_capacity_in_bps':capacity,'service_capacity_out_bps':capacity})
+    if capacity is not None: link.update({'capacity_source':'service_override','symmetric_service_bandwidth':True,'service_capacity_in_bps':capacity})
     return {'schema':'network-utilization-config-v1','revision':revision,'settings':{'warning_util_pct':80,'critical_util_pct':90,'capacity_risk_p95_pct':80,'sustained_window_min':5},'sites':[{'id':'lab','name':'LAB','order':0}],'links':[link]}
 def save(web, token, config):
     status,response=web.action('networkutilization.config.update',{'_csrf_token':token,'expected_revision':config['revision'],'payload':json.dumps(config,separators=(',',':'))})
@@ -70,8 +70,8 @@ def main():
     plain=re.sub(r'\s+',' ',html.unescape(re.sub(r'<[^>]+>',' ',listing))); position=plain.find('Network Utilization')
     print('MODULE_LIST_CONTEXT='+plain[max(0,position-120):position+300])
     dashboard=web.get('dashboard.view')
-    chart_pos=dashboard.find('traffic-chart.js'); widget_pos=dashboard.find('class.widget.js',chart_pos)
-    print(f"CHART_ASSET_ORDER={'PASS' if 0<=chart_pos<widget_pos else 'NOT_CONFIRMED'}")
+    chart_pos=dashboard.find('traffic-chart.js'); capacity_pos=dashboard.find('capacity-config.js',chart_pos); widget_pos=dashboard.find('class.widget.js',capacity_pos)
+    print(f"MODULE_ASSET_ORDER={'PASS' if 0<=chart_pos<capacity_pos<widget_pos else 'NOT_CONFIRMED'}")
     page,elapsed=render(web); configuration=decoded(page,'configuration'); candidates=decoded(page,'candidates'); instrumentation=decoded(page,'instrumentation'); token=attribute(page,'csrf-token')
     ens18=next((candidate for candidate in candidates if candidate['host']=='ZABBIX-01' and candidate['if_name']=='ens18'),None)
     if ens18 is None: raise RuntimeError('live ZABBIX-01 ens18 candidate was not discovered')
@@ -86,7 +86,11 @@ def main():
         if 'Not configured' not in page or 'Capacity required' not in page: raise RuntimeError('missing-capacity presentation is ambiguous')
         print(f"UNKNOWN_CAPACITY=PASS CURRENT_IN_BPS={link['current_in_bps']} CURRENT_OUT_BPS={link['current_out_bps']} UTILIZATION=UNKNOWN")
         phase2=save(web,token,document(phase1['revision'],50_000_000))
-        page,elapsed=render(web); snap=decoded(page,'snapshot'); instrumentation=decoded(page,'instrumentation'); token=attribute(page,'csrf-token'); link=snap['links'][0]
+        if phase2['links'][0]['service_capacity_out_bps']!=50_000_000: raise RuntimeError('symmetric save did not normalize OUT capacity')
+        web.get('dashboard.view')
+        page,elapsed=render(web); snap=decoded(page,'snapshot'); persisted=decoded(page,'configuration')['links'][0]; instrumentation=decoded(page,'instrumentation'); token=attribute(page,'csrf-token'); link=snap['links'][0]
+        if persisted['capacity_source']!='service_override' or persisted['service_capacity_in_bps']!=50_000_000 or persisted['service_capacity_out_bps']!=50_000_000 or persisted['capacity_warning_accepted']: raise RuntimeError('symmetric service capacity did not survive dashboard reload')
+        print('SAVE_RELOAD_SYMMETRIC_SERVICE=PASS')
         for direction in ('in','out'):
             bps=link[f'current_{direction}_bps']; pct=link[f'{direction}_util_pct']
             if bps is not None and abs(pct-(bps/50_000_000*100))>1e-9: raise RuntimeError(f'{direction} utilization mismatch')

@@ -266,45 +266,41 @@ class CWidgetNetworkUtilization extends CWidget {
 
 	#capacityForm(link, portSpeed, onChange, preferServiceWhenMissing = false) {
 		const box = this.#element('div', '', 'nu-capacity-form');
-		let sourceTouched = false;
+		let sourceTouched = false, touched = false;
+		const initial = NetworkUtilizationCapacityRules.initial(link);
 		const source = this.#select([['interface_speed', 'Auto — interface speed'], ['service_override', 'Service / circuit bandwidth']],
-			link.capacity_source ?? (link.capacity_override_bps ? 'service_override' : 'interface_speed'), () => { sourceTouched = true; sync(); });
+			initial.capacity_source, () => { sourceTouched = true; sync(); });
 		const symmetric = document.createElement('input'); symmetric.type = 'checkbox';
-		const oldIn = link.service_capacity_in_bps ?? link.capacity_override_bps ?? null;
-		const oldOut = link.service_capacity_out_bps ?? link.capacity_override_bps ?? null;
-		symmetric.checked = oldIn === oldOut;
-		const makeAmount = value => {
-			const factor = value && value % 1e9 === 0 ? 1e9 : value && value % 1e6 === 0 ? 1e6 : value && value % 1e3 === 0 ? 1e3 : 1;
-			const input = this.#input(value ? String(value / factor) : '', 'Bandwidth', 'number'); input.min = '0.001'; input.step = 'any';
-			const unit = this.#select([[1, 'bps'], [1e3, 'Kbps'], [1e6, 'Mbps'], [1e9, 'Gbps']], factor, () => sync());
+		symmetric.checked = initial.symmetric_service_bandwidth;
+		const makeAmount = (value, factor) => {
+			const input = this.#input(value, 'Bandwidth', 'number'); input.min = '0.001'; input.step = 'any';
+			const unit = this.#select([[1, 'bps'], [1e3, 'Kbps'], [1e6, 'Mbps'], [1e9, 'Gbps']], Number(factor), () => sync());
 			return {input, unit, row: this.#element('div', '', 'nu-bandwidth-row')};
 		};
-		const incoming = makeAmount(oldIn), outgoing = makeAmount(oldOut);
+		const incoming = makeAmount(initial.in_value, initial.in_unit), outgoing = makeAmount(initial.out_value, initial.out_unit);
 		for (const part of [incoming, outgoing]) { part.row.append(part.input, part.unit); part.input.addEventListener('input', sync); }
 		const warning = document.createElement('input'); warning.type = 'checkbox'; warning.checked = Boolean(link.capacity_warning_accepted);
 		const warningLabel = this.#label('Accept configuration warning: capacity not configured', warning);
 		const speed = this.#element('div', '', 'nu-candidate-preview');
 		box.append(this.#label('Capacity source', source), speed, this.#label('Symmetric service bandwidth', symmetric),
 			this.#label('IN bandwidth', incoming.row), this.#label('OUT bandwidth', outgoing.row), warningLabel);
-		const bps = part => part.input.value === '' ? null : Number(part.input.value) * Number(part.unit.value);
+		const form = () => ({capacity_source: source.value, symmetric_service_bandwidth: symmetric.checked,
+			in_value: incoming.input.value, in_unit: incoming.unit.value, out_value: outgoing.input.value,
+			out_unit: outgoing.unit.value, capacity_warning_accepted: warning.checked});
 		function sync(notify = true) {
-			link.capacity_source = source.value;
 			if (symmetric.checked) { outgoing.input.value = incoming.input.value; outgoing.unit.value = incoming.unit.value; }
-			link.service_capacity_in_bps = source.value === 'service_override' ? bps(incoming) : null;
-			link.service_capacity_out_bps = source.value === 'service_override' ? bps(outgoing) : null;
-			link.capacity_warning_accepted = warning.checked;
+			Object.assign(link, NetworkUtilizationCapacityRules.normalize(form(), portSpeed(), false));
 			incoming.row.parentElement.classList.toggle('is-hidden', source.value !== 'service_override');
 			outgoing.row.parentElement.classList.toggle('is-hidden', source.value !== 'service_override' || symmetric.checked);
 			warningLabel.classList.toggle('is-hidden', source.value !== 'interface_speed' || Boolean(portSpeed()));
 			speed.textContent = `Physical port speed: ${portSpeed() === null ? 'Not available' : formatSpeed(portSpeed())}`;
-			if (notify !== false) onChange();
+			if (notify !== false) { touched = true; onChange(); }
 		}
 		const formatSpeed = value => this.#formatBps(value);
 		for (const control of [symmetric, warning]) control.addEventListener('change', sync);
 		const validate = () => {
-			sync(false);
-			if (source.value === 'interface_speed' && !portSpeed() && !warning.checked) throw new Error('Port speed is unavailable. Set service bandwidth or explicitly accept the configuration warning.');
-			if (source.value === 'service_override' && (![link.service_capacity_in_bps, link.service_capacity_out_bps].every(value => Number.isSafeInteger(value) && value > 0))) throw new Error('Enter positive IN and OUT service bandwidth.');
+			if (!NetworkUtilizationCapacityRules.shouldValidate(touched, preferServiceWhenMissing)) return;
+			Object.assign(link, NetworkUtilizationCapacityRules.normalize(form(), portSpeed(), true));
 		};
 		const update = () => { if (preferServiceWhenMissing && !sourceTouched) source.value = portSpeed() ? 'interface_speed' : 'service_override'; sync(false); };
 		update();

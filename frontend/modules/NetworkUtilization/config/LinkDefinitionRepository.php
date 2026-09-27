@@ -95,12 +95,16 @@ final class LinkDefinitionRepository {
 				'required' => (bool) ($link['required'] ?? true)];
 			$source = $link['capacity_source'] ?? (isset($link['capacity_override_bps']) ? 'service_override' : 'interface_speed');
 			if (!in_array($source, ['interface_speed', 'service_override'], true)) throw new RuntimeException("Link {$id} capacity source is invalid");
+			$legacy = $link['capacity_override_bps'] ?? null;
+			$in_value = $link['service_capacity_in_bps'] ?? $legacy;
+			$out_value = $link['service_capacity_out_bps'] ?? $legacy;
+			$symmetric = array_key_exists('symmetric_service_bandwidth', $link) ? (bool) $link['symmetric_service_bandwidth'] : $in_value === $out_value;
 			$normalized['capacity_source'] = $source;
-			$normalized['capacity_warning_accepted'] = (bool) ($link['capacity_warning_accepted'] ?? false);
+			$normalized['symmetric_service_bandwidth'] = $symmetric;
+			$normalized['capacity_warning_accepted'] = $source === 'interface_speed' && (bool) ($link['capacity_warning_accepted'] ?? false);
 			if ($source === 'service_override') {
-				$legacy = $link['capacity_override_bps'] ?? null;
-				$normalized['service_capacity_in_bps'] = self::positiveBps($link['service_capacity_in_bps'] ?? $legacy, "Link {$id} IN service capacity");
-				$normalized['service_capacity_out_bps'] = self::positiveBps($link['service_capacity_out_bps'] ?? $legacy, "Link {$id} OUT service capacity");
+				$normalized['service_capacity_in_bps'] = self::positiveBps($in_value, "Link {$id} IN service capacity");
+				$normalized['service_capacity_out_bps'] = self::positiveBps($symmetric ? $in_value : $out_value, "Link {$id} OUT service capacity");
 			}
 			foreach (['warning_util_pct', 'critical_util_pct'] as $field) {
 				if (!array_key_exists($field, $link) || $link[$field] === null || $link[$field] === '') continue;

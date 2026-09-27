@@ -7,9 +7,10 @@ module = root / "frontend/modules/NetworkUtilization"
 manifest = json.loads((module / "manifest.json").read_text())
 assert manifest["id"] == "netops_network_utilization"
 assert manifest["version"] == (module / "VERSION").read_text().strip()
+assert manifest["assets"]["js"].index("capacity-config.js") < manifest["assets"]["js"].index("class.widget.js")
 required = [
     "Widget.php", "actions/WidgetView.php", "actions/ConfigUpdate.php",
-    "assets/css/network-utilization.css", "assets/js/class.widget.js", "assets/js/traffic-chart.js",
+    "assets/css/network-utilization.css", "assets/js/class.widget.js", "assets/js/traffic-chart.js", "assets/js/capacity-config.js",
     "collector/ZabbixLinkUtilizationCollector.php", "config/LinkDefinitionRepository.php",
     "domain/LinkUtilizationResolver.php", "views/widget.view.php"
 ]
