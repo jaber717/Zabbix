@@ -27,6 +27,14 @@ assert "API::Trend()->get" in collector
 resolver = (module / "domain/LinkUtilizationResolver.php").read_text()
 assert "max($in_util, $out_util)" not in resolver  # nullable helper is deliberate
 assert "resetSafeDelta" in resolver and "MIN_PERCENTILE_SAMPLES" in resolver
+assert "'port_speed_bps'" in resolver and "'capacity_in_bps'" in resolver and "'capacity_out_bps'" in resolver
+assert "'remaining_in_bps'" in resolver and "'remaining_out_bps'" in resolver
+view = (module / "views/widget.view.php").read_text()
+widget_js = (module / "assets/js/class.widget.js").read_text()
+chart_js = (module / "assets/js/traffic-chart.js").read_text()
+assert "Monitored capacity" in view and "Not configured" in view and "Capacity required" in view
+assert "Physical port speed" in widget_js and "Service / circuit bandwidth" in widget_js
+assert "${model.unit.name}" in chart_js and "this.unit(maximum)" in chart_js
 assert not re.search(r"(?i)(password|token|secret)\s*[:=]\s*['\"][^'\"]+", all_text)
 availability = root / "frontend/modules/NetworkAvailability"
 assert availability.is_dir()

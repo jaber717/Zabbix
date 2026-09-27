@@ -93,11 +93,19 @@ final class LinkDefinitionRepository {
 					'if_descr' => trim((string) ($link['interface']['if_descr'] ?? ''))],
 				'role' => $role, 'order' => (int) ($link['order'] ?? $index * 10), 'visible' => (bool) ($link['visible'] ?? true),
 				'required' => (bool) ($link['required'] ?? true)];
-			foreach (['capacity_override_bps', 'warning_util_pct', 'critical_util_pct'] as $field) {
-				if (!array_key_exists($field, $link) || $link[$field] === null || $link[$field] === '') continue;
-				$normalized[$field] = $field === 'capacity_override_bps' ? (int) $link[$field] : self::percent($link[$field], $field);
+			$source = $link['capacity_source'] ?? (isset($link['capacity_override_bps']) ? 'service_override' : 'interface_speed');
+			if (!in_array($source, ['interface_speed', 'service_override'], true)) throw new RuntimeException("Link {$id} capacity source is invalid");
+			$normalized['capacity_source'] = $source;
+			$normalized['capacity_warning_accepted'] = (bool) ($link['capacity_warning_accepted'] ?? false);
+			if ($source === 'service_override') {
+				$legacy = $link['capacity_override_bps'] ?? null;
+				$normalized['service_capacity_in_bps'] = self::positiveBps($link['service_capacity_in_bps'] ?? $legacy, "Link {$id} IN service capacity");
+				$normalized['service_capacity_out_bps'] = self::positiveBps($link['service_capacity_out_bps'] ?? $legacy, "Link {$id} OUT service capacity");
 			}
-			if (isset($normalized['capacity_override_bps']) && $normalized['capacity_override_bps'] <= 0) throw new RuntimeException("Link {$id} capacity override must be positive");
+			foreach (['warning_util_pct', 'critical_util_pct'] as $field) {
+				if (!array_key_exists($field, $link) || $link[$field] === null || $link[$field] === '') continue;
+				$normalized[$field] = self::percent($link[$field], $field);
+			}
 			if (($normalized['warning_util_pct'] ?? $warning) >= ($normalized['critical_util_pct'] ?? $critical)) throw new RuntimeException("Link {$id} threshold ordering is invalid");
 			$links[] = $normalized;
 		}
@@ -118,6 +126,12 @@ final class LinkDefinitionRepository {
 	}
 	private static function percent(mixed $value, string $context): float {
 		$value = (float) $value; if ($value <= 0 || $value > 100) throw new RuntimeException("{$context} must be within 0..100"); return $value;
+	}
+	private static function positiveBps(mixed $value, string $context): int {
+		if (!is_numeric($value) || !is_finite((float) $value) || (float) $value < 1 || (float) $value > 1e15 || floor((float) $value) !== (float) $value) {
+			throw new RuntimeException("{$context} must be a positive whole number of bps");
+		}
+		return (int) $value;
 	}
 	private function backupPath(): string { return dirname($this->path).'/link-definitions.last-known-good.json'; }
 }

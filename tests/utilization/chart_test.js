@@ -3,7 +3,9 @@ const Chart = require('../../frontend/modules/NetworkUtilization/assets/js/traff
 
 const end = 1_800_000_000;
 const link = {
-	capacity_bps: 1_000_000_000,
+	port_speed_bps: 1_000_000_000,
+	capacity_in_bps: 50_000_000,
+	capacity_out_bps: 50_000_000,
 	data_state: 'CURRENT',
 	metrics: {
 		in: {expected_interval: 180, history: [
@@ -34,7 +36,8 @@ assert.equal(hour.unit.name, 'Mbps');
 assert.equal(hour.maximum, 5_110_000);
 assert.equal(hour.axis.top, 6_000_000);
 assert.equal(hour.axis.step, 1_000_000);
-assert.ok(hour.axis.top < link.capacity_bps / 10, 'axis must reflect traffic, not capacity');
+assert.ok(hour.axis.top < link.capacity_in_bps, 'axis must reflect traffic, not service capacity');
+assert.equal(Chart.model({...link, capacity_in_bps: 1_000_000_000, capacity_out_bps: 100_000_000}, 1, end).axis.top, hour.axis.top);
 assert.equal(Chart.formatValue(2_680_000, hour.unit), '2.68 Mbps');
 assert.equal(Chart.nearest(hour.outgoing, end - 1800, 90).value, 1_770_000);
 assert.equal(Chart.nearest(hour.outgoing, end - 1800, 2), null);

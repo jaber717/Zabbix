@@ -17,18 +17,22 @@ $root->setAttribute('data-generated-at', (string) $snapshot['generated_at'])->se
 	->setAttribute('data-snapshot', $encode($snapshot))->setAttribute('data-configuration', $encode($data['configuration']))
 	->setAttribute('data-candidates', $encode($data['candidates']))->setAttribute('data-instrumentation', $encode($data['instrumentation']));
 $format_bps = static function(?float $value): string {
-	if ($value === null) return 'Unknown';
+	if ($value === null) return '—';
 	foreach ([[1e9, 'Gbps'], [1e6, 'Mbps'], [1e3, 'Kbps'], [1, 'bps']] as [$scale, $unit]) {
 		if ($value >= $scale) {
 			$scaled = $value / $scale;
-			return number_format($scaled, $scaled >= 100 ? 0 : ($scaled >= 10 ? 1 : 2), '.', '').' '.$unit;
+			$decimals = $scaled >= 100 ? 0 : ($scaled >= 10 ? 1 : 2);
+			$number = number_format($scaled, $decimals, '.', '');
+			return ($decimals ? rtrim(rtrim($number, '0'), '.') : $number).' '.$unit;
 		}
 	}
-	return '0 bps';
+	return ($value > 0 ? number_format($value, 2, '.', '') : '0').' bps';
 };
-$pct = static fn(?float $value): string => $value === null ? 'Unknown' : number_format($value, 1).'%';
+$pct = static fn(?float $value): string => $value === null ? '—' : number_format($value, 1).'%';
+$capacity = static fn(?float $value): string => $value === null ? 'Not configured' : $format_bps($value);
+$remaining = static fn(?float $value, bool $capacity_known): string => $value === null ? ($capacity_known ? '— · Traffic unavailable' : '— · Capacity required') : ($value < 0 ? 'Over by '.$format_bps(-$value) : $format_bps($value));
 $tone = static function(array $link): string {
-	if ($link['data_state'] !== 'CURRENT' || $link['capacity_bps'] === null || $link['mapping_issue'] !== null) return 'is-unknown';
+	if ($link['data_state'] !== 'CURRENT' || $link['capacity_in_bps'] === null || $link['capacity_out_bps'] === null || $link['mapping_issue'] !== null) return 'is-unknown';
 	if ($link['worst_util_pct'] !== null && $link['worst_util_pct'] >= $link['critical_util_pct']) return 'is-critical';
 	if ($link['worst_util_pct'] !== null && $link['worst_util_pct'] >= $link['warning_util_pct']) return 'is-warning';
 	return 'is-normal';
@@ -72,7 +76,7 @@ foreach ($snapshot['needs_attention'] as $index=>$row) {
 	$secondary = $link === null ? '' : implode(' · ', array_filter([
 		$link['sustained'] ? 'Sustained '.floor($link['sustained_seconds']/60).'m' : null,
 		$link['p95_worst_pct'] !== null ? 'P95 '.$pct($link['p95_worst_pct']) : null,
-		$link['headroom_bps'] !== null ? $format_bps($link['headroom_bps']).' headroom' : null,
+		$link['worst_headroom_bps'] !== null ? 'Minimum remaining '.$remaining($link['worst_headroom_bps'], true) : null,
 		($link['errors_total'] > 0 || $link['discards_total'] > 0) ? $link['errors_total'].' errors / '.$link['discards_total'].' discards' : null
 	]));
 	$attention->addItem((new CTag('button', true, [
@@ -91,7 +95,7 @@ $root->addItem($attention);
 $top = (new CDiv())->addClass('nu-top');
 $heading = (new CDiv())->addClass('nu-section-heading')->addItem(new CTag('h4', true, 'Top utilized links'));
 $sort = (new CDiv([new CSpan('Sort by')]))->addClass('nu-sort');
-foreach (['current'=>'Current', 'p95'=>'P95', 'headroom'=>'Headroom', 'errors'=>'Errors', 'discards'=>'Discards'] as $key=>$label) {
+foreach (['current'=>'Current', 'p95'=>'P95', 'headroom'=>'Remaining', 'errors'=>'Errors', 'discards'=>'Discards'] as $key=>$label) {
 	$sort->addItem((new CTag('button', true, $label))->setAttribute('type', 'button')->setAttribute('data-sort', $key)->addClass($key === 'current' ? 'is-active' : ''));
 }
 $heading->addItem($sort); $top->addItem($heading);
@@ -104,29 +108,34 @@ $toolbar->addItem((new CDiv([(new CSpan(''))->addClass('nu-filter-label'),
 $top->addItem($toolbar);
 $table = (new CTag('table', true))->addClass('nu-table');
 $table->addItem(new CTag('thead', true, new CTag('tr', true, array_map(static fn($label) => new CTag('th', true, $label),
-	['Link', 'Site', 'Device', 'Capacity', 'IN', 'OUT', 'P95 24H', 'Headroom', 'Errors / Discards']))));
+	['Link', 'Site', 'Device', 'Monitored capacity', 'IN', 'OUT', 'P95 24H', 'Remaining', 'Errors / Discards']))));
 $body = new CTag('tbody', true);
 foreach ($snapshot['links'] as $link) {
 	if (!$link['visible']) continue;
 	$traffic_cell = static function(string $direction) use ($link, $pct, $format_bps): CTag {
 		$key = strtolower($direction);
-		return (new CTag('td', true, [
+		$parts = [
 			(new CSpan($pct($link[$key.'_util_pct'])))->addClass('nu-traffic-pct'),
 			(new CSpan($format_bps($link['current_'.$key.'_bps'])))->addClass('nu-traffic-bps')
-		]))->addClass('nu-traffic-cell')->setAttribute('data-label', $direction);
+		];
+		if ($link[$key.'_util_pct'] === null && $link['capacity_'.$key.'_bps'] === null) $parts[] = (new CSpan('Capacity required'))->addClass('nu-subtle');
+		return (new CTag('td', true, $parts))->addClass('nu-traffic-cell')->setAttribute('data-label', $direction);
 	};
 	$body->addItem((new CTag('tr', true, [
 		(new CTag('td', true, [(new CTag('button', true, $link['display_name']))->setAttribute('type', 'button')->addClass('nu-link-open'),
-			(new CDiv($link['interface']['if_name']))->addClass('nu-subtle')]))->addClass('nu-link-cell'),
+			(new CDiv('Port: '.$link['interface']['if_name']))->addClass('nu-subtle')]))->addClass('nu-link-cell'),
 		new CTag('td', true, $link['site']), new CTag('td', true, $link['host_name']),
-		(new CTag('td', true, $format_bps($link['capacity_bps'])))->addClass($link['capacity_bps'] === null ? 'nu-unknown' : ''),
+		(new CTag('td', true, [
+			new CSpan($link['capacity_in_bps'] === $link['capacity_out_bps'] ? $capacity($link['capacity_in_bps']) : 'IN '.$capacity($link['capacity_in_bps']).' / OUT '.$capacity($link['capacity_out_bps'])),
+			(new CDiv($link['capacity_source'] === 'service_override' ? 'Service override' : 'Interface speed'))->addClass('nu-subtle')
+		]))->addClass($link['capacity_in_bps'] === null || $link['capacity_out_bps'] === null ? 'nu-unknown' : ''),
 		$traffic_cell('IN'), $traffic_cell('OUT'),
 		new CTag('td', true, $pct($link['p95_worst_pct'])),
-		(new CTag('td', true, $format_bps($link['headroom_bps'])))->addClass($link['headroom_bps'] === null ? 'nu-unknown' : ''),
+		(new CTag('td', true, $remaining($link['worst_headroom_bps'], $link['capacity_in_bps'] !== null && $link['capacity_out_bps'] !== null)))->addClass($link['worst_headroom_bps'] === null ? 'nu-unknown' : ''),
 		new CTag('td', true, $link['errors_total'].' / '.$link['discards_total'])
 	]))->setAttribute('data-link-id', $link['id'])->setAttribute('data-current', (string) ($link['worst_util_pct'] ?? -1))
 		->setAttribute('data-p95', (string) ($link['p95_worst_pct'] ?? -1))
-		->setAttribute('data-headroom', (string) ($link['headroom_bps'] ?? PHP_INT_MAX))
+		->setAttribute('data-headroom', (string) ($link['worst_headroom_bps'] ?? PHP_INT_MAX))
 		->setAttribute('data-errors', (string) $link['errors_total'])->setAttribute('data-discards', (string) $link['discards_total'])
 		->setAttribute('data-site', $link['site_id'])->setAttribute('data-role', $link['role'])
 		->setAttribute('data-search', strtolower($link['display_name'].' '.$link['host'].' '.$link['interface']['if_name'].' '.$link['site']))

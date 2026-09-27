@@ -13,6 +13,8 @@
     "order": 10,
     "visible": true,
     "required": true,
-    "capacity_override_bps": 2000000000
+    "capacity_source": "service_override",
+    "service_capacity_in_bps": 2000000000,
+    "service_capacity_out_bps": 2000000000
   }]
 }

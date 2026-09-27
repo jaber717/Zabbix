@@ -10,7 +10,14 @@ $base=['schema'=>LinkDefinitionRepository::SCHEMA,'revision'=>1,'settings'=>['wa
 	'sites'=>[['id'=>'dc','name'=>'DC','order'=>0]],'links'=>[['id'=>'wan','display_name'=>'WAN','site_id'=>'dc','host'=>'RTR-01','interface'=>['if_name'=>'Gi0/0','if_alias'=>'ISP','if_descr'=>''],'role'=>'WAN','order'=>0,'visible'=>true,'required'=>true]]];
 file_put_contents($path,json_encode($base,JSON_PRETTY_PRINT)); $repo=new LinkDefinitionRepository($path); $loaded=$repo->loadDocument();
 if($loaded['links'][0]['interface']['if_name']!=='Gi0/0'||array_key_exists('ifindex',$loaded['links'][0]['interface']))throw new RuntimeException('stable identity contract failed');
+if($loaded['links'][0]['capacity_source']!=='interface_speed')throw new RuntimeException('legacy auto-capacity migration failed');
+$legacy=$base;$legacy['links'][0]['capacity_override_bps']=50000000;
+$migrated=LinkDefinitionRepository::validateDocument($legacy)['links'][0];
+if($migrated['capacity_source']!=='service_override'||$migrated['service_capacity_in_bps']!==50000000||$migrated['service_capacity_out_bps']!==50000000)throw new RuntimeException('legacy override migration failed');
+$asymmetric=$base;$asymmetric['links'][0]['capacity_source']='service_override';$asymmetric['links'][0]['service_capacity_in_bps']=100000000;$asymmetric['links'][0]['service_capacity_out_bps']=50000000;
+$normalized=LinkDefinitionRepository::validateDocument($asymmetric)['links'][0];
+if($normalized['service_capacity_in_bps']!==100000000||$normalized['service_capacity_out_bps']!==50000000)throw new RuntimeException('asymmetric capacity was not preserved');
 $loaded['links'][0]['display_name']='Internet'; $saved=$repo->save($loaded,1); if($saved['revision']!==2||!is_file($directory.'/link-definitions.last-known-good.json'))throw new RuntimeException('atomic save/LKG failed');
-try{$bad=$saved;$bad['links'][0]['capacity_override_bps']=0;LinkDefinitionRepository::validateDocument($bad);throw new RuntimeException('invalid config accepted');}catch(RuntimeException $e){if($e->getMessage()==='invalid config accepted')throw $e;}
+try{$bad=$saved;$bad['links'][0]['capacity_source']='service_override';$bad['links'][0]['service_capacity_in_bps']=0;$bad['links'][0]['service_capacity_out_bps']=50000000;LinkDefinitionRepository::validateDocument($bad);throw new RuntimeException('invalid config accepted');}catch(RuntimeException $e){if($e->getMessage()==='invalid config accepted')throw $e;}
 try{$repo->save($saved,1);throw new RuntimeException('revision conflict accepted');}catch(RuntimeException $e){if($e->getMessage()==='revision conflict accepted')throw $e;}
 foreach(glob($directory.'/*') as $file)unlink($file); @unlink($directory.'/.link-definitions.lock'); rmdir($directory); echo "PASS: configuration persistence, LKG, validation and stable identity\n";

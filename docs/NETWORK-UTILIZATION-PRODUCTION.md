@@ -1,24 +1,24 @@
-# Network Utilization v1.1 — production upgrade
+# Network Utilization v1.2 — production upgrade
 
 Network Utilization is independent of Network Availability. It modifies no Zabbix core file and requires no service restart.
 
-## Upgrade from v1.0.0
+## Upgrade from v1.1.0
 
 Run from a temporary checkout on the Zabbix frontend host:
 
 ```bash
-git clone --depth 1 --branch network-utilization-v1.1.0 https://github.com/jaber717/Zabbix.git
+git clone --depth 1 --branch network-utilization-v1.2.0 https://github.com/jaber717/Zabbix.git
 cd Zabbix
 sha256sum -c scripts/network-utilization-release.sha256
 sudo ./scripts/install-network-utilization.sh
 sudo ./scripts/verify-network-utilization.sh
 ```
 
-Refresh the Zabbix frontend and confirm that Network Utilization reports version 1.1.0 in Administration → General → Modules. Existing dashboards and Links remain in place.
+Refresh the Zabbix frontend and confirm that Network Utilization reports version 1.2.0 in Administration → General → Modules. Existing dashboards and Links remain in place.
 
-Configuration is preserved at `/var/lib/zabbix/network-utilization/link-definitions.json` across upgrades and rollback. Capacity overrides must be entered in bits per second and should only be used where Zabbix has no trustworthy speed Item.
+Configuration is preserved at `/var/lib/zabbix/network-utilization/link-definitions.json` across upgrades and rollback. Existing `capacity_override_bps` values are interpreted as symmetric service bandwidth on load. Use Edit links to choose Auto — interface speed or Service / circuit bandwidth. A 1 Gbps Ethernet port carrying a 50 Mbps circuit needs the 50 Mbps service override; physical speed is not the service-utilization denominator. Asymmetric IN/OUT values are supported. Links with unresolved automatic speed show a configuration warning until service capacity is set or the warning is explicitly accepted.
 
-The details chart uses bounded Zabbix history for 1h, 6h and 24h. Its 7d range uses hourly trend averages. Its X-axis uses actual timestamps and its Y-axis follows observed bits per second, independent of the configured Link capacity.
+The details chart uses bounded Zabbix history for 1h, 6h and 24h. Its 7d range uses hourly trend averages. Its X-axis uses actual timestamps and its Y-axis follows observed bits per second, independent of both physical and service capacity.
 
 ## Rollback
 

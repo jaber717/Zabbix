@@ -163,6 +163,14 @@
 .netops-utilization .nu-editor { padding: 16px; }
 .netops-utilization .nu-link-editor summary { padding: 5px 0; }
 .netops-utilization .nu-editor-fields { margin-top: 8px; }
+.netops-utilization .nu-capacity-form { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 9px; border: 1px solid color-mix(in srgb, currentColor 15%, transparent); border-radius: 4px; }
+.netops-utilization .nu-capacity-form .nu-candidate-preview { grid-column: 1 / -1; }
+.netops-utilization .nu-bandwidth-row { display: flex; gap: 5px; }
+.netops-utilization .nu-bandwidth-row input { flex: 1; }
+.netops-utilization .nu-bandwidth-row select { flex: 0 0 82px; }
+.netops-utilization .nu-capacity-form .nu-editor-label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; }
+.netops-utilization .nu-capacity-form .nu-editor-label:has(input[type="checkbox"]) input { width: auto; }
+@media (max-width: 560px) { .netops-utilization .nu-capacity-form { grid-template-columns: 1fr; } }
 .netops-utilization.is-dark-theme .nu-updated,
 .netops-utilization.is-dark-theme .nu-attention__meta,
 .netops-utilization.is-dark-theme .nu-attention__secondary,

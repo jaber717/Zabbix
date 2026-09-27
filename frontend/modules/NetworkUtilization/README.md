@@ -1,4 +1,4 @@
-# Network Utilization 1.1.0
+# Network Utilization 1.2.0
 
 A Zabbix 7.0 widget for operator-selected network Links. It reads existing Zabbix Items; it does not poll devices.
 
@@ -7,7 +7,8 @@ A Zabbix 7.0 widget for operator-selected network Links. It reads existing Zabbi
 - Stable Link identity is monitored Host name plus interface name. ifIndex is resolved only at runtime.
 - IN and OUT utilization are calculated independently; ranking uses the greater direction.
 - `bps` rate Items are used directly. `Bps` rate Items are converted once to bits per second.
-- Capacity comes from a fresh speed Item or an explicit operator override. Unknown capacity never produces a percentage.
+- Physical port speed is informational. Monitored capacity comes from a fresh interface-speed Item only when `capacity_source=interface_speed`, or from explicit IN/OUT service bandwidth when `capacity_source=service_override`. All utilization, P95 percentages, sustained state and remaining capacity use monitored capacity, independently by direction. Unconfigured capacity never produces a percentage.
+- The v1 runtime schema remains readable. A legacy `capacity_override_bps` is migrated to symmetric IN/OUT service capacity when loaded; existing Links and the runtime file are preserved.
 - P95 uses a bounded 24-hour history query and requires at least 20 samples. Seven-day details use trends when available.
 - Errors and discards remain separate and counter resets do not create false deltas.
 - Hidden Links remain monitored and counted but are omitted from the main table and Site cards.

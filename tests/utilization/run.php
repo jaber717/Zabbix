@@ -31,10 +31,26 @@ $assert(abs($r['in_util_pct']-40.0)<.001,'IN utilization');
 $assert(abs($r['out_util_pct']-90.0)<.001,'OUT utilization');
 $assert(abs($r['worst_util_pct']-90.0)<.001,'full-duplex directions are not summed');
 $assert($r['worst_direction']==='OUT','worst direction');
-$assert(abs($r['headroom_bps']-100.0)<.001,'headroom');
+$assert(abs($r['remaining_in_bps']-600.0)<.001 && abs($r['remaining_out_bps']-100.0)<.001,'directional remaining capacity');
+$assert(abs($r['worst_headroom_bps']-100.0)<.001,'worst-direction remaining capacity');
 $unknown=$resolver->resolveLink($link(['metrics'=>['capacity'=>['value'=>-1,'clock'=>$now,'expected_interval'=>60,'history'=>[]]]]),$settings,$now);
-$assert($unknown['capacity_bps']===null&&$unknown['worst_util_pct']===null,'unknown capacity means unknown utilization');
+$assert($unknown['capacity_in_bps']===null&&$unknown['capacity_out_bps']===null&&$unknown['worst_util_pct']===null
+	&&$unknown['p95_worst_pct']===null&&$unknown['worst_headroom_bps']===null,'unknown capacity never fabricates utilization or remaining capacity');
 $assert(abs($r['p95_out_pct']-90.0)<.001,'P95');
+$service=$resolver->resolveLink($link(['capacity_source'=>'service_override','service_capacity_in_bps'=>50_000_000,'service_capacity_out_bps'=>50_000_000,
+	'metrics'=>['in'=>$metric(32_000_000,$history(35_000_000)),'out'=>$metric(45_000_000,$history(42_000_000)),
+		'capacity'=>$metric(1_000_000_000,$history(1_000_000_000))]]),$settings,$now);
+$assert($service['port_speed_bps']===1_000_000_000.0 && $service['capacity_out_bps']===50_000_000.0,'physical speed remains informational');
+$assert(abs($service['out_util_pct']-90.0)<.001 && abs($service['in_util_pct']-64.0)<.001,'50 Mbps service override is utilization denominator');
+$assert(abs($service['p95_out_pct']-84.0)<.001 && abs($service['p95_in_pct']-70.0)<.001,'P95 uses service capacity');
+$assert($service['remaining_in_bps']===18_000_000.0 && $service['remaining_out_bps']===5_000_000.0 && $service['worst_headroom_bps']===5_000_000.0,'service remaining capacity per direction');
+$asymmetric=$resolver->resolveLink($link(['capacity_source'=>'service_override','service_capacity_in_bps'=>100_000_000,'service_capacity_out_bps'=>50_000_000,
+	'metrics'=>['in'=>$metric(45_000_000,$history(45_000_000)),'out'=>$metric(45_000_000,$history(45_000_000))]]),$settings,$now);
+$assert(abs($asymmetric['in_util_pct']-45.0)<.001 && abs($asymmetric['out_util_pct']-90.0)<.001,'asymmetric IN and OUT capacity');
+$assert($asymmetric['worst_headroom_bps']===5_000_000.0,'asymmetric worst remaining capacity');
+$over=$resolver->resolveLink($link(['capacity_source'=>'service_override','service_capacity_in_bps'=>50_000_000,'service_capacity_out_bps'=>50_000_000,
+	'metrics'=>['out'=>$metric(55_000_000,$history(55_000_000))]]),$settings,$now);
+$assert($over['remaining_out_bps']===-5_000_000.0,'over-capacity remains signed for explicit display');
 $assert($r['sustained']===true&&$r['sustained_seconds']>=300,'sustained threshold');
 $stale=$resolver->resolveLink($link(['metrics'=>['in'=>['clock'=>$now-1000],'out'=>['clock'=>$now-1000]]]),$settings,$now);
 $assert($stale['data_state']==='STALE'&&$stale['current_in_bps']===null,'stale current data');

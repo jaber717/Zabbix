@@ -28,7 +28,7 @@ final class LinkUtilizationResolver {
 			$summary['SUSTAINED'] += $link['sustained'] ? 1 : 0;
 			$summary['ERRORS_DISCARDS'] += $link['errors_total'] > 0 || $link['discards_total'] > 0 ? 1 : 0;
 			$summary['CAPACITY_RISK'] += $link['p95_worst_pct'] !== null && $link['p95_worst_pct'] >= $settings['capacity_risk_p95_pct'] ? 1 : 0;
-			$summary['UNKNOWN_STALE'] += $link['data_state'] !== 'CURRENT' || $link['capacity_bps'] === null || $link['mapping_issue'] !== null ? 1 : 0;
+			$summary['UNKNOWN_STALE'] += $link['data_state'] !== 'CURRENT' || $link['capacity_in_bps'] === null || $link['capacity_out_bps'] === null || $link['mapping_issue'] !== null ? 1 : 0;
 		}
 		$site_rows = [];
 		foreach ($sites as $site) {
@@ -44,25 +44,31 @@ final class LinkUtilizationResolver {
 		$critical = (float) ($link['critical_util_pct'] ?? $settings['critical_util_pct']);
 		$in = $this->metric($link['metrics']['in'] ?? null, $now); $out = $this->metric($link['metrics']['out'] ?? null, $now);
 		$capacity_metric = $this->metric($link['metrics']['capacity'] ?? null, $now);
-		$capacity = isset($link['capacity_override_bps']) ? (float) $link['capacity_override_bps']
-			: ($capacity_metric['current'] !== null && $capacity_metric['current'] > 0 ? $capacity_metric['current'] : null);
-		$in_util = $capacity && $in['current'] !== null ? 100 * $in['current'] / $capacity : null;
-		$out_util = $capacity && $out['current'] !== null ? 100 * $out['current'] / $capacity : null;
+		$port_speed = $capacity_metric['current'] !== null && $capacity_metric['current'] > 0 ? $capacity_metric['current'] : null;
+		$source = $link['capacity_source'] ?? (isset($link['capacity_override_bps']) ? 'service_override' : 'interface_speed');
+		$legacy_override = isset($link['capacity_override_bps']) ? (float) $link['capacity_override_bps'] : null;
+		$capacity_in = $source === 'service_override' ? (isset($link['service_capacity_in_bps']) ? (float) $link['service_capacity_in_bps'] : $legacy_override) : $port_speed;
+		$capacity_out = $source === 'service_override' ? (isset($link['service_capacity_out_bps']) ? (float) $link['service_capacity_out_bps'] : $legacy_override) : $port_speed;
+		$in_util = $capacity_in && $in['current'] !== null ? 100 * $in['current'] / $capacity_in : null;
+		$out_util = $capacity_out && $out['current'] !== null ? 100 * $out['current'] / $capacity_out : null;
 		$worst = $this->maxNullable($in_util, $out_util); $direction = $worst === null ? null : ($out_util !== null && $out_util >= ($in_util ?? -1) ? 'OUT' : 'IN');
 		$p95_in_bps = $this->percentile($in['history']); $p95_out_bps = $this->percentile($out['history']);
-		$p95_in = $capacity && $p95_in_bps !== null ? 100 * $p95_in_bps / $capacity : null;
-		$p95_out = $capacity && $p95_out_bps !== null ? 100 * $p95_out_bps / $capacity : null;
+		$p95_in = $capacity_in && $p95_in_bps !== null ? 100 * $p95_in_bps / $capacity_in : null;
+		$p95_out = $capacity_out && $p95_out_bps !== null ? 100 * $p95_out_bps / $capacity_out : null;
 		$peak_bps = $this->maxNullable($in['peak'], $out['peak']); $p95_worst = $this->maxNullable($p95_in, $p95_out);
-		$series = $this->mergeWorstSeries($in['history'], $out['history'], $capacity);
+		$series = $this->mergeWorstSeries($in['history'], $out['history'], $capacity_in, $capacity_out);
 		$sustained_s = $this->sustainedDuration($series, $warning, $now, max($in['expected_interval'], $out['expected_interval']));
 		$data_state = $in['stale'] || $out['stale'] ? 'STALE' : (($in['current'] === null || $out['current'] === null) ? 'UNKNOWN' : 'CURRENT');
 		$errors = $this->quality($link['metrics'], 'errors'); $discards = $this->quality($link['metrics'], 'discards');
 		$oper = $this->status($link['metrics']['oper_status'] ?? null, false); $admin = $this->status($link['metrics']['admin_status'] ?? null, true);
+		$remaining_in = $capacity_in !== null && $data_state === 'CURRENT' && $in['current'] !== null ? $capacity_in - $in['current'] : null;
+		$remaining_out = $capacity_out !== null && $data_state === 'CURRENT' && $out['current'] !== null ? $capacity_out - $out['current'] : null;
 		$result = $link + ['current_in_bps' => $data_state === 'CURRENT' ? $in['current'] : null, 'current_out_bps' => $data_state === 'CURRENT' ? $out['current'] : null,
 			'in_util_pct' => $data_state === 'CURRENT' ? $in_util : null, 'out_util_pct' => $data_state === 'CURRENT' ? $out_util : null,
 			'worst_util_pct' => $data_state === 'CURRENT' ? $worst : null, 'worst_direction' => $direction,
-			'capacity_bps' => $capacity, 'capacity_source' => isset($link['capacity_override_bps']) ? 'override' : ($capacity ? 'reported' : 'unknown'),
-			'headroom_bps' => $capacity && $data_state === 'CURRENT' && $worst !== null ? max(0.0, $capacity * (1 - $worst / 100)) : null,
+			'port_speed_bps' => $port_speed, 'capacity_in_bps' => $capacity_in, 'capacity_out_bps' => $capacity_out, 'capacity_source' => $source,
+			'remaining_in_bps' => $remaining_in, 'remaining_out_bps' => $remaining_out,
+			'worst_headroom_bps' => $remaining_in !== null && $remaining_out !== null ? min($remaining_in, $remaining_out) : null,
 			'p95_in_pct' => $p95_in, 'p95_out_pct' => $p95_out, 'p95_worst_pct' => $p95_worst,
 			'p95_in_bps' => $p95_in_bps, 'p95_out_bps' => $p95_out_bps, 'peak_bps' => $peak_bps,
 			'sustained_seconds' => $data_state === 'CURRENT' ? $sustained_s : 0,
@@ -109,11 +115,14 @@ final class LinkUtilizationResolver {
 		if (($metric['status_family'] ?? 'ifmib') === 'linux') return $v === 6 ? 'UP' : (in_array($v, [1,2,3], true) ? 'DOWN' : 'UNKNOWN');
 		return $v === 1 ? 'UP' : ($v === 2 ? 'DOWN' : 'UNKNOWN');
 	}
-	private function mergeWorstSeries(array $in, array $out, ?float $capacity): array {
-		if (!$capacity) return []; $rows = [];
+	private function mergeWorstSeries(array $in, array $out, ?float $capacity_in, ?float $capacity_out): array {
+		if (!$capacity_in && !$capacity_out) return []; $rows = [];
 		// Direction samples commonly arrive a few seconds apart. A minute bucket preserves
 		// full-duplex max(direction) semantics without treating each direction as a gap.
-		foreach (array_merge($in, $out) as $row) { $clock = intdiv((int) $row['clock'], 60) * 60; $rows[$clock] = max($rows[$clock] ?? 0, 100 * (float) $row['value'] / $capacity); }
+		foreach ([[$in, $capacity_in], [$out, $capacity_out]] as [$samples, $capacity]) {
+			if (!$capacity) continue;
+			foreach ($samples as $row) { $clock = intdiv((int) $row['clock'], 60) * 60; $rows[$clock] = max($rows[$clock] ?? 0, 100 * (float) $row['value'] / $capacity); }
+		}
 		ksort($rows); return array_map(static fn($clock, $value) => ['clock' => $clock, 'value' => $value], array_keys($rows), $rows);
 	}
 	private function sustainedDuration(array $series, float $threshold, int $now, int $interval): int {
@@ -128,7 +137,7 @@ final class LinkUtilizationResolver {
 		elseif (($l['errors_total'] ?? 0) > 0 || ($l['discards_total'] ?? 0) > 0) { $rank=30; $kind='ERRORS_DISCARDS'; $detail='Errors/discards increasing'; }
 		elseif (($l['worst_util_pct'] ?? 0) >= ($l['critical_util_pct'] ?? 90)) { $rank=40; $kind='CURRENT_CRITICAL'; $detail=($l['worst_direction'] ?? '').' '.round($l['worst_util_pct']).'%'; }
 		elseif (($l['sustained'] ?? false)) { $rank=50; $kind='SUSTAINED_WARNING'; $detail='Sustained '.round($l['worst_util_pct']).'%'; }
-		elseif (($l['mapping_issue'] ?? null) !== null || ($l['capacity_bps'] ?? null) === null || ($l['data_state'] ?? '') !== 'CURRENT') { if ($l['stale_grouped'] ?? false) return null; $rank=60; $kind='CONFIG_OR_DATA'; $detail=$l['mapping_issue'] ?? (($l['data_state'] ?? '') === 'STALE' ? 'Data stale' : 'Capacity unknown'); }
+		elseif (($l['mapping_issue'] ?? null) !== null || ($l['capacity_in_bps'] ?? null) === null || ($l['capacity_out_bps'] ?? null) === null || ($l['data_state'] ?? '') !== 'CURRENT') { if ($l['stale_grouped'] ?? false) return null; $rank=60; $kind='CONFIG_OR_DATA'; $detail=$l['mapping_issue'] ?? (($l['data_state'] ?? '') === 'STALE' ? 'Data stale' : 'Capacity not configured'); }
 		return $rank === null ? null : ['id'=>'attention-'.$l['id'], 'rank'=>$rank, 'kind'=>$kind, 'label'=>$l['display_name'], 'detail'=>$detail, 'link_id'=>$l['id']];
 	}
 	private function maxNullable(?float ...$values): ?float { $v = array_values(array_filter($values, static fn($x) => $x !== null)); return $v === [] ? null : max($v); }

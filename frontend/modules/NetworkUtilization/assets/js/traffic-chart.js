@@ -93,7 +93,7 @@ class NetworkUtilizationTrafficChart {
 	render() {
 		const model = NetworkUtilizationTrafficChart.model(this.link, this.hours, this.endClock);
 		const width = Math.max(280, this.root.clientWidth || 420);
-		const height = 216, left = 58, right = 12, top = 14, bottom = 38;
+		const height = 216, left = 76, right = 12, top = 14, bottom = 38;
 		const plotWidth = width - left - right, plotHeight = height - top - bottom;
 		const x = clock => left + plotWidth * (clock - model.startClock) / (model.endClock - model.startClock);
 		const y = value => top + plotHeight * (1 - value / model.axis.top);
@@ -118,7 +118,7 @@ class NetworkUtilizationTrafficChart {
 			const position = y(value);
 			svg.append(NetworkUtilizationTrafficChart.svg('line', {x1: left, y1: position, x2: width - right, y2: position, class: 'nu-chart__grid'}));
 			const text = NetworkUtilizationTrafficChart.svg('text', {x: left - 7, y: position + 4, 'text-anchor': 'end', class: 'nu-chart__tick'},
-				Number((value / model.unit.factor).toPrecision(3)).toString());
+				`${Number((value / model.unit.factor).toPrecision(3))} ${model.unit.name}`);
 			svg.append(text);
 		}
 		const count = width >= 570 ? 7 : width >= 400 ? 5 : 3;

@@ -15,6 +15,7 @@ class CWidgetNetworkUtilization extends CWidget {
 	#candidates = [];
 	#chart = null;
 	#chartRange = 1;
+	#capacityValidators = [];
 
 	onStart() { this.#staleTimer = setInterval(() => this.#updateViewFreshness(), 5000); }
 	onActivate() { if (this.#staleTimer === null) this.#staleTimer = setInterval(() => this.#updateViewFreshness(), 5000); }
@@ -99,7 +100,7 @@ class CWidgetNetworkUtilization extends CWidget {
 				else if (this.#filter === 'SUSTAINED') stateMatch = link.sustained;
 				else if (this.#filter === 'ERRORS_DISCARDS') stateMatch = link.errors_total > 0 || link.discards_total > 0;
 				else if (this.#filter === 'CAPACITY_RISK') stateMatch = link.p95_worst_pct !== null && link.p95_worst_pct >= this.#configuration.settings.capacity_risk_p95_pct;
-				else if (this.#filter === 'UNKNOWN_STALE') stateMatch = link.data_state !== 'CURRENT' || link.capacity_bps === null || link.mapping_issue !== null;
+				else if (this.#filter === 'UNKNOWN_STALE') stateMatch = link.data_state !== 'CURRENT' || link.capacity_in_bps === null || link.capacity_out_bps === null || link.mapping_issue !== null;
 			}
 			row.classList.toggle('is-filtered-out', !(searchMatch && siteMatch && roleMatch && stateMatch));
 		}
@@ -153,12 +154,18 @@ class CWidgetNetworkUtilization extends CWidget {
 			['Freshness', link.data_age_s >= 2147483647 ? 'No successful data' : this.#formatAge(link.data_age_s)],
 			['Data', link.data_state === 'CURRENT' ? 'Current' : link.data_state]]);
 		if (link.mapping_issue) section('CONFIGURATION', [['Issue', link.mapping_issue]]);
-		section('CAPACITY', [['Speed', `${this.#formatBps(link.capacity_bps)}${link.capacity_source === 'override' ? ' · override' : ''}`]]);
+		section('CAPACITY', [['Physical port speed', this.#capacityText(link.port_speed_bps)],
+			['Monitored capacity IN', this.#capacityText(link.capacity_in_bps)], ['Monitored capacity OUT', this.#capacityText(link.capacity_out_bps)],
+			['Source', link.capacity_source === 'service_override' ? 'Service / circuit override' : 'Auto — interface speed']]);
+		if ((link.capacity_in_bps === null || link.capacity_out_bps === null) && root.dataset.canEdit === '1') {
+			panel.lastElementChild.append(this.#button('Edit / Set capacity', 'btn-alt', () => this.#beginEdit(root)));
+		}
 		section('CURRENT TRAFFIC', [['IN', this.#metric(link.current_in_bps, link.in_util_pct)],
 			['OUT', this.#metric(link.current_out_bps, link.out_util_pct)]]);
+		section('REMAINING CAPACITY', [['IN', this.#remaining(link.remaining_in_bps, link.capacity_in_bps)], ['OUT', this.#remaining(link.remaining_out_bps, link.capacity_out_bps)]]);
 		section('HISTORICAL · 24H', [['P95 IN', this.#metric(link.p95_in_bps, link.p95_in_pct)],
 			['P95 OUT', this.#metric(link.p95_out_bps, link.p95_out_pct)], ['Peak', this.#formatBps(link.peak_bps)],
-			['Headroom now', this.#formatBps(link.headroom_bps)], ['Sustained high', link.sustained ? this.#formatDuration(link.sustained_seconds) : 'No']]);
+			['Sustained high', link.sustained ? this.#formatDuration(link.sustained_seconds) : 'No']]);
 		section('QUALITY', [['Errors', String(link.errors_total)], ['Discards', String(link.discards_total)]]);
 		const traffic = this.#element('section', '', 'nu-detail-section'); traffic.append(this.#element('h4', 'TRAFFIC TREND'), this.#trendPanel(link)); panel.append(traffic);
 		const links = this.#element('div', '', 'nu-detail-links');
@@ -190,6 +197,7 @@ class CWidgetNetworkUtilization extends CWidget {
 
 	#renderEditor(root) {
 		const panel = root.querySelector('.nu-editor'); panel.replaceChildren();
+		this.#capacityValidators = [];
 		panel.append(this.#element('h3', `Edit links · ${this.#unsavedChanges} unsaved changes`));
 		const actions = this.#element('div', '', 'nu-editor-actions'); actions.append(
 			this.#button('Add site', 'btn-alt', () => this.#addSite(root)), this.#button('Add link', 'btn-alt', () => this.#addLink(root)),
@@ -211,13 +219,15 @@ class CWidgetNetworkUtilization extends CWidget {
 		const box = this.#element('details', '', 'nu-link-editor'); box.append(this.#element('summary', `${link.display_name} · ${link.host} / ${link.interface.if_name}`));
 		const fields = this.#element('div', '', 'nu-editor-fields');
 		const name = this.#input(link.display_name, 'Display name'); name.addEventListener('input', () => { link.display_name = name.value; this.#dirty(root); });
-		const capacity = this.#input(link.capacity_override_bps ? String(link.capacity_override_bps) : '', 'Optional bits per second', 'number'); capacity.min = '1'; capacity.addEventListener('input', () => { link.capacity_override_bps = capacity.value === '' ? null : Number(capacity.value); this.#dirty(root); });
+		const current = this.#findLink(link.id);
+		const capacity = this.#capacityForm(link, () => current?.port_speed_bps ?? null, () => this.#dirty(root));
+		this.#capacityValidators.push(capacity.validate);
 		const warning = this.#input(link.warning_util_pct ?? '', 'Use global default', 'number'); warning.min = '1'; warning.max = '100'; warning.addEventListener('input', () => { link.warning_util_pct = warning.value === '' ? null : Number(warning.value); this.#dirty(root); });
 		const critical = this.#input(link.critical_util_pct ?? '', 'Use global default', 'number'); critical.min = '1'; critical.max = '100'; critical.addEventListener('input', () => { link.critical_util_pct = critical.value === '' ? null : Number(critical.value); this.#dirty(root); });
 		const visible = document.createElement('input'); visible.type = 'checkbox'; visible.checked = Boolean(link.visible); visible.addEventListener('change', () => { link.visible = visible.checked; this.#dirty(root); });
 		fields.append(this.#label('Display name', name), this.#label('Site', this.#select(this.#workingConfig.sites.map(site => [site.id, site.name]), link.site_id, value => { link.site_id = value; this.#dirty(root); })),
 			this.#label('Role', this.#select(this.#roles().map(role => [role, role.replaceAll('_', ' ')]), link.role, value => { link.role = value; this.#dirty(root); })),
-			this.#label('Capacity override (bps)', capacity), this.#label('Warning % override', warning), this.#label('Critical % override', critical), this.#label('Visible', visible));
+			capacity.element, this.#label('Warning % override', warning), this.#label('Critical % override', critical), this.#label('Visible', visible));
 		box.append(fields);
 		const actions = this.#element('div', '', 'nu-editor-actions'); actions.append(this.#button('↑', 'btn-icon', () => this.#move(this.#workingConfig.links, index, -1, root)), this.#button('↓', 'btn-icon', () => this.#move(this.#workingConfig.links, index, 1, root)), this.#button('Delete link', 'btn-link', () => { this.#workingConfig.links.splice(index, 1); this.#dirty(root, true); })); box.append(actions); return box;
 	}
@@ -235,21 +245,70 @@ class CWidgetNetworkUtilization extends CWidget {
 		const display = this.#input('', 'Display name'); let siteId = this.#workingConfig.sites[0]?.id ?? ''; let role = 'UPLINK';
 		const siteSelect = this.#select(this.#workingConfig.sites.map(site => [site.id, site.name]), siteId, value => { siteId = value; });
 		const roleSelect = this.#select(this.#roles().map(value => [value, value.replaceAll('_', ' ')]), role, value => { role = value; });
-		const capacity = this.#input('', 'Optional bits per second', 'number'); capacity.min = '1';
+		const draft = {capacity_source: 'interface_speed', capacity_warning_accepted: false};
+		const capacity = this.#capacityForm(draft, () => selected?.capacity_bps ?? null, () => {}, true);
 		const rebuildInterfaces = () => {
 			interfaceSelect.replaceChildren(); const rows = this.#candidates.filter(candidate => candidate.host === host).sort((a, b) => a.if_name.localeCompare(b.if_name));
 			for (const candidate of rows) interfaceSelect.append(this.#option(candidate.if_name, `${candidate.if_name}${candidate.if_alias ? ` · ${candidate.if_alias}` : ''}`));
-			const update = () => { selected = rows.find(candidate => candidate.if_name === interfaceSelect.value) ?? null; if (selected) { if (!display.value) display.value = selected.if_name; preview.textContent = `${selected.if_alias || 'No alias'} · Capacity ${this.#formatBps(selected.capacity_bps)} · Status ${selected.oper_status ?? 'unknown'} · ${selected.metric_types.join(', ')}`; } };
+			const update = () => { selected = rows.find(candidate => candidate.if_name === interfaceSelect.value) ?? null; if (selected) { if (!display.value) display.value = selected.if_name; preview.textContent = `${selected.if_alias || 'No alias'} · Port speed ${this.#capacityText(selected.capacity_bps)} · Status ${selected.oper_status ?? 'unknown'} · ${selected.metric_types.join(', ')}`; } capacity.update(); };
 			interfaceSelect.onchange = update; update();
 		};
-		box.append(this.#label('1. Host', hostSelect), this.#label('2. Interface', interfaceSelect), preview, this.#label('3. Display name', display), this.#label('Site', siteSelect), this.#label('Role', roleSelect), this.#label('Capacity override (bps, optional)', capacity));
+		box.append(this.#label('1. Host', hostSelect), this.#label('2. Interface', interfaceSelect), preview, this.#label('3. Display name', display), this.#label('Site', siteSelect), this.#label('Role', roleSelect), capacity.element);
 		box.append(this.#button('Add to working copy', 'btn', () => {
 			if (!selected || !display.value.trim()) return this.#error(panel, 'Host, interface and display name are required.');
 			if (this.#workingConfig.links.some(link => link.host === selected.host && link.interface.if_name === selected.if_name)) return this.#error(panel, 'That Host/interface is already configured.');
+			try { capacity.validate(); } catch (error) { return this.#error(panel, error.message); }
 			this.#workingConfig.links.push({id: `link-${this.#slug(selected.host)}-${this.#slug(selected.if_name)}-${Date.now()}`, display_name: display.value.trim(), site_id: siteId, host: selected.host,
 				interface: {if_name: selected.if_name, if_alias: selected.if_alias || '', if_descr: ''}, role, order: this.#workingConfig.links.length * 10, visible: true, required: true,
-				capacity_override_bps: capacity.value === '' ? null : Number(capacity.value)}); this.#dirty(root, true);
+				...draft}); this.#dirty(root, true);
 		})); rebuildInterfaces(); panel.insertBefore(box, panel.querySelector('h4:nth-of-type(2)'));
+	}
+
+	#capacityForm(link, portSpeed, onChange, preferServiceWhenMissing = false) {
+		const box = this.#element('div', '', 'nu-capacity-form');
+		let sourceTouched = false;
+		const source = this.#select([['interface_speed', 'Auto — interface speed'], ['service_override', 'Service / circuit bandwidth']],
+			link.capacity_source ?? (link.capacity_override_bps ? 'service_override' : 'interface_speed'), () => { sourceTouched = true; sync(); });
+		const symmetric = document.createElement('input'); symmetric.type = 'checkbox';
+		const oldIn = link.service_capacity_in_bps ?? link.capacity_override_bps ?? null;
+		const oldOut = link.service_capacity_out_bps ?? link.capacity_override_bps ?? null;
+		symmetric.checked = oldIn === oldOut;
+		const makeAmount = value => {
+			const factor = value && value % 1e9 === 0 ? 1e9 : value && value % 1e6 === 0 ? 1e6 : value && value % 1e3 === 0 ? 1e3 : 1;
+			const input = this.#input(value ? String(value / factor) : '', 'Bandwidth', 'number'); input.min = '0.001'; input.step = 'any';
+			const unit = this.#select([[1, 'bps'], [1e3, 'Kbps'], [1e6, 'Mbps'], [1e9, 'Gbps']], factor, () => sync());
+			return {input, unit, row: this.#element('div', '', 'nu-bandwidth-row')};
+		};
+		const incoming = makeAmount(oldIn), outgoing = makeAmount(oldOut);
+		for (const part of [incoming, outgoing]) { part.row.append(part.input, part.unit); part.input.addEventListener('input', sync); }
+		const warning = document.createElement('input'); warning.type = 'checkbox'; warning.checked = Boolean(link.capacity_warning_accepted);
+		const warningLabel = this.#label('Accept configuration warning: capacity not configured', warning);
+		const speed = this.#element('div', '', 'nu-candidate-preview');
+		box.append(this.#label('Capacity source', source), speed, this.#label('Symmetric service bandwidth', symmetric),
+			this.#label('IN bandwidth', incoming.row), this.#label('OUT bandwidth', outgoing.row), warningLabel);
+		const bps = part => part.input.value === '' ? null : Number(part.input.value) * Number(part.unit.value);
+		function sync(notify = true) {
+			link.capacity_source = source.value;
+			if (symmetric.checked) { outgoing.input.value = incoming.input.value; outgoing.unit.value = incoming.unit.value; }
+			link.service_capacity_in_bps = source.value === 'service_override' ? bps(incoming) : null;
+			link.service_capacity_out_bps = source.value === 'service_override' ? bps(outgoing) : null;
+			link.capacity_warning_accepted = warning.checked;
+			incoming.row.parentElement.classList.toggle('is-hidden', source.value !== 'service_override');
+			outgoing.row.parentElement.classList.toggle('is-hidden', source.value !== 'service_override' || symmetric.checked);
+			warningLabel.classList.toggle('is-hidden', source.value !== 'interface_speed' || Boolean(portSpeed()));
+			speed.textContent = `Physical port speed: ${portSpeed() === null ? 'Not available' : formatSpeed(portSpeed())}`;
+			if (notify !== false) onChange();
+		}
+		const formatSpeed = value => this.#formatBps(value);
+		for (const control of [symmetric, warning]) control.addEventListener('change', sync);
+		const validate = () => {
+			sync(false);
+			if (source.value === 'interface_speed' && !portSpeed() && !warning.checked) throw new Error('Port speed is unavailable. Set service bandwidth or explicitly accept the configuration warning.');
+			if (source.value === 'service_override' && (![link.service_capacity_in_bps, link.service_capacity_out_bps].every(value => Number.isSafeInteger(value) && value > 0))) throw new Error('Enter positive IN and OUT service bandwidth.');
+		};
+		const update = () => { if (preferServiceWhenMissing && !sourceTouched) source.value = portSpeed() ? 'interface_speed' : 'service_override'; sync(false); };
+		update();
+		return {element: box, validate, update};
 	}
 
 	#move(items, index, delta, root) { const target = index + delta; if (target < 0 || target >= items.length) return; [items[index], items[target]] = [items[target], items[index]]; this.#dirty(root, true); }
@@ -259,6 +318,7 @@ class CWidgetNetworkUtilization extends CWidget {
 	async #saveWorking(root) {
 		const panel = root.querySelector('.nu-editor'); for (const item of panel.querySelectorAll('.nu-editor-error')) item.remove();
 		try {
+			for (const validate of this.#capacityValidators) validate();
 			const curl = new Curl('zabbix.php'); curl.setArgument('action', 'networkutilization.config.update');
 			const response = await fetch(curl.getUrl(), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({payload: JSON.stringify(this.#workingConfig), expected_revision: this.#workingConfig.revision, [CSRF_TOKEN_NAME]: root.dataset.csrfToken})});
 			const result = await response.json(); if (result.error) throw new Error(result.error.messages.join(' ')); this.#configuration = result.configuration; this.#discardEdit(root);
@@ -270,8 +330,10 @@ class CWidgetNetworkUtilization extends CWidget {
 	#updateViewFreshness() { const root = this._contents?.querySelector('.netops-utilization'); if (!root || this.#lastSuccessfulUpdate === 0 || this.#editing) return; const age = Date.now() - this.#lastSuccessfulUpdate; const stale = age > Math.max(30000, Number(root.dataset.refreshSeconds ?? 60) * 2000); root.classList.toggle('is-view-stale', stale); root.querySelector('.nu-stale')?.classList.toggle('is-hidden', !stale); if (stale) root.querySelector('.nu-stale__age').textContent = this.#formatAge(Math.floor(age / 1000)); }
 	#formatAge(seconds) { return seconds >= 3600 ? `${Math.floor(seconds / 3600)}h ${Math.floor(seconds % 3600 / 60)}m ago` : seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s ago` : `${seconds}s ago`; }
 	#formatDuration(seconds) { return seconds >= 3600 ? `${Math.floor(seconds / 3600)}h ${Math.floor(seconds % 3600 / 60)}m` : `${Math.floor(seconds / 60)}m`; }
-	#formatBps(value) { if (value === null || value === undefined) return 'Unknown'; for (const [scale, unit] of [[1e9, 'Gbps'], [1e6, 'Mbps'], [1e3, 'Kbps'], [1, 'bps']]) if (value >= scale) return `${Number(value / scale).toLocaleString(undefined, {maximumFractionDigits: value / scale >= 100 ? 0 : 2})} ${unit}`; return '0 bps'; }
-	#metric(bps, pct) { return pct === null ? this.#formatBps(bps) : `${Number(pct).toFixed(1)}% · ${this.#formatBps(bps)}`; }
+	#formatBps(value) { if (value === null || value === undefined) return '—'; for (const [scale, unit] of [[1e9, 'Gbps'], [1e6, 'Mbps'], [1e3, 'Kbps'], [1, 'bps']]) if (Math.abs(value) >= scale) return `${Number(value / scale).toLocaleString(undefined, {maximumFractionDigits: Math.abs(value / scale) >= 100 ? 0 : 2})} ${unit}`; return `${Number(value).toFixed(value ? 2 : 0)} bps`; }
+	#capacityText(value) { return value === null ? 'Not configured' : this.#formatBps(value); }
+	#remaining(value, capacity) { return value === null ? (capacity === null ? '— · Capacity required' : '— · Current traffic unavailable') : value < 0 ? `Over capacity by ${this.#formatBps(-value)}` : this.#formatBps(value); }
+	#metric(bps, pct) { return bps === null ? '— · Data unavailable' : `${this.#formatBps(bps)} · ${pct === null ? '— · Capacity required' : `${Number(pct).toFixed(1)}%`}`; }
 	#roles() { return ['WAN', 'ISP', 'DCI', 'CORE', 'UPLINK', 'FIREWALL', 'LOAD_BALANCER', 'SERVER', 'ACCESS', 'OTHER']; }
 	#slug(value) { return value.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'link'; }
 	#element(tag, text = '', className = '') { const element = document.createElement(tag); element.textContent = text; if (className) element.className = className; return element; }
