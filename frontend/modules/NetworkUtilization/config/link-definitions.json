@@ -1,0 +1,12 @@
+{
+  "schema": "network-utilization-config-v1",
+  "revision": 1,
+  "settings": {
+    "warning_util_pct": 80,
+    "critical_util_pct": 90,
+    "capacity_risk_p95_pct": 80,
+    "sustained_window_min": 5
+  },
+  "sites": [],
+  "links": []
+}

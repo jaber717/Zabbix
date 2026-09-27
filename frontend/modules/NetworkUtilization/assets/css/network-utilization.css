@@ -1,0 +1,87 @@
+.netops-utilization { container-type: inline-size; position: relative; display: grid; gap: 10px; min-width: 0; color: inherit; }
+.netops-utilization *, .netops-utilization *::before, .netops-utilization *::after { box-sizing: border-box; }
+.netops-utilization .is-hidden, .netops-utilization .is-filtered-out { display: none !important; }
+.netops-utilization .nu-toolbar { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+.netops-utilization .nu-search { flex: 1 1 220px; max-width: 420px; }
+.netops-utilization .nu-edit-start { margin-left: auto; }
+.netops-utilization .nu-filter-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 8px; border-radius: 3px; background: color-mix(in srgb, #1976d2 12%, transparent); }
+.netops-utilization .nu-filter-clear { border: 0; color: #1976d2; background: transparent; cursor: pointer; }
+.netops-utilization .nu-summary { display: grid; grid-template-columns: repeat(6, minmax(82px, 1fr)); gap: 5px; }
+.netops-utilization .nu-summary__item { min-width: 0; padding: 7px 8px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 3px; color: inherit; text-align: left; background: transparent; cursor: pointer; }
+.netops-utilization .nu-summary__item.is-zero { opacity: .42; }
+.netops-utilization .nu-summary__item[aria-pressed="true"] { outline: 2px solid #1976d2; outline-offset: -2px; }
+.netops-utilization .nu-summary__label { display: block; overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; opacity: .72; }
+.netops-utilization .nu-summary__value { display: block; margin-top: 3px; font-size: 20px; font-weight: 700; }
+.netops-utilization h4 { margin: 0 0 6px; font-size: 12px; font-weight: 700; }
+.netops-utilization .nu-attention { display: grid; gap: 4px; }
+.netops-utilization .nu-attention__row { display: grid; grid-template-columns: 130px minmax(130px, 1fr) minmax(120px, 1fr); gap: 8px; width: 100%; padding: 7px 9px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-left: 4px solid #e87500; border-radius: 3px; color: inherit; text-align: left; background: transparent; cursor: pointer; }
+.netops-utilization .nu-attention__kind { font-size: 10px; opacity: .74; }
+.netops-utilization .nu-attention__name { overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.netops-utilization .nu-attention__detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.netops-utilization .nu-calm, .netops-utilization .nu-onboarding, .netops-utilization .nu-warnings { padding: 8px; opacity: .74; }
+.netops-utilization .nu-sort { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-bottom: 5px; }
+.netops-utilization .nu-sort button { border: 0; color: inherit; background: transparent; cursor: pointer; opacity: .64; }
+.netops-utilization .nu-sort button.is-active { color: #1976d2; font-weight: 700; opacity: 1; }
+.netops-utilization .nu-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.netops-utilization .nu-table th, .netops-utilization .nu-table td { padding: 7px 6px; overflow: hidden; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); text-align: left; text-overflow: ellipsis; vertical-align: top; }
+.netops-utilization .nu-table th { font-size: 10px; opacity: .7; }
+.netops-utilization .nu-link-open, .netops-utilization .nu-site-link { border: 0; color: inherit; text-align: left; background: transparent; cursor: pointer; }
+.netops-utilization .nu-link-open { overflow: hidden; max-width: 100%; padding: 0; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.netops-utilization .nu-subtle { margin-top: 2px; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; opacity: .66; }
+.netops-utilization .nu-sites { display: grid; gap: 6px; }
+.netops-utilization .nu-site { overflow: hidden; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-left: 3px solid #6b7280; border-radius: 3px; }
+.netops-utilization .nu-site.is-affected { border-left-color: #e87500; }
+.netops-utilization .nu-site__header { display: flex; justify-content: space-between; width: 100%; padding: 8px 9px; border: 0; color: inherit; font-weight: 700; text-align: left; background: transparent; cursor: pointer; }
+.netops-utilization .nu-site__count { font-weight: 400; opacity: .66; }
+.netops-utilization .nu-site__links { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 5px; padding: 6px; background: color-mix(in srgb, currentColor 3%, transparent); }
+.netops-utilization .nu-site.is-collapsed .nu-site__links { display: none; }
+.netops-utilization .nu-site-link { display: flex; justify-content: space-between; gap: 8px; padding: 7px; border-left: 3px solid #6b7280; border-radius: 2px; background: color-mix(in srgb, currentColor 2%, transparent); }
+.netops-utilization .nu-site__metric { opacity: .74; }
+.netops-utilization .nu-stale { padding: 9px 11px; border: 1px solid #6b7280; border-left-width: 4px; border-radius: 3px; background: color-mix(in srgb, #6b7280 12%, transparent); }
+.netops-utilization .nu-stale__title { font-weight: 700; }
+.netops-utilization.is-view-stale > :not(.nu-stale, .nu-panel-backdrop, .nu-panel, .nu-editor) { filter: grayscale(.85); opacity: .58; }
+.netops-utilization .nu-panel-backdrop { position: absolute; z-index: 20; inset: 0; background: rgba(0,0,0,.22); }
+.netops-utilization .nu-panel, .netops-utilization .nu-editor { position: absolute; z-index: 21; top: 0; right: 0; width: min(500px, 96%); max-height: max(440px, 96%); padding: 14px; overflow: auto; border: 1px solid color-mix(in srgb, currentColor 24%, transparent); border-radius: 4px; color: #1f2c33; background: #fff; box-shadow: 0 5px 24px rgba(0,0,0,.24); }
+.netops-utilization .nu-editor { width: min(680px, 99%); }
+.netops-utilization.is-dark-theme .nu-panel, .netops-utilization.is-dark-theme .nu-editor { color: #f2f2f2; background: #2b2f33; }
+.netops-utilization .nu-panel-close { float: right; border: 0; color: inherit; font-size: 22px; background: transparent; cursor: pointer; }
+.netops-utilization .nu-panel h3, .netops-utilization .nu-editor h3 { margin: 0 28px 12px 0; font-size: 16px; }
+.netops-utilization .nu-panel h4, .netops-utilization .nu-editor h4 { margin: 14px 0 7px; }
+.netops-utilization .nu-detail-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
+.netops-utilization .nu-detail-row strong { text-align: right; }
+.netops-utilization .nu-detail-links, .netops-utilization .nu-editor-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.netops-utilization .nu-sparkline svg { width: 100%; height: 80px; border: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+.netops-utilization .nu-sparkline polyline { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.netops-utilization .nu-sparkline .is-in { stroke: #1976d2; } .netops-utilization .nu-sparkline .is-out { stroke: #e87500; }
+.netops-utilization .nu-legend-in, .netops-utilization .nu-legend-out { margin-right: 12px; font-size: 10px; font-weight: 700; }
+.netops-utilization .nu-legend-in { color: #1976d2; } .netops-utilization .nu-legend-out { color: #e87500; }
+.netops-utilization .nu-trend-controls { display: flex; gap: 4px; margin-bottom: 5px; }
+.netops-utilization .nu-trend-controls .is-active { outline: 2px solid #1976d2; outline-offset: -2px; }
+.netops-utilization.is-editing { padding: 6px; border: 2px dashed #1976d2; }
+.netops-utilization .nu-editor-row { display: grid; grid-template-columns: minmax(150px, 1fr) auto auto auto; gap: 6px; margin: 5px 0; }
+.netops-utilization .nu-link-editor, .netops-utilization .nu-add-link { margin: 6px 0; padding: 8px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 3px; }
+.netops-utilization .nu-link-editor summary { font-weight: 700; cursor: pointer; }
+.netops-utilization .nu-editor-fields, .netops-utilization .nu-add-link { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+.netops-utilization .nu-add-link h4, .netops-utilization .nu-add-link .nu-candidate-preview, .netops-utilization .nu-add-link > button { grid-column: 1 / -1; }
+.netops-utilization .nu-editor-label { display: grid; gap: 3px; min-width: 0; }
+.netops-utilization .nu-editor-label > span { font-size: 10px; opacity: .72; }
+.netops-utilization .nu-editor-label input, .netops-utilization .nu-editor-label select { width: 100%; min-width: 0; }
+.netops-utilization .nu-editor-note, .netops-utilization .nu-candidate-preview { opacity: .74; }
+.netops-utilization .nu-editor-error, .netops-utilization .nu-error { grid-column: 1 / -1; padding: 8px; border: 1px solid #d63638; border-radius: 3px; }
+
+@container (max-width: 900px) {
+	.netops-utilization .nu-summary { grid-template-columns: repeat(3, minmax(75px, 1fr)); }
+	.netops-utilization .nu-table thead { display: none; }
+	.netops-utilization .nu-table, .netops-utilization .nu-table tbody, .netops-utilization .nu-table tr { display: block; }
+	.netops-utilization .nu-table tr { display: grid; grid-template-columns: 1.3fr repeat(2, 1fr); gap: 4px; margin-bottom: 6px; padding: 7px; border: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
+	.netops-utilization .nu-table td { padding: 3px; border: 0; }
+	.netops-utilization .nu-table td:nth-child(2), .netops-utilization .nu-table td:nth-child(3), .netops-utilization .nu-table td:nth-child(9) { display: none; }
+}
+@container (max-width: 520px) {
+	.netops-utilization .nu-summary { grid-template-columns: repeat(2, minmax(75px, 1fr)); }
+	.netops-utilization .nu-attention__row { grid-template-columns: 90px minmax(100px,1fr); }
+	.netops-utilization .nu-attention__detail { display: none; }
+	.netops-utilization .nu-table tr { grid-template-columns: 1fr 1fr; }
+	.netops-utilization .nu-table td:nth-child(4), .netops-utilization .nu-table td:nth-child(7), .netops-utilization .nu-table td:nth-child(8) { display: none; }
+	.netops-utilization .nu-editor-fields, .netops-utilization .nu-add-link { grid-template-columns: 1fr; }
+}

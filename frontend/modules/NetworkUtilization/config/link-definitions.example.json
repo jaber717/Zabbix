@@ -1,0 +1,18 @@
+{
+  "schema": "network-utilization-config-v1",
+  "revision": 1,
+  "settings": {"warning_util_pct": 80, "critical_util_pct": 90, "capacity_risk_p95_pct": 80, "sustained_window_min": 5},
+  "sites": [{"id": "example-dc", "name": "DC-01 (EXAMPLE ONLY)", "order": 10}],
+  "links": [{
+    "id": "example-wan",
+    "display_name": "Example ISP",
+    "site_id": "example-dc",
+    "host": "RTR-01",
+    "interface": {"if_name": "Port-Channel10", "if_alias": "EXAMPLE ONLY"},
+    "role": "ISP",
+    "order": 10,
+    "visible": true,
+    "required": true,
+    "capacity_override_bps": 2000000000
+  }]
+}

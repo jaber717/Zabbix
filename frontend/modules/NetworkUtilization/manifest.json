@@ -1,0 +1,25 @@
+{
+  "manifest_version": 2.0,
+  "id": "netops_network_utilization",
+  "type": "widget",
+  "name": "Network Utilization",
+  "namespace": "NetworkUtilization",
+  "version": "1.0.0",
+  "author": "NetOps",
+  "description": "Configured link utilization, capacity, P95, errors, discards and freshness.",
+  "widget": {
+    "name": "Network Utilization",
+    "size": {"width": 72, "height": 12},
+    "js_class": "CWidgetNetworkUtilization",
+    "use_time_selector": false,
+    "refresh_rate": 60
+  },
+  "actions": {
+    "widget.netops_network_utilization.view": {"class": "WidgetView"},
+    "networkutilization.config.update": {"class": "ConfigUpdate", "layout": "layout.json"}
+  },
+  "assets": {
+    "css": ["network-utilization.css"],
+    "js": ["class.widget.js"]
+  }
+}
