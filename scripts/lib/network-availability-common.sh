@@ -110,13 +110,17 @@ na_manifest_version() {
 }
 
 na_validate_node_config() {
-  local config=$1
-  "$NA_PHP_BIN" -r '
-    $data = json_decode(file_get_contents($argv[1]), true, 32, JSON_THROW_ON_ERROR);
-    if (($data["schema"] ?? null) !== "network-availability-node-definitions-v1"
-        || !is_array($data["nodes"] ?? null)) {
-      fwrite(STDERR, "invalid Node definition schema\n");
-      exit(1);
+	local config=$1
+	"$NA_PHP_BIN" -r '
+		$data = json_decode(file_get_contents($argv[1]), true, 32, JSON_THROW_ON_ERROR);
+		$legacy = ($data["schema"] ?? null) === "network-availability-node-definitions-v1"
+			&& is_array($data["nodes"] ?? null);
+		$v2 = ($data["schema"] ?? null) === "network-availability-config-v2"
+			&& is_int($data["revision"] ?? null) && is_array($data["sites"] ?? null)
+			&& is_array($data["nodes"] ?? null);
+		if (!$legacy && !$v2) {
+			fwrite(STDERR, "invalid Node definition schema\n");
+			exit(1);
     }
   ' "$config" || na_fail "invalid Node definition file: $config"
 }
@@ -124,8 +128,8 @@ na_validate_node_config() {
 na_validate_module_structure() {
   local module_dir=$1
   local required
-  local -a required_files=(
-    manifest.json Widget.php actions/WidgetView.php
+	local -a required_files=(
+		manifest.json Widget.php actions/WidgetView.php actions/ConfigUpdate.php
     assets/css/network-availability.css assets/js/class.widget.js
     collector/AvailabilityCollectorInterface.php collector/ZabbixAvailabilityCollector.php
     config/Limits.php config/NodeDefinitionRepository.php config/node-definitions.json
@@ -148,6 +152,40 @@ na_validate_module_structure() {
   done < <(find "$module_dir" -mindepth 1 -maxdepth 1 -type d -printf '%f\n')
   [[ -z $(find "$module_dir" -type l -print -quit) ]] || na_fail 'symbolic links are not allowed in the module directory'
   na_validate_node_config "$module_dir/config/node-definitions.json"
+}
+
+na_validate_existing_module_for_upgrade() {
+  local module_dir=$1
+  local required
+  local -a legacy_files=(
+    manifest.json Widget.php actions/WidgetView.php
+    config/NodeDefinitionRepository.php config/node-definitions.json
+    domain/AvailabilityResolver.php views/widget.view.php
+  )
+
+  [[ -d "$module_dir" ]] || na_fail "module directory does not exist: $module_dir"
+  for required in "${legacy_files[@]}"; do
+    [[ -f "$module_dir/$required" && -r "$module_dir/$required" ]] \
+      || na_fail "existing module file is missing or unreadable: $required"
+  done
+  [[ -z $(find "$module_dir" -type l -print -quit) ]] \
+    || na_fail 'symbolic links are not allowed in the existing module directory'
+  na_validate_node_config "$module_dir/config/node-definitions.json"
+}
+
+na_detect_php_fpm_identity() {
+	if [[ -n ${NETWORK_AVAILABILITY_RUNTIME_USER:-} && -n ${NETWORK_AVAILABILITY_RUNTIME_GROUP:-} ]]; then
+		NA_RUNTIME_USER=$NETWORK_AVAILABILITY_RUNTIME_USER
+		NA_RUNTIME_GROUP=$NETWORK_AVAILABILITY_RUNTIME_GROUP
+	else
+	local pool_file=${NETWORK_AVAILABILITY_PHP_FPM_POOL:-/etc/php-fpm.d/www.conf}
+	[[ -r "$pool_file" ]] || na_fail "PHP-FPM pool configuration is not readable: $pool_file"
+	NA_RUNTIME_USER=$(sed -nE 's/^[[:space:]]*user[[:space:]]*=[[:space:]]*([^[:space:];]+).*/\1/p' "$pool_file" | head -n 1)
+	NA_RUNTIME_GROUP=$(sed -nE 's/^[[:space:]]*group[[:space:]]*=[[:space:]]*([^[:space:];]+).*/\1/p' "$pool_file" | head -n 1)
+	fi
+	[[ -n "$NA_RUNTIME_USER" && -n "$NA_RUNTIME_GROUP" ]] || na_fail 'unable to determine PHP-FPM worker identity'
+	getent passwd "$NA_RUNTIME_USER" >/dev/null || na_fail "PHP-FPM user does not exist: $NA_RUNTIME_USER"
+	getent group "$NA_RUNTIME_GROUP" >/dev/null || na_fail "PHP-FPM group does not exist: $NA_RUNTIME_GROUP"
 }
 
 na_lint_module_php() {

@@ -4,7 +4,7 @@
   "type": "widget",
   "name": "Network Availability v1",
   "namespace": "NetworkAvailability",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "author": "NetOps",
   "description": "Platform-neutral Site, Node and Member availability with freshness and monitoring visibility.",
   "widget": {
@@ -20,6 +20,10 @@
   "actions": {
     "widget.netops_network_availability.view": {
       "class": "WidgetView"
+    },
+    "networkavailability.config.update": {
+      "class": "ConfigUpdate",
+      "layout": "layout.json"
     }
   },
   "assets": {

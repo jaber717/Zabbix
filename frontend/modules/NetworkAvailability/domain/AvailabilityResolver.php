@@ -27,8 +27,8 @@ final class AvailabilityResolver {
 		}
 
 		usort($resolved_nodes, static fn(array $a, array $b): int =>
-			[$a['site'], $a['order'], $a['name'], $a['id']]
-				<=> [$b['site'], $b['order'], $b['name'], $b['id']]
+			[$a['site_order'], $a['site'], $a['order'], $a['name'], $a['id']]
+				<=> [$b['site_order'], $b['site'], $b['order'], $b['name'], $b['id']]
 		);
 
 		$mass_stale = $this->massStaleIncidents($resolved_nodes, $now);
@@ -39,6 +39,10 @@ final class AvailabilityResolver {
 			}
 		}
 		$candidates = array_merge($this->nodeIncidentCandidates($resolved_nodes, $covered_visibility_nodes), $mass_stale);
+		$needs_attention = array_values(array_filter($candidates,
+			static fn(array $candidate): bool => $candidate['hero_eligible']
+		));
+		usort($needs_attention, [$this, 'compareIncidents']);
 		$hero = $this->selectHero($candidates, $current_hero, $now);
 		$secondary = array_values(array_filter($candidates,
 			static fn(array $candidate): bool => $candidate['hero_eligible']
@@ -73,6 +77,7 @@ final class AvailabilityResolver {
 			'summary' => $summary,
 			'hero' => $hero,
 			'secondary' => $secondary,
+			'needs_attention' => $needs_attention,
 			'sites' => $sites,
 			'mass_stale_incidents' => $mass_stale,
 			'warnings' => $warnings
@@ -151,12 +156,16 @@ final class AvailabilityResolver {
 		return [
 			'id' => $id,
 			'name' => $name,
-			'site' => (string) ($node['site'] ?? 'Unclassified'),
+			'site_id' => $node['site_id'] ?? null,
+			'site' => (string) ($node['site'] ?? 'Unassigned'),
+			'site_order' => (int) ($node['site_order'] ?? PHP_INT_MAX),
 			'order' => (int) ($node['order'] ?? PHP_INT_MAX),
 			'kind' => $node['kind'] ?? null,
+			'hidden' => (bool) ($node['hidden'] ?? false),
+			'description' => (string) ($node['description'] ?? ''),
 			'configuration_required' => $configuration_required,
 			'configuration_missing' => array_values($node['configuration_missing'] ?? []),
-			'criticality' => $this->criticality($node['criticality'] ?? 'tier3'),
+			'criticality' => $this->criticality($node['criticality'] ?? null),
 			'policy' => $policy,
 			'required_members' => $required,
 			'actual_state' => $actual,
@@ -174,7 +183,11 @@ final class AvailabilityResolver {
 			'visibility_lost_at' => $visibility_lost_at,
 			'event_since' => (int) ($node['event_since'] ?? $visibility_lost_at ?? $now),
 			'impact' => isset($node['impact']) ? (int) $node['impact'] : null,
-			'hostids' => array_values(array_unique(array_filter(array_column($members, 'hostid'))))
+			'hostids' => array_values(array_unique(array_filter(array_column($members, 'hostid')))),
+			'problems' => array_values($node['problems'] ?? []),
+			'acknowledged' => (bool) ($node['acknowledged'] ?? false),
+			'site_suggestion' => (string) ($node['site_suggestion'] ?? ''),
+			'group_suggestions' => array_values($node['group_suggestions'] ?? [])
 		];
 	}
 
@@ -220,9 +233,9 @@ final class AvailabilityResolver {
 		return $required;
 	}
 
-	private function criticality(mixed $value): string {
+	private function criticality(mixed $value): ?string {
 		$value = strtolower((string) $value);
-		return in_array($value, ['tier1', 'tier2', 'tier3'], true) ? $value : 'tier3';
+		return in_array($value, ['tier1', 'tier2', 'tier3'], true) ? $value : null;
 	}
 
 	private function commonSourceId(array $members): string {
@@ -233,10 +246,12 @@ final class AvailabilityResolver {
 	private function resolveSites(array $nodes): array {
 		$sites = [];
 		foreach ($nodes as $node) {
-			$sites[$node['site']][] = $node;
+			$key = $node['site_id'] ?? '__unassigned__';
+			$sites[$key][] = $node;
 		}
 		$result = [];
-		foreach ($sites as $name => $site_nodes) {
+		foreach ($sites as $site_id => $site_nodes) {
+			$name = $site_nodes[0]['site'];
 			$active = array_values(array_filter($site_nodes,
 				static fn(array $node): bool => !$node['maintenance'] && !$node['suppressed']
 			));
@@ -260,17 +275,36 @@ final class AvailabilityResolver {
 				$state = 'HEALTHY';
 			}
 			$result[] = [
+				'id' => $site_id,
 				'name' => $name,
+				'order' => (int) $site_nodes[0]['site_order'],
 				'state' => $state,
 				'nodes' => $site_nodes,
+				'down' => count(array_filter($site_nodes,
+					static fn(array $node): bool => $node['actual_state'] === 'DOWN'
+				)),
+				'degraded' => count(array_filter($site_nodes,
+					static fn(array $node): bool => $node['actual_state'] === 'DEGRADED'
+				)),
+				'unknown' => count(array_filter($site_nodes,
+					static fn(array $node): bool => $node['actual_state'] === 'UNKNOWN'
+				)),
+				'visibility_loss' => count(array_filter($site_nodes,
+					static fn(array $node): bool => $node['visibility'] !== 'FULL'
+				)),
 				'healthy' => count(array_filter($site_nodes,
 					static fn(array $node): bool => $node['actual_state'] === 'UP' && $node['visibility'] === 'FULL'
 				)),
-				'total' => count($site_nodes)
+				'total' => count($site_nodes),
+				'issue_signature' => hash('sha256', implode('|', array_map(
+					static fn(array $node): string => $node['id'] . ':' . $node['actual_state'] . ':' . $node['visibility'],
+					array_filter($site_nodes, static fn(array $node): bool => $node['actual_state'] !== 'UP'
+						|| $node['visibility'] !== 'FULL')
+				)))
 			];
 		}
 		usort($result, static fn(array $a, array $b): int =>
-			[$a['state'] === 'HEALTHY' ? 1 : 0, $a['name']] <=> [$b['state'] === 'HEALTHY' ? 1 : 0, $b['name']]
+			[$a['order'], $a['name'], $a['id']] <=> [$b['order'], $b['name'], $b['id']]
 		);
 		return $result;
 	}
@@ -313,9 +347,10 @@ final class AvailabilityResolver {
 					|| $pct < Limits::MASS_STALE_THRESHOLD_PCT)) {
 				continue;
 			}
-			$criticality = 'tier3';
+			$criticality = null;
 			foreach ($affected as $node) {
-				if ($this->tierNumber($node['criticality']) < $this->tierNumber($criticality)) {
+				if ($node['criticality'] !== null
+						&& $this->tierNumber($node['criticality']) < $this->tierNumber($criticality)) {
 					$criticality = $node['criticality'];
 				}
 			}
@@ -359,21 +394,25 @@ final class AvailabilityResolver {
 	}
 
 	private function incident(array $source): array {
-		$priority = $this->priority($source['criticality'], $source['state']);
+		[$priority, $priority_rank] = $this->priority($source['criticality'] ?? null, $source['state']);
 		return $source + [
 			'priority' => $priority,
-			'hero_eligible' => $priority !== null && !$source['maintenance'] && !$source['suppressed']
+			'priority_rank' => $priority_rank,
+			'hero_eligible' => $priority_rank !== null && !$source['maintenance'] && !$source['suppressed']
 				&& !$source['dependency_suppressed']
 		];
 	}
 
-	private function priority(string $criticality, string $state): ?int {
+	private function priority(?string $criticality, string $state): array {
+		if ($criticality === null && in_array($state, ['DOWN', 'UNKNOWN', 'VISIBILITY_LOST', 'DEGRADED'], true)) {
+			return ['?', $state === 'DEGRADED' ? 35 : 25];
+		}
 		return match ($criticality . ':' . $state) {
-			'tier1:DOWN', 'tier1:UNKNOWN', 'tier1:VISIBILITY_LOST' => 1,
-			'tier1:DEGRADED', 'tier2:DOWN', 'tier2:UNKNOWN', 'tier2:VISIBILITY_LOST' => 2,
-			'tier2:DEGRADED', 'tier3:DOWN', 'tier3:UNKNOWN', 'tier3:VISIBILITY_LOST' => 3,
-			'tier3:DEGRADED' => 4,
-			default => null
+			'tier1:DOWN', 'tier1:UNKNOWN', 'tier1:VISIBILITY_LOST' => [1, 10],
+			'tier1:DEGRADED', 'tier2:DOWN', 'tier2:UNKNOWN', 'tier2:VISIBILITY_LOST' => [2, 20],
+			'tier2:DEGRADED', 'tier3:DOWN', 'tier3:UNKNOWN', 'tier3:VISIBILITY_LOST' => [3, 30],
+			'tier3:DEGRADED' => [4, 40],
+			default => [null, null]
 		};
 	}
 
@@ -394,7 +433,7 @@ final class AvailabilityResolver {
 				break;
 			}
 		}
-		if ($active === null || $best['priority'] < $active['priority']
+		if ($active === null || $best['priority_rank'] < $active['priority_rank']
 				|| $now - (int) $current['selected_at'] >= Limits::HERO_DWELL_S) {
 			return $best + ['selected_at' => $now];
 		}
@@ -403,23 +442,23 @@ final class AvailabilityResolver {
 
 	private function compareIncidents(array $a, array $b): int {
 		return [
-			$a['priority'] ?? 99,
+			$a['priority_rank'] ?? 999,
+			(bool) ($a['acknowledged'] ?? false) ? 1 : 0,
 			-($a['impact'] ?? 0),
-			$a['event_since'] ?? PHP_INT_MAX,
 			$a['site'] ?? '',
 			$a['name'] ?? '',
 			$a['id']
 		] <=> [
-			$b['priority'] ?? 99,
+			$b['priority_rank'] ?? 999,
+			(bool) ($b['acknowledged'] ?? false) ? 1 : 0,
 			-($b['impact'] ?? 0),
-			$b['event_since'] ?? PHP_INT_MAX,
 			$b['site'] ?? '',
 			$b['name'] ?? '',
 			$b['id']
 		];
 	}
 
-	private function tierNumber(string $criticality): int {
-		return (int) substr($criticality, -1);
+	private function tierNumber(?string $criticality): int {
+		return $criticality === null ? 99 : (int) substr($criticality, -1);
 	}
 }

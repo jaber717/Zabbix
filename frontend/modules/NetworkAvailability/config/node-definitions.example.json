@@ -1,16 +1,25 @@
 {
-  "schema": "network-availability-node-definitions-v1",
-  "example_only": true,
+  "schema": "network-availability-config-v2",
+  "revision": 1,
+  "sites": [
+    {
+      "id": "dc-01-example",
+      "name": "DC-01",
+      "order": 10
+    }
+  ],
   "nodes": [
     {
       "id": "dc01-internet-edge-example",
       "name": "Internet Edge (EXAMPLE)",
-      "site": "DC-01",
+      "site_id": "dc-01-example",
       "kind": "logical_service",
       "aggregation_policy": "MIN_N_REQUIRED",
       "min_n": 1,
       "criticality": "tier1",
       "order": 10,
+      "hidden": false,
+      "description": "EXAMPLE ONLY — replace with approved production values",
       "members": [
         {
           "id": "rtr01-example",

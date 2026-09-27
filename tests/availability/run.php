@@ -182,13 +182,36 @@ $bad = $resolver->resolve([$bad_majority], $now);
 check($bad['sites'] === [] && str_contains($bad['warnings'][0], 'explicit override'),
 	'two-Member majority is rejected without explicit override');
 $unclassified = resolved([
-	'id' => 'u1', 'name' => 'host-x', 'site' => 'UNCLASSIFIED', 'kind' => null, 'policy' => null,
+	'id' => 'u1', 'name' => 'host-x', 'site' => 'Unassigned', 'kind' => null, 'policy' => null,
 	'configuration_required' => true, 'configuration_missing' => ['site', 'Node mapping'],
-	'criticality' => 'tier3', 'members' => [member('x', 'UP')]
+	'criticality' => null, 'members' => [member('x', 'UP')]
 ]);
 check($unclassified['actual_state'] === 'UP' && $unclassified['configuration_required']
 	&& $unclassified['policy'] === 'UNCONFIGURED_SINGLE_MEMBER' && $unclassified['kind'] === null,
 	'unclassified Host shows truth without fabricating kind or production policy');
+
+$tier_unset_down = [
+	'id' => 'unassigned-down', 'name' => 'DR-FW01', 'site' => 'Unassigned', 'kind' => null, 'policy' => null,
+	'configuration_required' => true, 'configuration_missing' => ['Site assignment', 'Tier', 'Node mapping'],
+	'criticality' => null, 'members' => [member('dr-fw01', 'DOWN')]
+];
+$attention = $resolver->resolve([
+	node('tier1-down', [member('t1', 'DOWN')], 'ANY_REQUIRED', 1, ['criticality' => 'tier1']),
+	$tier_unset_down,
+	node('tier3-down-low', [member('t3', 'DOWN')], 'ANY_REQUIRED', 1, ['criticality' => 'tier3'])
+], $now)['needs_attention'];
+check(array_column($attention, 'id') === ['tier1-down', 'unassigned-down', 'tier3-down-low'],
+	'Tier-unset DOWN ranks below confirmed Tier-1 but above known Tier-3');
+check($attention[1]['priority'] === '?' && $attention[1]['criticality'] === null,
+	'Tier-unset incident displays P? and never defaults to Tier-3');
+check($attention[1]['state'] === 'DOWN' && $attention[1]['configuration_required'],
+	'DOWN unassigned Host remains visible in Needs Attention');
+
+$hidden = node('hidden-down', [member('hidden', 'DOWN')], 'ANY_REQUIRED', 1,
+	['criticality' => 'tier2', 'hidden' => true]);
+$hidden_snapshot = $resolver->resolve([$hidden], $now);
+check($hidden_snapshot['summary']['DOWN'] === 1 && $hidden_snapshot['needs_attention'][0]['id'] === 'hidden-down',
+	'hidden Node remains counted and eligible for Needs Attention');
 
 // Services never override Member truth; dependency-suppressed child is inspectable but not Hero.
 $service_conflict = node('service-ok-stale', [member('a', 'UP', 181)], 'ANY_REQUIRED', 1,

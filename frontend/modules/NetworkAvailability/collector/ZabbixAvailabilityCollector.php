@@ -27,13 +27,19 @@ final class ZabbixAvailabilityCollector implements AvailabilityCollectorInterfac
 	public function collect(int $now): array {
 		$started = hrtime(true);
 		$this->api_calls = 0;
-		$warnings = [];
-		$definitions = $this->definitions->load();
+		$configuration = $this->definitions->loadDocument();
+		$warnings = $this->definitions->warnings();
+		$definitions = $configuration['nodes'];
+		$sites_by_id = [];
+		foreach ($configuration['sites'] as $site) {
+			$sites_by_id[$site['id']] = $site;
+		}
 
 		$this->api_calls++;
 		$hosts = API::Host()->get([
 			'output' => ['hostid', 'host', 'name', 'proxyid', 'maintenance_status'],
 			'selectTags' => ['tag', 'value'],
+			'selectHostGroups' => ['groupid', 'name'],
 			'monitored_hosts' => true,
 			'limit' => Limits::MAX_HOSTS,
 			'preservekeys' => true
@@ -91,16 +97,21 @@ final class ZabbixAvailabilityCollector implements AvailabilityCollectorInterfac
 					$items_by_host, $warnings
 				);
 			}
+			$site = $sites_by_id[$definition['site_id']];
 			$nodes[] = [
 				'id' => (string) $definition['id'],
 				'name' => (string) $definition['name'],
-				'site' => (string) $definition['site'],
+				'site_id' => (string) $site['id'],
+				'site' => (string) $site['name'],
+				'site_order' => (int) $site['order'],
 				'kind' => (string) $definition['kind'],
 				'policy' => (string) $definition['aggregation_policy'],
 				'min_n' => isset($definition['min_n']) ? (int) $definition['min_n'] : null,
 				'allow_two_member_majority' => (bool) ($definition['allow_two_member_majority'] ?? false),
 				'criticality' => (string) $definition['criticality'],
 				'order' => (int) $definition['order'],
+				'hidden' => (bool) $definition['hidden'],
+				'description' => (string) $definition['description'],
 				'maintenance' => $this->allMembersFlag($node_members, 'maintenance'),
 				'suppressed' => (bool) ($definition['suppressed'] ?? false),
 				'members' => $node_members
@@ -113,22 +124,25 @@ final class ZabbixAvailabilityCollector implements AvailabilityCollectorInterfac
 				continue;
 			}
 			$member = $this->memberFromHost($host, [], $items_by_host, $warnings);
-			$site = trim((string) ($host['tag_map']['site'] ?? ''));
-			$missing = ['Node mapping'];
-			if ($site === '') {
-				$site = 'UNCLASSIFIED';
-				$missing[] = 'site';
-			}
+			$site_suggestion = trim((string) ($host['tag_map']['site'] ?? ''));
 			$nodes[] = [
 				'id' => 'unclassified-host-' . $host['hostid'],
 				'name' => (string) $host['name'],
-				'site' => $site,
+				'site_id' => null,
+				'site' => 'Unassigned',
+				'site_order' => PHP_INT_MAX,
 				'kind' => null,
 				'policy' => null,
-				'criticality' => (string) ($host['tag_map']['criticality'] ?? 'tier3'),
+				'criticality' => null,
 				'order' => PHP_INT_MAX,
+				'hidden' => false,
+				'description' => '',
 				'configuration_required' => true,
-				'configuration_missing' => $missing,
+				'configuration_missing' => ['Site assignment', 'Tier', 'Node mapping'],
+				'site_suggestion' => $site_suggestion,
+				'group_suggestions' => array_values(array_map(
+					static fn(array $group): string => (string) $group['name'], $host['hostgroups'] ?? []
+				)),
 				'maintenance' => $member['maintenance'],
 				'suppressed' => false,
 				'members' => [$member]
@@ -150,6 +164,16 @@ final class ZabbixAvailabilityCollector implements AvailabilityCollectorInterfac
 
 		return [
 			'nodes' => $nodes,
+			'configuration' => $configuration,
+			'available_hosts' => array_values(array_map(static fn(array $host): array => [
+				'hostid' => (string) $host['hostid'],
+				'host' => (string) $host['host'],
+				'name' => (string) $host['name'],
+				'site_suggestion' => trim((string) ($host['tag_map']['site'] ?? '')),
+				'group_suggestions' => array_values(array_map(
+					static fn(array $group): string => (string) $group['name'], $host['hostgroups'] ?? []
+				))
+			], $hosts)),
 			'warnings' => $warnings,
 			'instrumentation' => [
 				'api_call_count' => $this->api_calls,
@@ -295,7 +319,7 @@ final class ZabbixAvailabilityCollector implements AvailabilityCollectorInterfac
 			]);
 			$this->api_calls++;
 			$problems = API::Problem()->get([
-				'output' => ['eventid', 'objectid', 'clock', 'severity', 'suppressed'],
+				'output' => ['eventid', 'objectid', 'clock', 'severity', 'suppressed', 'acknowledged', 'name'],
 				'hostids' => $hostids,
 				'suppressed' => null,
 				'symptom' => false,
@@ -335,6 +359,17 @@ final class ZabbixAvailabilityCollector implements AvailabilityCollectorInterfac
 				}
 			}
 			if ($node_problems !== []) {
+				$node['problems'] = array_values(array_map(static fn(array $problem): array => [
+					'eventid' => (string) $problem['eventid'],
+					'name' => (string) ($problem['name'] ?? 'Problem'),
+					'clock' => (int) $problem['clock'],
+					'severity' => (int) $problem['severity'],
+					'acknowledged' => (string) ($problem['acknowledged'] ?? '0') === '1',
+					'suppressed' => (string) ($problem['suppressed'] ?? '0') === '1'
+				], $node_problems));
+				$node['acknowledged'] = count(array_filter($node_problems,
+					static fn(array $problem): bool => (string) ($problem['acknowledged'] ?? '0') === '1'
+				)) === count($node_problems);
 				$node['event_since'] = min(array_map('intval', array_column($node_problems, 'clock')));
 				$node['suppressed'] = $node['suppressed'] || count(array_filter($node_problems,
 					static fn(array $problem): bool => (string) ($problem['suppressed'] ?? '0') === '1'

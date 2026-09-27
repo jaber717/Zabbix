@@ -4,6 +4,9 @@ namespace Modules\NetworkAvailability\Actions;
 
 use CControllerDashboardWidgetView;
 use CControllerResponseData;
+use CRoleHelper;
+use CCsrfTokenHelper;
+use CWebUser;
 use Modules\NetworkAvailability\Collector\ZabbixAvailabilityCollector;
 use Modules\NetworkAvailability\Config\NodeDefinitionRepository;
 use Modules\NetworkAvailability\Domain\AvailabilityResolver;
@@ -24,7 +27,7 @@ final class WidgetView extends CControllerDashboardWidgetView {
 		$now = time();
 		try {
 			$collector = new ZabbixAvailabilityCollector(
-				new NodeDefinitionRepository(dirname(__DIR__) . '/config/node-definitions.json'),
+				new NodeDefinitionRepository(),
 				new ExpectedIntervalResolver()
 			);
 			$collected = $collector->collect($now);
@@ -49,8 +52,16 @@ final class WidgetView extends CControllerDashboardWidgetView {
 				'name' => $this->getInput('name', $this->widget->getDefaultName()),
 				'error' => null,
 				'snapshot' => $snapshot,
+				'configuration' => $collected['configuration'],
+				'available_hosts' => $collected['available_hosts'],
 				'instrumentation' => $instrumentation,
-				'user' => ['debug_mode' => $this->getDebugMode()]
+				'user' => [
+					'debug_mode' => $this->getDebugMode(),
+					'can_edit' => CWebUser::checkAccess(CRoleHelper::UI_ADMINISTRATION_GENERAL),
+					'csrf_token' => CWebUser::checkAccess(CRoleHelper::UI_ADMINISTRATION_GENERAL)
+						? CCsrfTokenHelper::get('networkavailability.config.update')
+						: null
+				]
 			];
 		}
 		catch (Throwable $exception) {
@@ -58,10 +69,16 @@ final class WidgetView extends CControllerDashboardWidgetView {
 				'name' => $this->getInput('name', $this->widget->getDefaultName()),
 				'error' => $exception->getMessage(),
 				'snapshot' => null,
+				'configuration' => null,
+				'available_hosts' => [],
 				'instrumentation' => [
 					'total_widget_time_ms' => round((hrtime(true) - $total_started) / 1_000_000, 3)
 				],
-				'user' => ['debug_mode' => $this->getDebugMode()]
+				'user' => [
+					'debug_mode' => $this->getDebugMode(),
+					'can_edit' => false,
+					'csrf_token' => null
+				]
 			];
 		}
 		$this->setResponse(new CControllerResponseData($data));

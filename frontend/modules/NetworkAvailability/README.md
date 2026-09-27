@@ -1,36 +1,41 @@
 # Network Availability v1
 
 This directory is a Zabbix 7.0 frontend widget module. It is an incremental,
-read-only implementation of platform-neutral Site, Node and Member availability.
-Release `1.0.2` adds production-safe installation, verification, and rollback
-tooling without changing the validated widget behavior.
+implementation of platform-neutral Site, Node and Member availability. Release
+`1.1.0` keeps the tested collector/resolver authoritative while adding the
+compact NOC presentation and persistent Site/Node editor.
 
 ## Model and configuration
 
-Host Tags classify candidates. V1 consumes `site`, `criticality`, and
-`availability_source_id`; `role` and `platform` remain classification metadata
-for future discovery/presentation without becoming hard-coded vendor policy.
-The collector does not derive logical Node membership or aggregation policy
-from independent Host Tags.
+The runtime configuration is authoritative for Site assignment, display name,
+Tier, Node membership, kind, aggregation policy, MIN_N, ordering, and hidden
+card state. Host Tags and Groups are read-only suggestions and are never
+silently promoted into configuration.
 
-Logical Nodes live in the centrally shared
-`config/node-definitions.json`. The repository default is intentionally empty.
-`config/node-definitions.example.json` is a fake, non-production example. A
-definition has this shape:
+Logical Nodes live outside the module source tree in
+`/var/lib/zabbix/network-availability/node-definitions.json`. The installer
+creates the least-privilege runtime store and an initial last-known-good copy.
+Writes are validated, revision-checked, locked, and atomically renamed. The
+repository default remains empty; `config/node-definitions.example.json` is a
+fake, non-production example. The schema has this shape:
 
 ```json
 {
-  "schema": "network-availability-node-definitions-v1",
+  "schema": "network-availability-config-v2",
+  "revision": 1,
+  "sites": [{"id": "dc-01", "name": "DC-01", "order": 10}],
   "nodes": [
     {
       "id": "dc01-internet-edge",
       "name": "Internet Edge",
-      "site": "DC-01",
+      "site_id": "dc-01",
       "kind": "logical_service",
       "aggregation_policy": "MIN_N_REQUIRED",
       "min_n": 1,
       "criticality": "tier1",
       "order": 10,
+      "hidden": false,
+      "description": "Example only",
       "members": [
         {
           "id": "stc",
@@ -58,10 +63,9 @@ The same Host may appear in multiple Node definitions. `MAJORITY_REQUIRED` on a
 two-Member Node is rejected unless `allow_two_member_majority` is explicitly
 true. `CUSTOM` is not implemented.
 
-A visible monitored Host absent from Node definitions becomes a single-Member
-`UNCLASSIFIED` card. Its availability truth is still resolved, but its kind and
-production policy are not fabricated. The card lists missing Site/Node mapping
-as configuration debt.
+A visible monitored Host absent from Node definitions becomes **Unassigned**.
+Its Tier remains unset and incidents display `P?`; the system never fabricates
+Tier-3. Unknown-Tier outages rank above known low-priority Tier-3 incidents.
 
 ## Freshness
 
@@ -107,8 +111,8 @@ The repository subdirectories `collector`, `config`, and `domain` are lowercase
 because the Zabbix module autoloader lowercases nested namespace paths on the
 case-sensitive RHEL filesystem.
 
-The central Node definition remains intentionally empty. All five current lab
-Hosts therefore render as visibly configuration-required under `UNCLASSIFIED`;
+The central Node definition was intentionally empty during v1.0 validation. All
+five current lab Hosts therefore rendered as **Unassigned**;
 the four NetBox mock devices report their expected DOWN signals while
 `ZABBIX-01` reports UP. This is lab validation, not production Node modeling or
 real-device polling acceptance. Do not deploy this module to production until
@@ -121,6 +125,7 @@ Run the pure-PHP resolver matrix:
 
 ```bash
 php tests/availability/run.php
+php tests/availability/config_test.php
 ```
 
 Run the repository/static contracts:
@@ -130,5 +135,5 @@ python3 tests/availability/static_test.py
 ```
 
 Production operators should follow `docs/NETWORK-AVAILABILITY-PRODUCTION.md`.
-The installer preserves an existing `config/node-definitions.json` during an
-upgrade and validates all immutable module files against `RELEASE.sha256`.
+The installer preserves the external runtime configuration during upgrades and
+rollbacks and validates all immutable module files against `RELEASE.sha256`.

@@ -58,4 +58,5 @@ else
 fi
 
 na_info 'SERVICE_RESTARTS=NONE'
+na_info "RUNTIME_CONFIGURATION=PRESERVED:${NETWORK_AVAILABILITY_RUNTIME_DIR:-/var/lib/zabbix/network-availability}"
 na_info 'PASS'
