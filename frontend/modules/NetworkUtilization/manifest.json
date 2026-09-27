@@ -4,7 +4,7 @@
   "type": "widget",
   "name": "Network Utilization",
   "namespace": "NetworkUtilization",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "NetOps",
   "description": "Configured link utilization, capacity, P95, errors, discards and freshness.",
   "widget": {
@@ -20,6 +20,6 @@
   },
   "assets": {
     "css": ["network-utilization.css"],
-    "js": ["class.widget.js"]
+    "js": ["traffic-chart.js", "class.widget.js"]
   }
 }

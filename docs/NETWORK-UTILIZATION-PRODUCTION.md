@@ -1,21 +1,24 @@
-# Network Utilization v1 — production installation
+# Network Utilization v1.1 — production upgrade
 
 Network Utilization is independent of Network Availability. It modifies no Zabbix core file and requires no service restart.
 
-## Install the signed Git release
+## Upgrade from v1.0.0
 
 Run from a temporary checkout on the Zabbix frontend host:
 
 ```bash
-git clone --depth 1 --branch network-utilization-v1.0.0 https://github.com/jaber717/Zabbix.git
+git clone --depth 1 --branch network-utilization-v1.1.0 https://github.com/jaber717/Zabbix.git
 cd Zabbix
+sha256sum -c scripts/network-utilization-release.sha256
 sudo ./scripts/install-network-utilization.sh
 sudo ./scripts/verify-network-utilization.sh
 ```
 
-Enable **Network Utilization** in Administration → General → Modules, then add the widget to a dashboard. Use **Edit links** to create production-specific Sites and Links.
+Refresh the Zabbix frontend and confirm that Network Utilization reports version 1.1.0 in Administration → General → Modules. Existing dashboards and Links remain in place.
 
 Configuration is preserved at `/var/lib/zabbix/network-utilization/link-definitions.json` across upgrades and rollback. Capacity overrides must be entered in bits per second and should only be used where Zabbix has no trustworthy speed Item.
+
+The details chart uses bounded Zabbix history for 1h, 6h and 24h. Its 7d range uses hourly trend averages. Its X-axis uses actual timestamps and its Y-axis follows observed bits per second, independent of the configured Link capacity.
 
 ## Rollback
 

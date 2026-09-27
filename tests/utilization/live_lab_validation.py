@@ -58,7 +58,7 @@ def render(web):
     return page,elapsed
 
 def main():
-    parser=argparse.ArgumentParser(); parser.add_argument('--base-url',required=True); parser.add_argument('--ca',type=Path,required=True); parser.add_argument('--admin-password-file',type=Path,required=True); parser.add_argument('--scan-enable',action='store_true'); parser.add_argument('--exercise',action='store_true'); args=parser.parse_args()
+    parser=argparse.ArgumentParser(); parser.add_argument('--base-url',required=True); parser.add_argument('--ca',type=Path,required=True); parser.add_argument('--admin-password-file',type=Path,required=True); parser.add_argument('--scan-enable',action='store_true'); parser.add_argument('--exercise',action='store_true'); parser.add_argument('--chart-evidence-path',type=Path); args=parser.parse_args()
     context=ssl.create_default_context(cafile=str(args.ca)); password=args.admin_password_file.read_text().strip(); api=Api(args.base_url.rstrip('/')+'/api_jsonrpc.php',context)
     auth=api.call('user.login',{'username':'Admin','password':password}); web=Web(args.base_url,context); web.login('Admin',password)
     if args.scan_enable: web.scan_modules()
@@ -69,6 +69,9 @@ def main():
     print(f"MODULE_ID={modules[0]['moduleid']} MODULE_STATUS={modules[0]['status']} MODULE_PATH={modules[0].get('relative_path')} LISTED={'Network Utilization' in listing}")
     plain=re.sub(r'\s+',' ',html.unescape(re.sub(r'<[^>]+>',' ',listing))); position=plain.find('Network Utilization')
     print('MODULE_LIST_CONTEXT='+plain[max(0,position-120):position+300])
+    dashboard=web.get('dashboard.view')
+    chart_pos=dashboard.find('traffic-chart.js'); widget_pos=dashboard.find('class.widget.js',chart_pos)
+    print(f"CHART_ASSET_ORDER={'PASS' if 0<=chart_pos<widget_pos else 'NOT_CONFIRMED'}")
     page,elapsed=render(web); configuration=decoded(page,'configuration'); candidates=decoded(page,'candidates'); instrumentation=decoded(page,'instrumentation'); token=attribute(page,'csrf-token')
     ens18=next((candidate for candidate in candidates if candidate['host']=='ZABBIX-01' and candidate['if_name']=='ens18'),None)
     if ens18 is None: raise RuntimeError('live ZABBIX-01 ens18 candidate was not discovered')
@@ -86,14 +89,24 @@ def main():
         for direction in ('in','out'):
             bps=link[f'current_{direction}_bps']; pct=link[f'{direction}_util_pct']
             if bps is not None and abs(pct-(bps/1_000_000_000*100))>1e-9: raise RuntimeError(f'{direction} utilization mismatch')
-            metric=link['metrics'][direction]; rows=api.call('history.get',{'output':['clock','value'],'history':metric['value_type'],'itemids':[metric['itemid']],'time_from':int(time.time())-86400,'sortfield':'clock','sortorder':'ASC','limit':60000},auth)
+            metric=link['metrics'][direction]; rows=api.call('history.get',{'output':['clock','value'],'history':metric['value_type'],'itemids':[metric['itemid']],'time_from':snap['generated_at']-86400,'sortfield':'clock','sortorder':'ASC','limit':60000},auth)
             expected=percentile([float(row['value'])*metric['factor'] for row in rows])
             actual=link[f'p95_{direction}_bps']
             if expected is not None and abs(actual-expected)>max(1e-6,expected*1e-9): raise RuntimeError(f'{direction} P95 mismatch')
+            native={(int(row['clock']),float(row['value'])*metric['factor']) for row in rows}
+            if not all((int(row['clock']),float(row['value'])) in native for row in metric['history']): raise RuntimeError(f'{direction} chart history differs from native Zabbix values')
+            trends=api.call('trend.get',{'output':['clock','value_avg'],'itemids':[metric['itemid']],'time_from':snap['generated_at']-7*86400,'sortfield':'clock','sortorder':'ASC','limit':20000},auth)
+            native_trends={(int(row['clock']),float(row['value_avg'])*metric['factor']) for row in trends}
+            if not all(any(clock==int(row['clock']) and abs(value-float(row['value']))<max(1e-6,abs(value)*1e-9) for clock,value in native_trends) for row in metric['trends_7d']): raise RuntimeError(f'{direction} chart trends differ from native Zabbix averages')
         print(f"OVERRIDE_ANALYTICS=PASS CAPACITY={link['capacity_bps']:.0f} IN_PCT={link['in_util_pct']} OUT_PCT={link['out_util_pct']} P95_IN={link['p95_in_pct']} P95_OUT={link['p95_out_pct']}")
         print(f"SOURCES_IN={link['metrics']['in']['key']} OUT={link['metrics']['out']['key']} CAPACITY_SOURCE={link['capacity_source']}")
         print(f"QUALITY_SOURCES={','.join(sorted(key for key in link['metrics'] if 'errors' in key or 'discards' in key))}")
         print(f"DATA_STATE={link['data_state']} DATA_AGE_S={link['data_age_s']} ADMIN={link['admin_status']} OPER={link['oper_status']}")
+        print(f"HEADROOM_BPS={link['headroom_bps']} ERRORS={link['errors_total']} DISCARDS={link['discards_total']}")
+        print('CHART_NATIVE_HISTORY_AND_TRENDS=PASS')
+        if args.chart_evidence_path:
+            args.chart_evidence_path.write_text(json.dumps({'generated_at':snap['generated_at'],'link':link},separators=(',',':')))
+            print(f"CHART_EVIDENCE={args.chart_evidence_path}")
         print('INSTRUMENTATION='+json.dumps(instrumentation,sort_keys=True,separators=(',',':')))
         print(f"UI_CONTRACTS={'PASS' if all(value in page for value in ['Needs attention','Top utilized links','Edit links','P95 24H','nu-panel','nu-sites']) else 'FAIL'}")
         bad=document(phase2['revision'],0); status,response=web.action('networkutilization.config.update',{'_csrf_token':token,'expected_revision':phase2['revision'],'payload':json.dumps(bad)})

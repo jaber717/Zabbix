@@ -13,6 +13,8 @@ class CWidgetNetworkUtilization extends CWidget {
 	#snapshot = null;
 	#configuration = null;
 	#candidates = [];
+	#chart = null;
+	#chartRange = 1;
 
 	onStart() { this.#staleTimer = setInterval(() => this.#updateViewFreshness(), 5000); }
 	onActivate() { if (this.#staleTimer === null) this.#staleTimer = setInterval(() => this.#updateViewFreshness(), 5000); }
@@ -20,6 +22,7 @@ class CWidgetNetworkUtilization extends CWidget {
 
 	setContents(response) {
 		if (this.#editing) return;
+		this.#chart?.close(); this.#chart = null;
 		const scrollTop = this._contents.scrollTop;
 		super.setContents(response);
 		const root = this._contents.querySelector('.netops-utilization');
@@ -56,6 +59,12 @@ class CWidgetNetworkUtilization extends CWidget {
 			this.#filter = this.#filter === tile.dataset.filter ? '' : tile.dataset.filter; this.#applyFilters(root);
 		});
 		root.querySelector('.nu-filter-clear')?.addEventListener('click', () => { this.#filter = ''; this.#applyFilters(root); });
+		root.querySelector('.nu-more')?.addEventListener('click', event => {
+			const rows = root.querySelectorAll('.nu-attention__row.is-extra');
+			const show = rows[0]?.classList.contains('is-hidden');
+			for (const row of rows) row.classList.toggle('is-hidden', !show);
+			event.currentTarget.textContent = show ? 'Show less' : `+${rows.length} more`;
+		});
 		for (const button of root.querySelectorAll('[data-sort]')) button.addEventListener('click', () => { this.#sort = button.dataset.sort; this.#sortRows(root); });
 		for (const element of root.querySelectorAll('[data-link-id]')) element.addEventListener('click', event => {
 			if (element.dataset.linkId !== '') { event.stopPropagation(); this.#openDetails(root, element.dataset.linkId); }
@@ -67,6 +76,7 @@ class CWidgetNetworkUtilization extends CWidget {
 	}
 
 	#applyContext(root) {
+		root.querySelector('.nu-updated').textContent = `Updated ${new Intl.DateTimeFormat(undefined, {hour: '2-digit', minute: '2-digit', second: '2-digit'}).format(new Date(this.#snapshot.generated_at * 1000))}`;
 		root.querySelector('.nu-search').value = this.#search;
 		root.querySelector('.nu-site-filter').value = this.#site;
 		root.querySelector('.nu-role-filter').value = this.#role;
@@ -110,6 +120,10 @@ class CWidgetNetworkUtilization extends CWidget {
 		const rows = [...body.children];
 		rows.sort((a, b) => {
 			const av = Number(a.dataset[this.#sort] ?? -1); const bv = Number(b.dataset[this.#sort] ?? -1);
+			if (ascending && (av >= Number.MAX_SAFE_INTEGER || bv >= Number.MAX_SAFE_INTEGER)) {
+				if (av >= Number.MAX_SAFE_INTEGER && bv < Number.MAX_SAFE_INTEGER) return 1;
+				if (bv >= Number.MAX_SAFE_INTEGER && av < Number.MAX_SAFE_INTEGER) return -1;
+			}
 			if (av !== bv) return ascending ? av - bv : bv - av;
 			return a.dataset.linkId.localeCompare(b.dataset.linkId);
 		});
@@ -121,55 +135,51 @@ class CWidgetNetworkUtilization extends CWidget {
 	#openDetails(root, linkId) {
 		const link = this.#findLink(linkId); if (!link) return;
 		this.#detailsLinkId = linkId;
+		this.#chart?.close(); this.#chart = null;
 		const panel = root.querySelector('.nu-panel'); panel.replaceChildren();
-		panel.append(this.#button('×', 'nu-panel-close', () => this.#closePanels(root)), this.#element('h3', link.display_name));
-		const fields = [
-			['Site', link.site], ['Device', link.host_name], ['Interface', link.interface.if_name], ['Alias', link.current_alias || link.interface.if_alias || '—'],
-			['Role', link.role.replaceAll('_', ' ')], ['Admin', link.admin_status], ['Operational', link.oper_status], ['Data freshness', link.data_age_s >= 2147483647 ? 'No data' : this.#formatAge(link.data_age_s)],
-			['Capacity', `${this.#formatBps(link.capacity_bps)}${link.capacity_source === 'override' ? ' (override)' : ''}`],
-			['CURRENT IN', this.#metric(link.current_in_bps, link.in_util_pct)], ['CURRENT OUT', this.#metric(link.current_out_bps, link.out_util_pct)],
-			['P95 24H IN', this.#metric(link.p95_in_bps, link.p95_in_pct)], ['P95 24H OUT', this.#metric(link.p95_out_bps, link.p95_out_pct)],
-			['PEAK 24H', this.#formatBps(link.peak_bps)], ['Headroom', this.#formatBps(link.headroom_bps)],
-			['Sustained high', link.sustained ? this.#formatDuration(link.sustained_seconds) : 'No'],
-			['Errors', String(link.errors_total)], ['Discards', String(link.discards_total)]
-		];
-		if (link.mapping_issue) fields.unshift(['Configuration', link.mapping_issue]);
-		for (const [label, value] of fields) { const row = this.#element('div', '', 'nu-detail-row'); row.append(this.#element('span', label), this.#element('strong', value)); panel.append(row); }
-		panel.append(this.#element('h4', 'Traffic trend'));
-		panel.append(this.#trendPanel(link));
+		panel.append(this.#button('×', 'nu-panel-close', () => this.#closePanels(root)));
+		const heading = this.#element('div', '', 'nu-panel-heading');
+		heading.append(this.#element('span', `${link.site} / ${link.host_name}`, 'nu-eyebrow'), this.#element('h3', link.display_name),
+			this.#element('span', `${link.interface.if_name} · ${link.role.replaceAll('_', ' ')}`, 'nu-panel-subtitle'));
+		panel.append(heading);
+		const section = (title, fields) => {
+			const box = this.#element('section', '', 'nu-detail-section'); box.append(this.#element('h4', title));
+			for (const [label, value] of fields) { const row = this.#element('div', '', 'nu-detail-row'); row.append(this.#element('span', label), this.#element('strong', value)); box.append(row); }
+			panel.append(box);
+		};
+		section('IDENTITY', [['Site', link.site], ['Device', link.host_name], ['Interface', link.interface.if_name],
+			['Alias', link.current_alias || link.interface.if_alias || '—'], ['Role', link.role.replaceAll('_', ' ')]]);
+		section('STATUS', [['Admin', link.admin_status], ['Operational', link.oper_status],
+			['Freshness', link.data_age_s >= 2147483647 ? 'No successful data' : this.#formatAge(link.data_age_s)],
+			['Data', link.data_state === 'CURRENT' ? 'Current' : link.data_state]]);
+		if (link.mapping_issue) section('CONFIGURATION', [['Issue', link.mapping_issue]]);
+		section('CAPACITY', [['Speed', `${this.#formatBps(link.capacity_bps)}${link.capacity_source === 'override' ? ' · override' : ''}`]]);
+		section('CURRENT TRAFFIC', [['IN', this.#metric(link.current_in_bps, link.in_util_pct)],
+			['OUT', this.#metric(link.current_out_bps, link.out_util_pct)]]);
+		section('HISTORICAL · 24H', [['P95 IN', this.#metric(link.p95_in_bps, link.p95_in_pct)],
+			['P95 OUT', this.#metric(link.p95_out_bps, link.p95_out_pct)], ['Peak', this.#formatBps(link.peak_bps)],
+			['Headroom now', this.#formatBps(link.headroom_bps)], ['Sustained high', link.sustained ? this.#formatDuration(link.sustained_seconds) : 'No']]);
+		section('QUALITY', [['Errors', String(link.errors_total)], ['Discards', String(link.discards_total)]]);
+		const traffic = this.#element('section', '', 'nu-detail-section'); traffic.append(this.#element('h4', 'TRAFFIC TREND'), this.#trendPanel(link)); panel.append(traffic);
 		const links = this.#element('div', '', 'nu-detail-links');
 		if (link.hostid) {
 			links.append(this.#link('Latest data', `zabbix.php?action=latest.view&filter_set=1&hostids%5B%5D=${encodeURIComponent(link.hostid)}`),
 				this.#link('Problems', `zabbix.php?action=problem.view&filter_set=1&hostids%5B%5D=${encodeURIComponent(link.hostid)}`),
 				this.#link('Host dashboard', `zabbix.php?action=host.dashboard.view&hostid=${encodeURIComponent(link.hostid)}`));
 		}
-		panel.append(links); panel.classList.remove('is-hidden'); root.querySelector('.nu-panel-backdrop').classList.remove('is-hidden');
-	}
-
-	#sparkline(inRows, outRows) {
-		const box = this.#element('div', '', 'nu-sparkline');
-		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 300 70'); svg.setAttribute('role', 'img');
-		const all = [...inRows, ...outRows]; const minClock = Math.min(...all.map(row => row.clock), Date.now() / 1000); const maxClock = Math.max(...all.map(row => row.clock), minClock + 1); const maxValue = Math.max(...all.map(row => Number(row.value)), 1);
-		const make = (rows, className) => { const line = document.createElementNS(svg.namespaceURI, 'polyline'); line.setAttribute('class', className); line.setAttribute('points', rows.map(row => `${300 * (row.clock - minClock) / (maxClock - minClock)},${68 - 64 * Number(row.value) / maxValue}`).join(' ')); return line; };
-		if (inRows.length) svg.append(make(inRows, 'is-in')); if (outRows.length) svg.append(make(outRows, 'is-out'));
-		box.append(svg, this.#element('span', 'IN', 'nu-legend-in'), this.#element('span', 'OUT', 'nu-legend-out'));
-		return box;
+		const native = this.#element('section', '', 'nu-detail-section'); native.append(this.#element('h4', 'NATIVE LINKS'), links); panel.append(native);
+		panel.classList.remove('is-hidden'); root.querySelector('.nu-panel-backdrop').classList.remove('is-hidden');
 	}
 
 	#trendPanel(link) {
-		const panel = this.#element('div', '', 'nu-trend-panel'); const controls = this.#element('div', '', 'nu-trend-controls'); const chart = this.#element('div');
-		const render = hours => {
-			const cutoff = Date.now() / 1000 - hours * 3600;
-			const source = hours === 168 ? 'trends_7d' : 'history';
-			const incoming = (link.metrics.in?.[source] ?? []).filter(row => row.clock >= cutoff);
-			const outgoing = (link.metrics.out?.[source] ?? []).filter(row => row.clock >= cutoff);
-			chart.replaceChildren(this.#sparkline(incoming, outgoing));
-			for (const button of controls.children) button.classList.toggle('is-active', Number(button.dataset.hours) === hours);
-		};
+		const panel = this.#element('div', '', 'nu-trend-panel'); const controls = this.#element('div', '', 'nu-trend-controls');
+		this.#chart = new NetworkUtilizationTrafficChart(link, this.#snapshot.generated_at);
+		this.#chart.setRange(this.#chartRange);
 		for (const [hours, label] of [[1, '1h'], [6, '6h'], [24, '24h'], [168, '7d']]) {
-			const button = this.#button(label, 'btn-alt', () => render(hours)); button.dataset.hours = String(hours); controls.append(button);
+			const button = this.#button(label, 'btn-alt', () => { this.#chartRange = hours; this.#chart.setRange(hours); for (const item of controls.children) item.classList.toggle('is-active', item === button); });
+			button.dataset.hours = String(hours); if (hours === this.#chartRange) button.classList.add('is-active'); controls.append(button);
 		}
-		panel.append(controls, chart); render(1); return panel;
+		panel.append(controls, this.#chart.root); return panel;
 	}
 
 	#beginEdit(root) {
@@ -256,7 +266,7 @@ class CWidgetNetworkUtilization extends CWidget {
 		catch (error) { this.#error(panel, error.message || 'Configuration save failed.'); }
 	}
 
-	#closePanels(root) { this.#detailsLinkId = ''; root.querySelector('.nu-panel')?.classList.add('is-hidden'); root.querySelector('.nu-editor')?.classList.add('is-hidden'); root.querySelector('.nu-panel-backdrop')?.classList.add('is-hidden'); }
+	#closePanels(root) { this.#chart?.close(); this.#chart = null; this.#detailsLinkId = ''; root.querySelector('.nu-panel')?.classList.add('is-hidden'); root.querySelector('.nu-editor')?.classList.add('is-hidden'); root.querySelector('.nu-panel-backdrop')?.classList.add('is-hidden'); }
 	#updateViewFreshness() { const root = this._contents?.querySelector('.netops-utilization'); if (!root || this.#lastSuccessfulUpdate === 0 || this.#editing) return; const age = Date.now() - this.#lastSuccessfulUpdate; const stale = age > Math.max(30000, Number(root.dataset.refreshSeconds ?? 60) * 2000); root.classList.toggle('is-view-stale', stale); root.querySelector('.nu-stale')?.classList.toggle('is-hidden', !stale); if (stale) root.querySelector('.nu-stale__age').textContent = this.#formatAge(Math.floor(age / 1000)); }
 	#formatAge(seconds) { return seconds >= 3600 ? `${Math.floor(seconds / 3600)}h ${Math.floor(seconds % 3600 / 60)}m ago` : seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s ago` : `${seconds}s ago`; }
 	#formatDuration(seconds) { return seconds >= 3600 ? `${Math.floor(seconds / 3600)}h ${Math.floor(seconds % 3600 / 60)}m` : `${Math.floor(seconds / 60)}m`; }

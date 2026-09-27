@@ -9,7 +9,7 @@ assert manifest["id"] == "netops_network_utilization"
 assert manifest["version"] == (module / "VERSION").read_text().strip()
 required = [
     "Widget.php", "actions/WidgetView.php", "actions/ConfigUpdate.php",
-    "assets/css/network-utilization.css", "assets/js/class.widget.js",
+    "assets/css/network-utilization.css", "assets/js/class.widget.js", "assets/js/traffic-chart.js",
     "collector/ZabbixLinkUtilizationCollector.php", "config/LinkDefinitionRepository.php",
     "domain/LinkUtilizationResolver.php", "views/widget.view.php"
 ]

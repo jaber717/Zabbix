@@ -1,4 +1,4 @@
-# Network Utilization 1.0.0
+# Network Utilization 1.1.0
 
 A Zabbix 7.0 widget for operator-selected network Links. It reads existing Zabbix Items; it does not poll devices.
 
@@ -11,6 +11,7 @@ A Zabbix 7.0 widget for operator-selected network Links. It reads existing Zabbi
 - P95 uses a bounded 24-hour history query and requires at least 20 samples. Seven-day details use trends when available.
 - Errors and discards remain separate and counter resets do not create false deltas.
 - Hidden Links remain monitored and counted but are omitted from the main table and Site cards.
+- The details chart plots actual Zabbix sample times and bits per second. Its Y-axis follows observed traffic, not interface capacity. The 7-day range uses hourly Zabbix trend averages; shorter ranges use bounded raw history. The tooltip shows a direction as unavailable when no sufficiently close sample exists.
 
 Runtime configuration is stored outside the module at:
 

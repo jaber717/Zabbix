@@ -85,3 +85,129 @@
 	.netops-utilization .nu-table td:nth-child(4), .netops-utilization .nu-table td:nth-child(7), .netops-utilization .nu-table td:nth-child(8) { display: none; }
 	.netops-utilization .nu-editor-fields, .netops-utilization .nu-add-link { grid-template-columns: 1fr; }
 }
+
+/* v1.1 presentation: compact sections and readable operational hierarchy. */
+.netops-utilization { gap: 9px; font-size: 12px; }
+.netops-utilization .nu-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; padding: 2px 1px 5px; }
+.netops-utilization .nu-eyebrow { display: block; color: #607381; font-size: 9px; font-weight: 700; letter-spacing: .09em; }
+.netops-utilization .nu-header h3 { margin: 1px 0 0; font-size: 17px; line-height: 1.15; }
+.netops-utilization .nu-header__actions { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+.netops-utilization .nu-updated { color: #687882; font-size: 11px; }
+.netops-utilization .nu-header .nu-edit-start { margin: 0; }
+.netops-utilization .nu-summary { gap: 6px; }
+.netops-utilization .nu-summary__item { min-height: 55px; padding: 7px 10px; border-color: color-mix(in srgb, currentColor 15%, transparent); border-left: 3px solid #8b989f; }
+.netops-utilization .nu-summary__item.has-value:is(.is-hot_now,.is-sustained,.is-errors_discards,.is-capacity_risk) { border-left-color: #d97706; }
+.netops-utilization .nu-summary__item.is-zero { opacity: .66; }
+.netops-utilization .nu-summary__item.is-monitored_links { border-left-color: #2c7dbb; }
+.netops-utilization .nu-summary__value { margin: 0; font-size: 22px; line-height: 1; font-variant-numeric: tabular-nums; }
+.netops-utilization .nu-summary__label { margin-top: 6px; font-size: 9px; font-weight: 700; letter-spacing: .035em; }
+.netops-utilization .nu-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; padding: 0 1px 4px; border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
+.netops-utilization .nu-section-heading h4 { margin: 0; font-size: 13px; }
+.netops-utilization .nu-section-count { color: #687882; font-size: 10px; }
+.netops-utilization .nu-attention { gap: 3px; }
+.netops-utilization .nu-attention__row { grid-template-columns: 112px minmax(160px,1.25fr) minmax(180px,1fr); gap: 12px; align-items: center; padding: 7px 10px; border-color: color-mix(in srgb, currentColor 13%, transparent); border-left-width: 3px; background: color-mix(in srgb, currentColor 1.5%, transparent); }
+.netops-utilization .nu-attention__row:hover, .netops-utilization .nu-attention__row:focus-visible { border-color: #2c7dbb; background: color-mix(in srgb, #2c7dbb 6%, transparent); }
+.netops-utilization .nu-attention__row.is-neutral { border-left-color: #84919a; }
+.netops-utilization .nu-attention__identity, .netops-utilization .nu-attention__metrics { display: grid; gap: 2px; min-width: 0; }
+.netops-utilization .nu-attention__kind { color: #b56c08; font-weight: 700; text-transform: uppercase; }
+.netops-utilization .nu-attention__row.is-neutral .nu-attention__kind { color: #687882; }
+.netops-utilization .nu-attention__meta, .netops-utilization .nu-attention__secondary { overflow: hidden; color: #687882; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.netops-utilization .nu-attention__primary { font-weight: 700; font-variant-numeric: tabular-nums; }
+.netops-utilization .nu-more { justify-self: start; padding: 3px 0; border: 0; color: #1976d2; background: transparent; cursor: pointer; }
+.netops-utilization .nu-calm { padding: 7px 9px; border: 1px solid color-mix(in srgb, currentColor 12%, transparent); border-radius: 3px; }
+.netops-utilization .nu-top { min-width: 0; }
+.netops-utilization .nu-top > .nu-section-heading { margin-bottom: 7px; }
+.netops-utilization .nu-sort { margin: 0; font-size: 10px; }
+.netops-utilization .nu-sort button { padding: 3px 7px; border: 1px solid transparent; border-radius: 3px; }
+.netops-utilization .nu-sort button.is-active { border-color: color-mix(in srgb, #1976d2 30%, transparent); background: color-mix(in srgb, #1976d2 8%, transparent); }
+.netops-utilization .nu-toolbar { margin: 0 0 7px; padding: 6px; border: 1px solid color-mix(in srgb, currentColor 12%, transparent); border-radius: 3px; background: color-mix(in srgb, currentColor 2%, transparent); }
+.netops-utilization .nu-toolbar select { min-width: 120px; }
+.netops-utilization .nu-table { font-variant-numeric: tabular-nums; }
+.netops-utilization .nu-table th { padding: 7px 8px; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-bottom-color: color-mix(in srgb, currentColor 19%, transparent); background: color-mix(in srgb, currentColor 3%, transparent); font-weight: 700; text-transform: uppercase; }
+.netops-utilization .nu-table td { padding: 8px; border-bottom-color: color-mix(in srgb, currentColor 10%, transparent); }
+.netops-utilization .nu-table tbody tr { border-left: 3px solid transparent; }
+.netops-utilization .nu-table tbody tr.is-critical { border-left-color: #cf3c3c; }
+.netops-utilization .nu-table tbody tr.is-warning { border-left-color: #d97706; }
+.netops-utilization .nu-table tbody tr.is-unknown { border-left-color: #89949a; }
+.netops-utilization .nu-table tbody tr:hover, .netops-utilization .nu-table tbody tr:focus-within { background: color-mix(in srgb, #1976d2 5%, transparent); }
+.netops-utilization .nu-table td:nth-child(n+4) { text-align: right; }
+.netops-utilization .nu-table th:nth-child(n+4) { text-align: right; }
+.netops-utilization .nu-traffic-cell { white-space: nowrap; }
+.netops-utilization .nu-traffic-pct { display: block; font-size: 13px; font-weight: 700; }
+.netops-utilization .nu-traffic-bps { display: block; margin-top: 2px; color: #687882; font-size: 10px; }
+.netops-utilization .nu-table tr.is-critical .nu-traffic-pct { color: #c63737; }
+.netops-utilization .nu-table tr.is-warning .nu-traffic-pct { color: #b56c08; }
+.netops-utilization .nu-unknown { color: #687882; }
+.netops-utilization .nu-link-open { color: #1976d2; }
+.netops-utilization .nu-sites { gap: 5px; }
+.netops-utilization .nu-site { border-color: color-mix(in srgb, currentColor 14%, transparent); }
+.netops-utilization .nu-site__header { align-items: center; padding: 7px 10px; }
+.netops-utilization .nu-site__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.netops-utilization .nu-site__links { grid-template-columns: 1fr; gap: 0; padding: 2px 8px 7px; }
+.netops-utilization .nu-site-link { display: grid; grid-template-columns: minmax(110px,1.2fr) minmax(120px,1fr) auto; gap: 10px; align-items: center; min-width: 0; padding: 6px 8px; border-left-width: 2px; border-bottom: 1px solid color-mix(in srgb, currentColor 9%, transparent); }
+.netops-utilization .nu-site-link.is-critical { border-left-color: #cf3c3c; }
+.netops-utilization .nu-site-link.is-warning { border-left-color: #d97706; }
+.netops-utilization .nu-site-link__name { overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.netops-utilization .nu-site-link__host { overflow: hidden; color: #687882; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.netops-utilization .nu-panel { width: min(660px, 97%); padding: 16px 18px; }
+.netops-utilization .nu-panel-heading { padding-bottom: 12px; border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
+.netops-utilization .nu-panel-heading h3 { margin: 2px 0; font-size: 18px; }
+.netops-utilization .nu-panel-subtitle { color: #687882; }
+.netops-utilization .nu-detail-section { padding: 10px 0; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+.netops-utilization .nu-detail-section h4 { margin: 0 0 7px; color: #61717c; font-size: 10px; letter-spacing: .07em; }
+.netops-utilization .nu-detail-row { padding: 4px 1px; }
+.netops-utilization .nu-detail-row span { color: #687882; }
+.netops-utilization .nu-detail-row strong { font-variant-numeric: tabular-nums; }
+.netops-utilization .nu-trend-controls { margin-bottom: 8px; }
+.netops-utilization .nu-trend-controls button { min-width: 42px; padding: 4px 9px; }
+.netops-utilization .nu-editor { padding: 16px; }
+.netops-utilization .nu-link-editor summary { padding: 5px 0; }
+.netops-utilization .nu-editor-fields { margin-top: 8px; }
+.netops-utilization.is-dark-theme .nu-updated,
+.netops-utilization.is-dark-theme .nu-attention__meta,
+.netops-utilization.is-dark-theme .nu-attention__secondary,
+.netops-utilization.is-dark-theme .nu-traffic-bps,
+.netops-utilization.is-dark-theme .nu-detail-row span,
+.netops-utilization.is-dark-theme .nu-panel-subtitle { color: #b7c2c9; }
+
+/* The chart always retains axes, including inside a narrow details panel. */
+.netops-utilization .nu-chart__heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; align-items: baseline; margin-bottom: 6px; }
+.netops-utilization .nu-chart__heading strong { font-size: 12px; }
+.netops-utilization .nu-chart__unit { margin-left: auto; color: #687882; font-size: 10px; font-weight: 700; }
+.netops-utilization .nu-chart__legend { display: flex; gap: 12px; white-space: nowrap; font-size: 10px; }
+.netops-utilization .nu-chart__legend-in::before,
+.netops-utilization .nu-chart__legend-out::before { content: ''; display: inline-block; width: 12px; margin-right: 5px; vertical-align: 3px; border-top: 2px solid #1976d2; }
+.netops-utilization .nu-chart__legend-out::before { border-top: 2px dashed #d97706; }
+.netops-utilization .nu-chart__frame { position: relative; }
+.netops-utilization .nu-chart__frame svg { display: block; width: 100%; height: auto; background: color-mix(in srgb, currentColor 1%, transparent); }
+.netops-utilization .nu-chart__grid { stroke: currentColor; stroke-opacity: .14; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.netops-utilization .nu-chart__tick { fill: currentColor; opacity: .68; font-size: 10px; }
+.netops-utilization .nu-chart__series { fill: none; stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.netops-utilization .nu-chart__in { stroke: #1976d2; }
+.netops-utilization .nu-chart__out { stroke: #d97706; stroke-dasharray: 5 3; }
+.netops-utilization circle.nu-chart__series { fill: currentColor; stroke-dasharray: none; }
+.netops-utilization .nu-chart__crosshair { stroke: #677782; stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.netops-utilization .nu-chart__hit { fill: transparent; cursor: crosshair; touch-action: manipulation; }
+.netops-utilization .nu-chart__tooltip { position: absolute; top: 8px; z-index: 1; min-width: 155px; padding: 7px 9px; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 3px; color: #1f2c33; background: #fff; box-shadow: 0 2px 8px #0002; transform: translateX(-50%); pointer-events: none; font-size: 11px; }
+.netops-utilization .nu-chart__tooltip[hidden] { display: none; }
+.netops-utilization.is-dark-theme .nu-chart__tooltip { color: #f2f2f2; background: #2b2f33; }
+.netops-utilization .nu-chart__tooltip strong { display: block; margin-bottom: 4px; }
+.netops-utilization .nu-chart__tooltip-in, .netops-utilization .nu-chart__tooltip-out { padding: 2px 0; font-variant-numeric: tabular-nums; }
+.netops-utilization .nu-chart__tooltip-in { color: #1976d2; }
+.netops-utilization .nu-chart__tooltip-out { color: #b56c08; }
+.netops-utilization .nu-chart__footer { margin-top: 4px; color: #687882; font-size: 10px; }
+.netops-utilization .nu-chart__stale, .netops-utilization .nu-chart__empty { padding: 9px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); color: #687882; }
+.netops-utilization .nu-chart__empty { min-height: 90px; display: grid; place-items: center; }
+
+@container (max-width: 900px) {
+	.netops-utilization .nu-table td:nth-child(n+4) { text-align: left; }
+	.netops-utilization .nu-table td.nu-traffic-cell::before { content: attr(data-label); display: block; color: #687882; font-size: 9px; font-weight: 700; }
+}
+@container (max-width: 520px) {
+	.netops-utilization .nu-header { flex-wrap: wrap; }
+	.netops-utilization .nu-attention__row { grid-template-columns: 85px minmax(100px,1fr); }
+	.netops-utilization .nu-attention__metrics { grid-column: 2; }
+	.netops-utilization .nu-attention__primary { display: block; }
+	.netops-utilization .nu-site-link { grid-template-columns: 1fr auto; }
+	.netops-utilization .nu-site-link__host { display: none; }
+}
