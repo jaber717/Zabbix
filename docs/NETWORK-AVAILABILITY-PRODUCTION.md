@@ -1,7 +1,7 @@
 # Network Availability production deployment
 
 This procedure installs the LAB-validated Network Availability widget from the
-immutable `network-availability-v1.2.0` tag. It does not modify Zabbix core files,
+immutable `network-availability-v1.2.1` tag. It does not modify Zabbix core files,
 restart services, or invent production Node topology.
 
 ## Install from GitHub
@@ -9,7 +9,7 @@ restart services, or invent production Node topology.
 Run on the production Zabbix frontend VM:
 
 ```bash
-git clone --depth 1 --branch network-availability-v1.2.0 https://github.com/jaber717/Zabbix.git
+git clone --depth 1 --branch network-availability-v1.2.1 https://github.com/jaber717/Zabbix.git
 cd Zabbix
 sha256sum --check scripts/network-availability-release.sha256
 sudo ./scripts/install-network-availability.sh

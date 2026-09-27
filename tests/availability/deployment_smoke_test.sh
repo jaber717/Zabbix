@@ -41,7 +41,7 @@ cp "$ROOT/frontend/modules/NetworkAvailability/config/node-definitions.json" \
 chmod 0750 "$TEMP_ROOT/runtime"
 chmod 0640 "$TEMP_ROOT/runtime/node-definitions.json"
 VERIFY_OUTPUT=$(run_in_fixture "$ROOT/scripts/verify-network-availability.sh")
-grep -q '^MODULE_RELEASE=1.2.0$' <<< "$VERIFY_OUTPUT"
+grep -q '^MODULE_RELEASE=1.2.1$' <<< "$VERIFY_OUTPUT"
 grep -q '^PASS$' <<< "$VERIFY_OUTPUT"
 
 printf '\n// isolated checksum tamper test\n' \

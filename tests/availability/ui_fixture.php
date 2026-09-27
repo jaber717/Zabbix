@@ -1,6 +1,6 @@
 <?php declare(strict_types = 1);
 /* Render the real Availability widget view against resolver-produced synthetic LAB data. */
-if (($argc ?? 0) !== 2) { fwrite(STDERR, "usage: php ui_fixture.php OUTPUT.html\n"); exit(2); }
+if (($argc ?? 0) < 2 || ($argc ?? 0) > 3) { fwrite(STDERR, "usage: php ui_fixture.php OUTPUT.html [full|single|double]\n"); exit(2); }
 $module = dirname(__DIR__, 2).'/frontend/modules/NetworkAvailability';
 require_once $module.'/config/Limits.php';
 require_once $module.'/domain/AvailabilityResolver.php';
@@ -43,9 +43,19 @@ $nodes=[
 	$make('unknown','Unknown visibility node','dr','tier3',[$member('STALE-HOST','UP',true)]),
 	$make('partial','Available service with partial visibility','cent','tier2',[$member('SERVICE-A','UP'),$member('SERVICE-B','UP',true)]),
 	$make('maint','Maintenance down node','dr','tier1',[$member('MAINT-HOST','DOWN')],['maintenance'=>true]),
+	$make('healthy-sibling','Healthy core sibling with a deliberately long operational Node name','cent','tier1',[$member('CORE-HEALTHY-LONG-HOST','UP')]),
 	$make('healthy','Healthy node','healthy','tier3',[$member('GOOD-HOST','UP')]),
+	$make('healthy-long','Healthy WAN edge with a deliberately long operational Node name that must stay on one line','healthy','tier2',[$member('GOOD-LONG-HOST','UP')]),
 	$make('many','Seven-member healthy cluster','healthy','tier2',array_map(static fn($n)=>$member('MEMBER-'.$n,'UP'),range(1,7)))
 ];
+$mode = $argv[2] ?? 'full';
+if (!in_array($mode, ['full', 'single', 'double'], true)) { throw new InvalidArgumentException('invalid fixture mode'); }
+if ($mode === 'single') {
+	$nodes = array_values(array_filter($nodes, static fn(array $node): bool => in_array($node['id'], ['down', 'healthy'], true)));
+}
+elseif ($mode === 'double') {
+	$nodes = array_values(array_filter($nodes, static fn(array $node): bool => in_array($node['id'], ['down', 'degraded', 'healthy'], true)));
+}
 $snapshot=(new Modules\NetworkAvailability\Domain\AvailabilityResolver())->resolve($nodes,$now);
 $configuration=['schema'=>'network-availability-config-v1','revision'=>1,
 	'sites'=>[['id'=>'cent','name'=>'CENT-NETWORK','order'=>0],['id'=>'dr','name'=>'DR','order'=>10],['id'=>'healthy','name'=>'HEALTHY-SITE','order'=>20]],'nodes'=>[]];

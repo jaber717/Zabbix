@@ -2,7 +2,7 @@
 
 This directory is a Zabbix 7.0 frontend widget module. It is an incremental,
 implementation of platform-neutral Site, Node and Member availability. Release
-`1.2.0` keeps the tested collector/resolver authoritative while refining the
+`1.2.1` keeps the tested collector/resolver authoritative while refining the
 NOC presentation and persistent Site/Node editor. Availability color and
 monitoring visibility are separate. Needs Attention uses native Zabbix problem
 acknowledgement, never browser-local acknowledgement state. KPI filters apply

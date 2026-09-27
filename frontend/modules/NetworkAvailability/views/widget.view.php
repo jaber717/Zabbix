@@ -43,9 +43,14 @@ $duration = static function(?int $since) use ($snapshot): string {
 };
 $tier = static fn(?string $value): string => $value === null ? 'No tier'
 	: 'Tier-' . substr($value, -1);
-$member_dots = static function(array $node): CDiv {
+$plural = static fn(int $count, string $singular, ?string $plural = null): string =>
+	$count.' '.($count === 1 ? $singular : ($plural ?? $singular.'s'));
+$member_dots = static function(array $node): ?CDiv {
 	$glyphs = (new CDiv())->addClass('na-member-glyphs');
 	$members = $node['members'] ?? [];
+	if (count($members) <= 1) {
+		return null;
+	}
 	if (count($members) > 6) {
 		return $glyphs->addItem((new CSpan(sprintf('%d/%d available', $node['known_up'], count($members))))
 			->addClass('na-member-glyphs__summary'));
@@ -64,10 +69,9 @@ $stale_banner = (new CDiv([
 	new CSpan('Last successful update: '),
 	(new CSpan('—'))->addClass('na-stale-view__age')
 ]))->addClass('na-stale-view')->addClass('is-hidden');
-$root->addItem($stale_banner);
+$content = (new CDiv([$stale_banner]))->addClass('na-content');
 
 $header = (new CDiv())->addClass('na-header');
-$header->addItem((new CTag('h3', true, 'Network Availability'))->addClass('na-header__title'));
 $header->addItem((new CSpan('Updated just now'))->addClass('na-updated'));
 $total_nodes = array_sum(array_intersect_key($snapshot['summary'], array_flip(['UP', 'DOWN', 'DEGRADED', 'UNKNOWN'])));
 $header->addItem((new CSpan($snapshot['summary']['UP'].'/'.$total_nodes.' up'))->addClass('na-up-note'));
@@ -75,7 +79,7 @@ if ($data['user']['can_edit']) {
 	$header->addItem((new CTag('button', true, 'Edit sites'))->setAttribute('type', 'button')
 		->addClass('btn-alt')->addClass('na-edit-start'));
 }
-$root->addItem($header);
+$content->addItem($header);
 
 $toolbar = (new CDiv())->addClass('na-toolbar');
 $toolbar->addItem((new CTag('input', false))
@@ -104,7 +108,7 @@ foreach ([
 	}
 	$summary->addItem($tile);
 }
-$root->addItem($summary);
+$content->addItem($summary);
 
 $attention = (new CDiv())->addClass('na-attention');
 $impacted_site_names = [];
@@ -113,8 +117,9 @@ foreach ($snapshot['sites'] as $site) {
 		$impacted_site_names[$site['name']] = true;
 	}
 }
+$attention_count = count($snapshot['needs_attention']);
 $attention->addItem((new CDiv([new CTag('h4', true, 'Needs attention'),
-	(new CSpan(count($snapshot['needs_attention']).' items'))->addClass('na-section-count')]))->addClass('na-section-title'));
+	(new CSpan($plural($attention_count, 'item')))->addClass('na-section-count')]))->addClass('na-section-title'));
 if ($snapshot['needs_attention'] === []) {
 	$attention->addItem((new CDiv('No active incidents requiring attention'))
 		->addClass('na-all-clear'));
@@ -122,7 +127,7 @@ if ($snapshot['needs_attention'] === []) {
 else {
 	foreach ($snapshot['needs_attention'] as $index => $incident) {
 		$problem_count = count($incident['problems'] ?? []);
-		$meta = ($incident['site'] ?? 'Unassigned').' · '.$duration($incident['event_since'] ?? null);
+		$meta = $incident['site'] ?? 'Unassigned';
 		$badges = (new CDiv())->addClass('na-attention__badges');
 		$badges->addItem((new CSpan($tier($incident['criticality'] ?? null)))
 			->addClass(($incident['criticality'] ?? null) === null ? 'na-badge is-no-tier' : 'na-badge is-tier'));
@@ -134,7 +139,8 @@ else {
 			(new CSpan($meta))->addClass('na-attention__meta')->setTitle($meta)
 		]))->addClass('na-attention__main');
 		$summary = (new CDiv([
-			(new CSpan('P'.$incident['priority'].' · '.$incident['state']))->addClass('na-attention__state'),
+			(new CSpan('P'.$incident['priority'].' · '.$incident['state'].' · '.$duration($incident['event_since'] ?? null)))
+				->addClass('na-attention__state'),
 			$member_dots($incident)
 		]))->addClass('na-attention__summary');
 		$open = (new CTag('button', true, [$main, $summary]))->setAttribute('type', 'button')
@@ -161,8 +167,8 @@ else {
 			->setAttribute('type', 'button')->addClass('na-attention-more'));
 	}
 }
-$root->addItem($attention);
-$root->addItem($toolbar);
+$content->addItem($attention);
+$content->addItem($toolbar);
 
 $render_node = static function(array $node) use ($member_dots, $duration, $tier): CDiv {
 	$is_healthy = $node['actual_state'] === 'UP' && $node['visibility'] === 'FULL'
@@ -176,34 +182,47 @@ $render_node = static function(array $node) use ($member_dots, $duration, $tier)
 		->setAttribute('data-state', $node['actual_state'])
 		->setAttribute('data-visibility', $node['visibility'])
 		->setAttribute('data-search', strtolower($node['name'] . ' ' . implode(' ', array_column($node['members'], 'host'))));
-	$heading = (new CDiv([
+	$member_status = $member_dots($node);
+	$heading_items = [
 		(new CSpan(''))->addClass('na-state-dot')->setAttribute('aria-label', $node['actual_state']),
-		(new CSpan($node['name']))->addClass('na-node__name')->setTitle($node['name']),
-		(new CSpan($node['actual_state']))->addClass('na-node__state')
-	]))->addClass('na-node__heading');
+		(new CSpan($node['name']))->addClass('na-node__name')->setTitle($node['name'])
+	];
+	if ($is_healthy) {
+		if ($node['criticality'] === 'tier1') {
+			$heading_items[] = (new CSpan('T1'))->addClass('na-badge')->addClass('is-tier')->addClass('is-healthy-tier');
+		}
+		if ($member_status !== null) {
+			$heading_items[] = $member_status;
+		}
+	}
+	else {
+		$heading_items[] = (new CSpan($node['actual_state']))->addClass('na-node__state');
+	}
+	$heading = (new CDiv($heading_items))->addClass('na-node__heading');
 	$card->addItem($heading);
+	if ($is_healthy) {
+		return $card;
+	}
 	$badges = (new CDiv())->addClass('na-node__badges');
 	$badges->addItem((new CSpan($tier($node['criticality'])))->addClass('na-badge')
 		->addClass($node['criticality'] === null ? 'is-no-tier' : 'is-tier'));
 	if ($node['visibility'] !== 'FULL') $badges->addItem((new CSpan(ucfirst(strtolower($node['visibility'])).' visibility'))->addClass('na-badge is-visibility'));
 	if ($node['maintenance']) $badges->addItem((new CSpan('Maintenance'))->addClass('na-badge is-maintenance'));
 	if ($node['flapping']) $badges->addItem((new CSpan('Flapping'))->addClass('na-badge is-flapping'));
-	$card->addItem((new CDiv([$badges, $member_dots($node)]))->addClass('na-node__status-line'));
-	if (!$is_healthy) {
-		$problem_member = null;
-		foreach ($node['members'] as $member) {
-			if (!$member['fresh'] || $member['raw_availability_state'] !== 'UP') {
-				$problem_member = $member;
-				break;
-			}
+	$card->addItem((new CDiv([$badges, $member_status]))->addClass('na-node__status-line'));
+	$problem_member = null;
+	foreach ($node['members'] as $member) {
+		if (!$member['fresh'] || $member['raw_availability_state'] !== 'UP') {
+			$problem_member = $member;
+			break;
 		}
-		if ($problem_member !== null) {
-			$card->addItem((new CDiv(sprintf('%s member: %s · %s%s',
-				$problem_member['fresh'] ? $problem_member['raw_availability_state'] : 'STALE',
-				$problem_member['name'], $duration($node['event_since']),
-				count($node['problems']) > 0 ? ' · ' . ($node['acknowledged'] ? 'Acknowledged' : 'Unacknowledged') : ''
-			)))->addClass('na-node__problem-line'));
-		}
+	}
+	if ($problem_member !== null) {
+		$card->addItem((new CDiv(sprintf('%s member: %s · %s%s',
+			$problem_member['fresh'] ? $problem_member['raw_availability_state'] : 'STALE',
+			$problem_member['name'], $duration($node['event_since']),
+			count($node['problems']) > 0 ? ' · ' . ($node['acknowledged'] ? 'Acknowledged' : 'Unacknowledged') : ''
+		)))->addClass('na-node__problem-line'));
 	}
 	return $card;
 };
@@ -221,12 +240,10 @@ foreach ($snapshot['sites'] as $site) {
 	if ($healthy) {
 		$healthy_sites[] = $site;
 	}
-	$problem_parts = [];
-	foreach (['down' => 'down', 'degraded' => 'degraded', 'unknown' => 'unknown', 'visibility_loss' => 'visibility'] as $key => $label) {
-		if ($site[$key] > 0) {
-			$problem_parts[] = $site[$key] . ' ' . $label;
-		}
-	}
+	$affected_nodes = count(array_filter($site['nodes'], static fn(array $node): bool =>
+		$node['actual_state'] !== 'UP' || $node['visibility'] !== 'FULL'
+	));
+	$site_summary = $plural($affected_nodes, 'problem').' · '.$plural((int) $site['total'], 'node');
 	$site_box = (new CDiv())->addClass('na-site')->addClass($healthy ? 'is-healthy' : 'is-affected')
 		->addClass($healthy ? 'is-collapsed' : 'is-open')
 		->setAttribute('data-site-id', $site['id'])
@@ -235,8 +252,8 @@ foreach ($snapshot['sites'] as $site) {
 	$site_box->addItem((new CTag('button', true, [
 		(new CSpan($healthy ? '▶' : '▼'))->addClass('na-site__chevron'),
 		(new CSpan($site['name']))->addClass('na-site__name')->setTitle($site['name']),
-		(new CSpan(implode(' · ', $problem_parts)))->addClass('na-site__issues'),
-		(new CSpan($site['healthy'] . '/' . $site['total'] . ' fully healthy'))->addClass('na-site__count'),
+		(new CSpan($site_summary))->addClass('na-site__issues'),
+		(new CSpan($site['healthy'] . '/' . $site['total'] . ' healthy'))->addClass('na-site__count'),
 		(new CSpan(''))->addClass('na-site__recovered')
 	]))->addClass('na-site__header')->setAttribute('type', 'button'));
 	$nodes = (new CDiv())->addClass('na-site__nodes');
@@ -246,17 +263,17 @@ foreach ($snapshot['sites'] as $site) {
 	$site_box->addItem($nodes);
 	$affected_sites->addItem($site_box);
 }
-$root->addItem($affected_sites);
+$content->addItem($affected_sites);
 
 if ($healthy_sites !== []) {
 	$healthy = (new CDiv())->addClass('na-healthy-sites');
-	$healthy->addItem((new CSpan('Healthy sites · ' . count($healthy_sites)))->addClass('na-section-title'));
+	$healthy->addItem((new CSpan('Healthy sites · ' . $plural(count($healthy_sites), 'site')))->addClass('na-section-title'));
 	foreach ($healthy_sites as $site) {
-		$healthy->addItem((new CTag('button', true, '● ' . $site['name'] . ' ' . $site['total']))
+		$healthy->addItem((new CTag('button', true, '● ' . $site['name'] . ' · ' . $plural((int) $site['total'], 'node')))
 			->setAttribute('type', 'button')->setAttribute('data-site-open', $site['id'])
 			->addClass('na-healthy-chip'));
 	}
-	$root->addItem($healthy);
+	$content->addItem($healthy);
 }
 
 if ($unassigned !== null) {
@@ -264,7 +281,7 @@ if ($unassigned !== null) {
 		->setAttribute('data-impacted-site', isset($impacted_site_names[$unassigned['name']]) ? '1' : '0');
 	$section->addItem((new CTag('button', true, [
 		(new CSpan('▶'))->addClass('na-unassigned__chevron'),
-		new CSpan('Unassigned hosts (' . $unassigned['total'] . ')')
+		new CSpan('Unassigned hosts · ' . $plural((int) $unassigned['total'], 'host'))
 	]))->setAttribute('type', 'button')->addClass('na-unassigned__header'));
 	$rows = (new CDiv())->addClass('na-unassigned__rows');
 	if ($data['configuration']['sites'] !== []) {
@@ -288,8 +305,10 @@ if ($unassigned !== null) {
 			->setAttribute('data-search', strtolower($node['name'] . ' ' . $node['members'][0]['host'])));
 	}
 	$section->addItem($rows);
-	$root->addItem($section);
+	$content->addItem($section);
 }
+
+$root->addItem($content);
 
 $root->addItem((new CDiv())->addClass('na-panel-backdrop')->addClass('is-hidden'));
 $root->addItem((new CDiv())->addClass('na-details-panel')->addClass('is-hidden')
@@ -302,10 +321,10 @@ if ($snapshot['warnings'] !== []) {
 	foreach ($snapshot['warnings'] as $warning) {
 		$warnings->addItem($warning);
 	}
-	$root->addItem((new CDiv([new CSpan(_('Configuration / collection warnings')), $warnings]))->addClass('na-warning-box'));
+	$content->addItem((new CDiv([new CSpan(_('Configuration / collection warnings')), $warnings]))->addClass('na-warning-box'));
 }
 if ($data['user']['debug_mode']) {
-	$root->addItem((new CDiv('Availability instrumentation: ' . json_encode($data['instrumentation'], JSON_THROW_ON_ERROR)))
+	$content->addItem((new CDiv('Availability instrumentation: ' . json_encode($data['instrumentation'], JSON_THROW_ON_ERROR)))
 		->addClass('na-debug'));
 }
 
