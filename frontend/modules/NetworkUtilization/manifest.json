@@ -4,7 +4,7 @@
   "type": "widget",
   "name": "Network Utilization",
   "namespace": "NetworkUtilization",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "author": "NetOps",
   "description": "Configured link utilization, capacity, P95, errors, discards and freshness.",
   "widget": {

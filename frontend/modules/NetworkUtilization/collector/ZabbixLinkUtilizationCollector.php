@@ -47,7 +47,7 @@ final class ZabbixLinkUtilizationCollector implements LinkUtilizationCollectorIn
 			if (!isset($raw['metrics']['in'],$raw['metrics']['out']) && $raw['mapping_issue']===null) $raw['mapping_issue']='Traffic Items are missing for the exact interface name';
 			$links[]=$raw;
 		}
-		$history_rows=0; $history_by_item=[];
+		$history_started=hrtime(true); $history_rows=0; $history_by_item=[];
 		foreach ($history_ids as $value_type=>$ids) {
 			$ids=array_values(array_unique($ids)); if ($ids===[]) continue; $this->api_calls++;
 			$rows=API::History()->get(['output'=>['itemid','clock','value'],'history'=>(int)$value_type,'itemids'=>$ids,
@@ -55,11 +55,16 @@ final class ZabbixLinkUtilizationCollector implements LinkUtilizationCollectorIn
 			$history_rows+=count($rows); if (count($rows)>=Limits::MAX_HISTORY_ROWS) $warnings[]='24-hour history reached its bounded limit; affected P95 values are unavailable.';
 			foreach ($rows as $row) $history_by_item[(string)$row['itemid']][]=['clock'=>(int)$row['clock'],'value'=>(float)$row['value']];
 		}
-		$trend_rows=0; $traffic_ids=[]; foreach ($links as $link) foreach (['in','out'] as $type) if (isset($link['metrics'][$type])) $traffic_ids[]=$link['metrics'][$type]['itemid'];
+		$history_collection_ms=round((hrtime(true)-$history_started)/1_000_000,3);
+		$trend_started=hrtime(true); $trend_rows=0; $traffic_ids=[];
+		// Keep one bounded bulk trend read for every configured Link so the secondary
+		// Details inspector retains its validated 7-day chart for unpinned Links.
+		foreach ($links as $link) foreach (['in','out'] as $type) if (isset($link['metrics'][$type])) $traffic_ids[]=$link['metrics'][$type]['itemid'];
 		$trends=[]; if ($traffic_ids!==[]) { $this->api_calls++; try {
 			$trends=API::Trend()->get(['output'=>['itemid','clock','num','value_avg','value_max'],'itemids'=>array_values(array_unique($traffic_ids)),
 				'time_from'=>$now-7*86400,'sortfield'=>['itemid','clock'],'sortorder'=>'ASC','limit'=>20000]); $trend_rows=count($trends);
 		} catch(Throwable $e) { $warnings[]='Seven-day trends unavailable: '.$e->getMessage(); } }
+		$trend_collection_ms=round((hrtime(true)-$trend_started)/1_000_000,3);
 		$trend_by_item=[]; foreach($trends as $row) $trend_by_item[(string)$row['itemid']][]=$row;
 		foreach ($links as &$link) foreach ($link['metrics'] as &$metric) {
 			$factor=$metric['factor']; $metric['history']=array_map(static fn($row)=>['clock'=>$row['clock'],'value'=>$row['value']*$factor],$history_by_item[$metric['itemid']]??[]);
@@ -74,7 +79,9 @@ final class ZabbixLinkUtilizationCollector implements LinkUtilizationCollectorIn
 		}
 		return ['configuration'=>$config,'links'=>$links,'sites'=>$config['sites'],'candidates'=>$candidates,'warnings'=>$warnings,
 			'instrumentation'=>['api_call_count'=>$this->api_calls,'hosts_retrieved'=>count($hosts),'links_configured'=>count($links),
+				'pinned_graph_count'=>count(array_filter($links, static fn(array $link): bool => (bool) ($link['show_graph'] ?? false))),
 				'items_retrieved'=>count($items),'history_rows'=>$history_rows,'trend_rows'=>$trend_rows,
+				'graph_history_collection_time_ms'=>round($history_collection_ms+$trend_collection_ms,3),
 				'collector_time_ms'=>round((hrtime(true)-$started)/1_000_000,3)]];
 	}
 

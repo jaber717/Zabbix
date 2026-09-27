@@ -1,4 +1,4 @@
-# Network Utilization v1.3.0 — production upgrade
+# Network Utilization v1.4.0 — production upgrade
 
 Network Utilization is independent of Network Availability. It modifies no Zabbix core file and requires no service restart.
 
@@ -7,14 +7,14 @@ Network Utilization is independent of Network Availability. It modifies no Zabbi
 Run from a temporary checkout on the Zabbix frontend host:
 
 ```bash
-git clone --depth 1 --branch network-utilization-v1.3.0 https://github.com/jaber717/Zabbix.git
+git clone --depth 1 --branch network-utilization-v1.4.0 https://github.com/jaber717/Zabbix.git
 cd Zabbix
 sha256sum -c scripts/network-utilization-release.sha256
 sudo ./scripts/install-network-utilization.sh
 sudo ./scripts/verify-network-utilization.sh
 ```
 
-Refresh the Zabbix frontend and confirm that Network Utilization reports version 1.3.0 in Administration → General → Modules. Existing dashboards and Links remain in place.
+Refresh the Zabbix frontend and confirm that Network Utilization reports version 1.4.0 in Administration → General → Modules. Existing dashboards, Links, service capacities, and runtime configuration remain in place. Existing Links initially have no pinned graph until an authorized operator uses **Add to graphs**.
 
 Configuration is preserved at `/var/lib/zabbix/network-utilization/link-definitions.json` across upgrades and rollback. Existing `capacity_override_bps` values are interpreted as symmetric service bandwidth on load. Use Edit links to choose Auto — interface speed or Service / circuit bandwidth. A 1 Gbps Ethernet port carrying a 50 Mbps circuit needs the 50 Mbps service override; physical speed is not the service-utilization denominator. Asymmetric IN/OUT values are supported. Links with unresolved automatic speed show a configuration warning until service capacity is set or the warning is explicitly accepted.
 

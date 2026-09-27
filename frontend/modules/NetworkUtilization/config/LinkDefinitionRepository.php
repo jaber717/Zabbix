@@ -92,6 +92,8 @@ final class LinkDefinitionRepository {
 				'interface' => ['if_name' => $if_name, 'if_alias' => trim((string) ($link['interface']['if_alias'] ?? '')),
 					'if_descr' => trim((string) ($link['interface']['if_descr'] ?? ''))],
 				'role' => $role, 'order' => (int) ($link['order'] ?? $index * 10), 'visible' => (bool) ($link['visible'] ?? true),
+				'show_graph' => (bool) ($link['show_graph'] ?? false),
+				'graph_order' => (int) ($link['graph_order'] ?? $index * 10),
 				'required' => (bool) ($link['required'] ?? true)];
 			$source = $link['capacity_source'] ?? (isset($link['capacity_override_bps']) ? 'service_override' : 'interface_speed');
 			if (!in_array($source, ['interface_speed', 'service_override'], true)) throw new RuntimeException("Link {$id} capacity source is invalid");

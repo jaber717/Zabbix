@@ -1,6 +1,7 @@
 <?php declare(strict_types = 1);
 /* Render the real widget.view.php with synthetic Zabbix-shaped data for browser QA. */
-if (($argc ?? 0) !== 2) { fwrite(STDERR, "usage: php ui_fixture.php OUTPUT.html\n"); exit(2); }
+if (($argc ?? 0) < 2 || ($argc ?? 0) > 3) { fwrite(STDERR, "usage: php ui_fixture.php OUTPUT.html [readonly]\n"); exit(2); }
+$can_edit = ($argv[2] ?? '') !== 'readonly';
 $module = dirname(__DIR__, 2).'/frontend/modules/NetworkUtilization';
 class CTag {
 	private array $items = []; private array $attrs = [];
@@ -34,6 +35,7 @@ foreach ($specs as [$id,$name,$site,$host,$iface,$current,$p95,$remaining,$error
 	$links[] = ['id'=>$id,'display_name'=>$name,'site'=>$site,'site_id'=>$site_id,'site_order'=>$site_id==='cent'?0:10,
 		'host'=>$host,'host_name'=>$host,'hostid'=>(string) (100+count($links)),'interface'=>['if_name'=>$iface,'if_alias'=>$alias,'if_descr'=>''],
 		'current_alias'=>$alias,'role'=>$role,'order'=>count($links)*10,'visible'=>true,'required'=>true,'mapping_issue'=>null,
+		'show_graph'=>in_array($id,['a','b','c'],true),'graph_order'=>count($links)*10,
 		'capacity_source'=>$missing?'interface_speed':'service_override','port_speed_bps'=>$missing?null:1_000_000_000,
 		'capacity_in_bps'=>$missing?null:100_000_000,'capacity_out_bps'=>$missing?null:100_000_000,
 		'current_in_bps'=>$missing?12_000_000:($current/100*100_000_000),'current_out_bps'=>$missing?8_000_000:($current*.6/100*100_000_000),
@@ -46,7 +48,8 @@ foreach ($specs as [$id,$name,$site,$host,$iface,$current,$p95,$remaining,$error
 		'attention_kind'=>$id==='d'?'CONFIG_OR_DATA':($id==='a'?'SUSTAINED_CRITICAL':($errors||$discards?'ERRORS_DISCARDS':null)),
 		'metrics'=>$metrics];
 	$config_links[] = ['id'=>$id,'display_name'=>$name,'site_id'=>$site_id,'host'=>$host,'interface'=>['if_name'=>$iface,'if_alias'=>$alias,'if_descr'=>''],
-		'role'=>$role,'order'=>count($config_links)*10,'visible'=>true,'required'=>true,'capacity_source'=>$missing?'interface_speed':'service_override',
+		'role'=>$role,'order'=>count($config_links)*10,'visible'=>true,'show_graph'=>in_array($id,['a','b','c'],true),'graph_order'=>count($config_links)*10,
+		'required'=>true,'capacity_source'=>$missing?'interface_speed':'service_override',
 		'symmetric_service_bandwidth'=>true,'service_capacity_in_bps'=>$missing?null:100_000_000,'service_capacity_out_bps'=>$missing?null:100_000_000,
 		'capacity_warning_accepted'=>$missing];
 }
@@ -58,13 +61,15 @@ foreach ([['a','SUSTAINED_CRITICAL',20,'OUT 95% sustained'],['b','CURRENT_CRITIC
 }
 $sites = [['id'=>'cent','name'=>'CENT-NETWORK','order'=>0],['id'=>'dr','name'=>'DR-SITE','order'=>10]];
 $site_rows=[]; foreach ($sites as $site) { $subset=array_values(array_filter($links,static fn($l)=>$l['site_id']===$site['id'])); $site_rows[]=$site+['links'=>$subset,'attention'=>count(array_filter($subset,static fn($l)=>$l['attention_kind']!==null))]; }
+$pinned_links=array_values(array_filter($links,static fn($link)=>$link['show_graph']));
 $data = ['error'=>null,'snapshot'=>['generated_at'=>$now,'summary'=>['HOT_NOW'=>2,'SUSTAINED'=>1,'ERRORS_DISCARDS'=>3,'CAPACITY_RISK'=>2,'UNKNOWN_STALE'=>1,'MONITORED_LINKS'=>5],
-	'needs_attention'=>$attention,'links'=>$links,'sites'=>$site_rows],
+	'needs_attention'=>$attention,'links'=>$links,'pinned_links'=>$pinned_links,'sites'=>$site_rows],
 	'configuration'=>['schema'=>'network-utilization-config-v1','revision'=>1,'settings'=>['warning_util_pct'=>80,'critical_util_pct'=>90,'capacity_risk_p95_pct'=>80,'sustained_window_min'=>5],
 		'sites'=>$sites,'links'=>$config_links],
 	'candidates'=>[['host'=>'EDGE-R1','host_name'=>'EDGE-R1','if_name'=>'Te0/0/0','if_alias'=>'Circuit','capacity_bps'=>1_000_000_000,'oper_status'=>'UP','metric_types'=>['in','out']]],
-	'instrumentation'=>['api_call_count'=>4,'collector_time_ms'=>72,'analytics_time_ms'=>.6,'total_widget_time_ms'=>75],
-	'user'=>['can_edit'=>true,'csrf_token'=>'fixture-only'],'warnings'=>[]];
+	'instrumentation'=>['api_call_count'=>4,'pinned_graph_count'=>3,'history_rows'=>471,'trend_rows'=>24,'graph_history_collection_time_ms'=>18,
+		'collector_time_ms'=>72,'analytics_time_ms'=>.6,'total_widget_time_ms'=>75],
+	'user'=>['can_edit'=>$can_edit,'csrf_token'=>$can_edit?'fixture-only':null],'warnings'=>[]];
 ob_start(); include $module.'/views/widget.view.php'; $markup=ob_get_clean();
 $bootstrap = <<<'JS'
 class CWidget { constructor(){this._contents=document.getElementById('mount');} setContents(html){this._contents.innerHTML=html;} isEditMode(){return false;} _pauseUpdating(){} _resumeUpdating(){} _startUpdating(){} }

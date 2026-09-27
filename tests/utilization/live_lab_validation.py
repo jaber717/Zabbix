@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Authenticated LAB-only validation for Network Utilization v1.2."""
+"""Authenticated LAB-only validation for Network Utilization v1.4."""
 from __future__ import annotations
 
 import argparse, base64, html, json, re, ssl, time
@@ -43,8 +43,8 @@ def decoded(page,name): return json.loads(base64.b64decode(attribute(page,name))
 def percentile(values):
     if len(values)<20:return None
     values=sorted(values); rank=(len(values)-1)*.95; low=int(rank); high=min(low+1,len(values)-1); return values[low]+(values[high]-values[low])*(rank-low)
-def document(revision, capacity=None):
-    link={'id':'lab-zabbix-ens18','display_name':'LAB Zabbix ens18','site_id':'lab','host':'ZABBIX-01','interface':{'if_name':'ens18','if_alias':'','if_descr':''},'role':'SERVER','order':0,'visible':True,'required':True}
+def document(revision, capacity=None, show_graph=False):
+    link={'id':'lab-zabbix-ens18','display_name':'LAB Zabbix ens18','site_id':'lab','host':'ZABBIX-01','interface':{'if_name':'ens18','if_alias':'','if_descr':''},'role':'SERVER','order':0,'visible':True,'show_graph':show_graph,'graph_order':0,'required':True}
     if capacity is not None: link.update({'capacity_source':'service_override','symmetric_service_bandwidth':True,'service_capacity_in_bps':capacity})
     return {'schema':'network-utilization-config-v1','revision':revision,'settings':{'warning_util_pct':80,'critical_util_pct':90,'capacity_risk_p95_pct':80,'sustained_window_min':5},'sites':[{'id':'lab','name':'LAB','order':0}],'links':[link]}
 def save(web, token, config):
@@ -83,14 +83,16 @@ def main():
         phase1=save(web,token,document(configuration['revision']))
         page,elapsed=render(web); snap=decoded(page,'snapshot'); token=attribute(page,'csrf-token'); link=snap['links'][0]
         if link['capacity_in_bps'] is not None or link['capacity_out_bps'] is not None or link['worst_util_pct'] is not None: raise RuntimeError('unknown capacity produced a fabricated utilization')
-        if 'Not configured' not in page or 'Capacity required' not in page: raise RuntimeError('missing-capacity presentation is ambiguous')
+        if page.count('Capacity required') != 2: raise RuntimeError('missing-capacity presentation should appear once in the Link row and once in its hidden graph template')
         print(f"UNKNOWN_CAPACITY=PASS CURRENT_IN_BPS={link['current_in_bps']} CURRENT_OUT_BPS={link['current_out_bps']} UTILIZATION=UNKNOWN")
-        phase2=save(web,token,document(phase1['revision'],50_000_000))
+        phase2=save(web,token,document(phase1['revision'],50_000_000,True))
         if phase2['links'][0]['service_capacity_out_bps']!=50_000_000: raise RuntimeError('symmetric save did not normalize OUT capacity')
         web.get('dashboard.view')
         page,elapsed=render(web); snap=decoded(page,'snapshot'); persisted=decoded(page,'configuration')['links'][0]; instrumentation=decoded(page,'instrumentation'); token=attribute(page,'csrf-token'); link=snap['links'][0]
         if persisted['capacity_source']!='service_override' or persisted['service_capacity_in_bps']!=50_000_000 or persisted['service_capacity_out_bps']!=50_000_000 or persisted['capacity_warning_accepted']: raise RuntimeError('symmetric service capacity did not survive dashboard reload')
+        if not persisted['show_graph'] or persisted['graph_order']!=0 or len(snap['pinned_links'])!=1: raise RuntimeError('pinned graph selection/order did not survive dashboard reload')
         print('SAVE_RELOAD_SYMMETRIC_SERVICE=PASS')
+        print('PINNED_GRAPH_PERSISTENCE=PASS COUNT=1 ORDER=lab-zabbix-ens18')
         for direction in ('in','out'):
             bps=link[f'current_{direction}_bps']; pct=link[f'{direction}_util_pct']
             if bps is not None and abs(pct-(bps/50_000_000*100))>1e-9: raise RuntimeError(f'{direction} utilization mismatch')
@@ -104,7 +106,7 @@ def main():
             native_trends={(int(row['clock']),float(row['value_avg'])*metric['factor']) for row in trends}
             if not all(any(clock==int(row['clock']) and abs(value-float(row['value']))<max(1e-6,abs(value)*1e-9) for clock,value in native_trends) for row in metric['trends_7d']): raise RuntimeError(f'{direction} chart trends differ from native Zabbix averages')
         if link['capacity_source']!='service_override' or link['capacity_in_bps']!=50_000_000 or link['capacity_out_bps']!=50_000_000: raise RuntimeError('service capacity was not preserved')
-        if '50 Mbps' not in page or 'Service override' not in page or not re.search(r'\d+(?:\.\d+)?\s(?:bps|Kbps|Mbps|Gbps)',page): raise RuntimeError('rendered traffic or service capacity lacks explicit unit/source')
+        if '50 Mbps' not in page or 'Service' not in page or not re.search(r'\d+(?:\.\d+)?\s(?:bps|Kbps|Mbps|Gbps)',page): raise RuntimeError('rendered traffic or service capacity lacks explicit unit/source')
         print(f"SERVICE_ANALYTICS=PASS CAPACITY_IN={link['capacity_in_bps']:.0f} CAPACITY_OUT={link['capacity_out_bps']:.0f} PORT_SPEED={link['port_speed_bps']} IN_PCT={link['in_util_pct']} OUT_PCT={link['out_util_pct']} P95_IN={link['p95_in_pct']} P95_OUT={link['p95_out_pct']}")
         print(f"SOURCES_IN={link['metrics']['in']['key']} OUT={link['metrics']['out']['key']} CAPACITY_SOURCE={link['capacity_source']}")
         print(f"QUALITY_SOURCES={','.join(sorted(key for key in link['metrics'] if 'errors' in key or 'discards' in key))}")
@@ -115,7 +117,7 @@ def main():
             args.chart_evidence_path.write_text(json.dumps({'generated_at':snap['generated_at'],'link':link},separators=(',',':')))
             print(f"CHART_EVIDENCE={args.chart_evidence_path}")
         print('INSTRUMENTATION='+json.dumps(instrumentation,sort_keys=True,separators=(',',':')))
-        print(f"UI_CONTRACTS={'PASS' if all(value in page for value in ['Needs attention','Top utilized links','Edit links','P95 24H','nu-panel','nu-sites']) else 'FAIL'}")
+        print(f"UI_CONTRACTS={'PASS' if all(value in page for value in ['Traffic graphs','Add to graphs','Edit links','P95 24H','nu-panel','nu-graph-card']) else 'FAIL'}")
         bad=document(phase2['revision'],0); status,response=web.action('networkutilization.config.update',{'_csrf_token':token,'expected_revision':phase2['revision'],'payload':json.dumps(bad)})
         invalid_block=body(response); invalid_result=json.loads(invalid_block) if invalid_block else response
         if 'error' not in invalid_result: raise RuntimeError('invalid zero service capacity was accepted')

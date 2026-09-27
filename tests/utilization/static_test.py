@@ -33,7 +33,10 @@ assert "'remaining_in_bps'" in resolver and "'remaining_out_bps'" in resolver
 view = (module / "views/widget.view.php").read_text()
 widget_js = (module / "assets/js/class.widget.js").read_text()
 chart_js = (module / "assets/js/traffic-chart.js").read_text()
-assert "Monitored capacity" in view and "Not configured" in view and "Capacity required" in view
+assert "Service capacity" in view and "Capacity required" in view and "Add to graphs" in view
+assert "show_graph" in view and "graph_order" in (module / "config/LinkDefinitionRepository.php").read_text()
+assert "#pinnedCharts" in widget_js and "#setGlobalRange" in widget_js and "#persistConfiguration" in widget_js
+assert "localStorage" not in widget_js and "highest" not in widget_js.lower()
 assert "Physical port speed" in widget_js and "Service / circuit bandwidth" in widget_js
 assert "${model.unit.name}" in chart_js and "this.unit(maximum)" in chart_js
 assert not re.search(r"(?i)(password|token|secret)\s*[:=]\s*['\"][^'\"]+", all_text)

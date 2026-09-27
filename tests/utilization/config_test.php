@@ -11,6 +11,7 @@ $base=['schema'=>LinkDefinitionRepository::SCHEMA,'revision'=>1,'settings'=>['wa
 file_put_contents($path,json_encode($base,JSON_PRETTY_PRINT)); $repo=new LinkDefinitionRepository($path); $loaded=$repo->loadDocument();
 if($loaded['links'][0]['interface']['if_name']!=='Gi0/0'||array_key_exists('ifindex',$loaded['links'][0]['interface']))throw new RuntimeException('stable identity contract failed');
 if($loaded['links'][0]['capacity_source']!=='interface_speed')throw new RuntimeException('legacy auto-capacity migration failed');
+if($loaded['links'][0]['show_graph']!==false)throw new RuntimeException('legacy Link was automatically added to graphs');
 $legacy=$base;$legacy['links'][0]['capacity_override_bps']=50000000;
 $migrated=LinkDefinitionRepository::validateDocument($legacy)['links'][0];
 if($migrated['capacity_source']!=='service_override'||$migrated['service_capacity_in_bps']!==50000000||$migrated['service_capacity_out_bps']!==50000000)throw new RuntimeException('legacy override migration failed');
@@ -24,6 +25,8 @@ $loaded['links'][0]['display_name']='Internet'; $saved=$repo->save($loaded,1); i
 $service=$saved;$service['links'][0]['capacity_source']='service_override';$service['links'][0]['symmetric_service_bandwidth']=true;$service['links'][0]['service_capacity_in_bps']=50000000;
 $persisted=$repo->save($service,2);$reloaded=$repo->loadDocument()['links'][0];
 if($persisted['revision']!==3||$reloaded['capacity_source']!=='service_override'||$reloaded['service_capacity_in_bps']!==50000000||$reloaded['service_capacity_out_bps']!==50000000)throw new RuntimeException('service capacity did not persist after reload');
+$graph=$persisted;$graph['links'][0]['show_graph']=true;$graph['links'][0]['graph_order']=30;$graphSaved=$repo->save($graph,3);$graphReloaded=$repo->loadDocument()['links'][0];
+if($graphSaved['revision']!==4||!$graphReloaded['show_graph']||$graphReloaded['graph_order']!==30)throw new RuntimeException('graph selection/order did not persist after reload');
 try{$bad=$saved;$bad['links'][0]['capacity_source']='service_override';$bad['links'][0]['service_capacity_in_bps']=0;$bad['links'][0]['service_capacity_out_bps']=50000000;LinkDefinitionRepository::validateDocument($bad);throw new RuntimeException('invalid config accepted');}catch(RuntimeException $e){if($e->getMessage()==='invalid config accepted')throw $e;}
 try{$bad=$asymmetric;unset($bad['links'][0]['service_capacity_out_bps']);LinkDefinitionRepository::validateDocument($bad);throw new RuntimeException('missing asymmetric OUT accepted');}catch(RuntimeException $e){if($e->getMessage()==='missing asymmetric OUT accepted')throw $e;}
 try{$repo->save($saved,1);throw new RuntimeException('revision conflict accepted');}catch(RuntimeException $e){if($e->getMessage()==='revision conflict accepted')throw $e;}

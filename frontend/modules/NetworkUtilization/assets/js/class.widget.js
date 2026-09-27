@@ -3,8 +3,8 @@ class CWidgetNetworkUtilization extends CWidget {
 	#search = '';
 	#site = '';
 	#role = '';
-	#sort = 'current';
-	#sortDirection = 'desc';
+	#sort = 'configured';
+	#sortDirection = 'asc';
 	#detailsLinkId = '';
 	#editing = false;
 	#workingConfig = null;
@@ -14,7 +14,8 @@ class CWidgetNetworkUtilization extends CWidget {
 	#snapshot = null;
 	#configuration = null;
 	#candidates = [];
-	#chart = null;
+	#detailChart = null;
+	#pinnedCharts = new Map();
 	#chartRange = 1;
 	#capacityValidators = [];
 
@@ -24,7 +25,7 @@ class CWidgetNetworkUtilization extends CWidget {
 
 	setContents(response) {
 		if (this.#editing) return;
-		this.#chart?.close(); this.#chart = null;
+		this.#closeCharts();
 		const scrollTop = this._contents.scrollTop;
 		super.setContents(response);
 		const root = this._contents.querySelector('.netops-utilization');
@@ -38,6 +39,7 @@ class CWidgetNetworkUtilization extends CWidget {
 		this.#populateFilters(root);
 		this.#bind(root);
 		this.#applyContext(root);
+		this.#renderPinnedGraphs(root);
 		this._contents.scrollTop = scrollTop;
 		this.#updateViewFreshness();
 	}
@@ -72,10 +74,17 @@ class CWidgetNetworkUtilization extends CWidget {
 			else { this.#sort = button.dataset.sort; this.#sortDirection = 'desc'; }
 			this.#sortRows(root);
 		});
-		for (const element of root.querySelectorAll('[data-link-id]')) element.addEventListener('click', event => {
-			if (element.dataset.linkId !== '') { event.stopPropagation(); this.#openDetails(root, element.dataset.linkId); }
+		for (const button of root.querySelectorAll('[data-global-hours]')) button.addEventListener('click', () => this.#setGlobalRange(root, Number(button.dataset.globalHours)));
+		for (const element of root.querySelectorAll('[data-details-link-id]')) element.addEventListener('click', event => {
+			event.stopPropagation(); this.#openDetails(root, element.dataset.detailsLinkId);
 		});
-		for (const site of root.querySelectorAll('.nu-site')) site.querySelector('.nu-site__header')?.addEventListener('click', () => site.classList.toggle('is-collapsed'));
+		for (const button of root.querySelectorAll('[data-graph-toggle]')) button.addEventListener('click', event => {
+			event.stopPropagation(); this.#changeGraph(root, button.dataset.linkId, button.dataset.graphToggle);
+		});
+		for (const button of root.querySelectorAll('[data-graph-remove]')) button.addEventListener('click', () => this.#changeGraph(root, button.dataset.graphRemove, 'remove'));
+		for (const button of root.querySelectorAll('[data-graph-move]')) button.addEventListener('click', () => {
+			const card = button.closest('[data-graph-link-id]'); this.#changeGraph(root, card.dataset.graphLinkId, button.dataset.graphMove);
+		});
 		root.querySelector('.nu-panel-backdrop')?.addEventListener('click', () => { if (!this.#editing) this.#closePanels(root); });
 		root.querySelector('.nu-edit-start')?.addEventListener('click', () => this.#beginEdit(root));
 		if (this.isEditMode()) root.querySelector('.nu-edit-start')?.setAttribute('disabled', 'disabled');
@@ -87,6 +96,7 @@ class CWidgetNetworkUtilization extends CWidget {
 		root.querySelector('.nu-site-filter').value = this.#site;
 		root.querySelector('.nu-role-filter').value = this.#role;
 		this.#applyFilters(root); this.#sortRows(root);
+		this.#setGlobalRange(root, this.#chartRange);
 		if (this.#detailsLinkId !== '') this.#openDetails(root, this.#detailsLinkId);
 	}
 
@@ -109,14 +119,6 @@ class CWidgetNetworkUtilization extends CWidget {
 			}
 			row.classList.toggle('is-filtered-out', !(searchMatch && siteMatch && roleMatch && stateMatch));
 		}
-		for (const element of root.querySelectorAll('.nu-site-link')) {
-			const link = this.#findLink(element.dataset.linkId); if (!link) continue;
-			const search = `${link.display_name} ${link.host} ${link.interface.if_name} ${link.site}`.toLowerCase();
-			const matches = (!this.#search || search.includes(this.#search)) && (!this.#site || link.site_id === this.#site)
-				&& (!this.#role || link.role === this.#role);
-			element.classList.toggle('is-filtered-out', !matches);
-		}
-		for (const site of root.querySelectorAll('.nu-site')) site.classList.toggle('is-filtered-out', ![...site.querySelectorAll('.nu-site-link')].some(link => !link.classList.contains('is-filtered-out')));
 	}
 
 	#sortRows(root) {
@@ -144,7 +146,7 @@ class CWidgetNetworkUtilization extends CWidget {
 	#openDetails(root, linkId) {
 		const link = this.#findLink(linkId); if (!link) return;
 		this.#detailsLinkId = linkId;
-		this.#chart?.close(); this.#chart = null;
+		this.#detailChart?.close(); this.#detailChart = null;
 		const panel = root.querySelector('.nu-panel'); panel.replaceChildren();
 		panel.append(this.#button('×', 'nu-panel-close', () => this.#closePanels(root)));
 		const heading = this.#element('div', '', 'nu-panel-heading');
@@ -194,13 +196,86 @@ class CWidgetNetworkUtilization extends CWidget {
 
 	#trendPanel(link) {
 		const panel = this.#element('div', '', 'nu-trend-panel'); const controls = this.#element('div', '', 'nu-trend-controls');
-		this.#chart = new NetworkUtilizationTrafficChart(link, this.#snapshot.generated_at);
-		this.#chart.setRange(this.#chartRange);
+		this.#detailChart = new NetworkUtilizationTrafficChart(link, this.#snapshot.generated_at);
+		this.#detailChart.setRange(this.#chartRange);
 		for (const [hours, label] of [[1, '1h'], [6, '6h'], [24, '24h'], [168, '7d']]) {
-			const button = this.#button(label, 'btn-alt', () => { this.#chartRange = hours; this.#chart.setRange(hours); for (const item of controls.children) item.classList.toggle('is-active', item === button); });
+			const button = this.#button(label, 'btn-alt', () => this.#setGlobalRange(this._contents.querySelector('.netops-utilization'), hours));
 			button.dataset.hours = String(hours); if (hours === this.#chartRange) button.classList.add('is-active'); controls.append(button);
 		}
-		panel.append(controls, this.#chart.root); return panel;
+		panel.append(controls, this.#detailChart.root); return panel;
+	}
+
+	#setGlobalRange(root, hours) {
+		this.#chartRange = hours;
+		for (const button of root.querySelectorAll('[data-global-hours]')) button.classList.toggle('is-active', Number(button.dataset.globalHours) === hours);
+		for (const button of root.querySelectorAll('.nu-trend-controls [data-hours]')) button.classList.toggle('is-active', Number(button.dataset.hours) === hours);
+		for (const chart of this.#pinnedCharts.values()) chart.setRange(hours);
+		this.#detailChart?.setRange(hours);
+	}
+
+	#renderPinnedGraphs(root) {
+		for (const chart of this.#pinnedCharts.values()) chart.close();
+		this.#pinnedCharts.clear();
+		const definitions = [...this.#configuration.links].filter(link => link.show_graph)
+			.sort((a, b) => (a.graph_order - b.graph_order) || (a.order - b.order) || a.id.localeCompare(b.id));
+		const list = root.querySelector('.nu-graph-list');
+		for (const definition of definitions) {
+			const card = list.querySelector(`[data-graph-link-id="${CSS.escape(definition.id)}"]`);
+			const link = this.#findLink(definition.id); if (!card || !link) continue;
+			card.classList.remove('is-hidden'); list.append(card);
+			const chart = new NetworkUtilizationTrafficChart(link, this.#snapshot.generated_at);
+			chart.setRange(this.#chartRange); card.querySelector('.nu-pinned-chart').replaceChildren(chart.root);
+			this.#pinnedCharts.set(definition.id, chart);
+		}
+		for (const card of list.querySelectorAll('[data-graph-link-id]')) {
+			if (!this.#pinnedCharts.has(card.dataset.graphLinkId)) card.classList.add('is-hidden');
+		}
+		root.querySelector('.nu-graph-empty').classList.toggle('is-hidden', definitions.length !== 0);
+		root.querySelector('.nu-graph-count').textContent = `${definitions.length} Link${definitions.length === 1 ? '' : 's'}`;
+		for (const button of root.querySelectorAll('[data-graph-toggle]')) {
+			const selected = definitions.some(link => link.id === button.dataset.linkId);
+			button.dataset.graphToggle = selected ? 'remove' : 'add'; button.textContent = selected ? 'In graphs ✓ · Remove' : '+ Add to graphs';
+		}
+	}
+
+	async #changeGraph(root, linkId, operation) {
+		if (root.dataset.canEdit !== '1' || root.classList.contains('is-saving-graphs')) return;
+		const document = structuredClone(this.#configuration); const target = document.links.find(link => link.id === linkId); if (!target) return;
+		const pinned = document.links.filter(link => link.show_graph).sort((a, b) => (a.graph_order - b.graph_order) || a.id.localeCompare(b.id));
+		if (operation === 'add') {
+			target.show_graph = true; target.graph_order = pinned.length === 0 ? 0 : Math.max(...pinned.map(link => link.graph_order)) + 10;
+		}
+		else if (operation === 'remove') target.show_graph = false;
+		else {
+			const index = pinned.findIndex(link => link.id === linkId); const swap = operation === 'up' ? index - 1 : index + 1;
+			if (index < 0 || swap < 0 || swap >= pinned.length) return;
+			[pinned[index], pinned[swap]] = [pinned[swap], pinned[index]];
+			pinned.forEach((link, order) => link.graph_order = order * 10);
+		}
+		root.classList.add('is-saving-graphs');
+		try {
+			this.#configuration = await this.#persistConfiguration(root, document);
+			this.#renderPinnedGraphs(root); this._startUpdating({delay_sec: 0});
+		}
+		catch (error) { this.#showGraphError(root, error.message || 'Graph selection could not be saved.'); }
+		finally { root.classList.remove('is-saving-graphs'); }
+	}
+
+	async #persistConfiguration(root, document) {
+		const curl = new Curl('zabbix.php'); curl.setArgument('action', 'networkutilization.config.update');
+		const response = await fetch(curl.getUrl(), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+			payload: JSON.stringify(document), expected_revision: document.revision, [CSRF_TOKEN_NAME]: root.dataset.csrfToken})});
+		const result = await response.json(); if (result.error) throw new Error(result.error.messages.join(' ')); return result.configuration;
+	}
+
+	#showGraphError(root, message) {
+		root.querySelector('.nu-graph-error')?.remove();
+		const error = this.#element('div', message, 'nu-graph-error'); root.querySelector('.nu-graphs .nu-section-heading').after(error);
+	}
+
+	#closeCharts() {
+		this.#detailChart?.close(); this.#detailChart = null;
+		for (const chart of this.#pinnedCharts.values()) chart.close(); this.#pinnedCharts.clear();
 	}
 
 	#beginEdit(root) {
@@ -242,6 +317,7 @@ class CWidgetNetworkUtilization extends CWidget {
 		const warning = this.#input(link.warning_util_pct ?? '', 'Use global default', 'number'); warning.min = '1'; warning.max = '100'; warning.addEventListener('input', () => { link.warning_util_pct = warning.value === '' ? null : Number(warning.value); this.#dirty(root); });
 		const critical = this.#input(link.critical_util_pct ?? '', 'Use global default', 'number'); critical.min = '1'; critical.max = '100'; critical.addEventListener('input', () => { link.critical_util_pct = critical.value === '' ? null : Number(critical.value); this.#dirty(root); });
 		const visible = document.createElement('input'); visible.type = 'checkbox'; visible.checked = Boolean(link.visible); visible.addEventListener('change', () => { link.visible = visible.checked; this.#dirty(root); });
+		const showGraph = document.createElement('input'); showGraph.type = 'checkbox'; showGraph.checked = Boolean(link.show_graph); showGraph.addEventListener('change', () => { link.show_graph = showGraph.checked; this.#dirty(root); });
 		const group = (title, controls) => { const section = this.#element('section', '', 'nu-editor-group'); section.append(this.#element('h5', title)); const body = this.#element('div', '', 'nu-editor-group__fields'); body.append(...controls); section.append(body); return section; };
 		fields.append(group('IDENTITY', [this.#label('Display name', name),
 			this.#label('Site', this.#select(this.#workingConfig.sites.map(site => [site.id, site.name]), link.site_id, value => { link.site_id = value; this.#dirty(root); })),
@@ -250,7 +326,7 @@ class CWidgetNetworkUtilization extends CWidget {
 			group('CAPACITY', [capacity.element]),
 			group('THRESHOLDS', [this.#label('Custom warning % (default '+this.#workingConfig.settings.warning_util_pct+'%)', warning),
 				this.#label('Custom critical % (default '+this.#workingConfig.settings.critical_util_pct+'%)', critical)]),
-			group('VISIBILITY', [this.#label('Visible on dashboard', visible)]));
+			group('DASHBOARD', [this.#label('Visible in Link list', visible), this.#label('Show persistent traffic graph', showGraph)]));
 		box.append(fields);
 		const actions = this.#element('div', '', 'nu-editor-actions'); actions.append(this.#button('↑', 'btn-icon', () => this.#move(this.#workingConfig.links, index, -1, root)), this.#button('↓', 'btn-icon', () => this.#move(this.#workingConfig.links, index, 1, root)), this.#button('Delete link', 'btn-link', () => { this.#workingConfig.links.splice(index, 1); this.#dirty(root, true); })); box.append(actions); return box;
 	}
@@ -282,7 +358,8 @@ class CWidgetNetworkUtilization extends CWidget {
 			if (this.#workingConfig.links.some(link => link.host === selected.host && link.interface.if_name === selected.if_name)) return this.#error(panel, 'That Host/interface is already configured.');
 			try { capacity.validate(); } catch (error) { return this.#error(panel, error.message); }
 			this.#workingConfig.links.push({id: `link-${this.#slug(selected.host)}-${this.#slug(selected.if_name)}-${Date.now()}`, display_name: display.value.trim(), site_id: siteId, host: selected.host,
-				interface: {if_name: selected.if_name, if_alias: selected.if_alias || '', if_descr: ''}, role, order: this.#workingConfig.links.length * 10, visible: true, required: true,
+				interface: {if_name: selected.if_name, if_alias: selected.if_alias || '', if_descr: ''}, role, order: this.#workingConfig.links.length * 10, visible: true,
+				show_graph: false, graph_order: this.#workingConfig.links.length * 10, required: true,
 				...draft}); this.#dirty(root, true);
 		})); rebuildInterfaces(); panel.insertBefore(box, panel.querySelector('h4:nth-of-type(2)'));
 	}
@@ -338,14 +415,12 @@ class CWidgetNetworkUtilization extends CWidget {
 		const panel = root.querySelector('.nu-editor'); for (const item of panel.querySelectorAll('.nu-editor-error')) item.remove();
 		try {
 			for (const validate of this.#capacityValidators) validate();
-			const curl = new Curl('zabbix.php'); curl.setArgument('action', 'networkutilization.config.update');
-			const response = await fetch(curl.getUrl(), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({payload: JSON.stringify(this.#workingConfig), expected_revision: this.#workingConfig.revision, [CSRF_TOKEN_NAME]: root.dataset.csrfToken})});
-			const result = await response.json(); if (result.error) throw new Error(result.error.messages.join(' ')); this.#configuration = result.configuration; this.#discardEdit(root);
+			this.#configuration = await this.#persistConfiguration(root, this.#workingConfig); this.#discardEdit(root);
 		}
 		catch (error) { this.#error(panel, error.message || 'Configuration save failed.'); }
 	}
 
-	#closePanels(root) { this.#chart?.close(); this.#chart = null; this.#detailsLinkId = ''; root.querySelector('.nu-panel')?.classList.add('is-hidden'); root.querySelector('.nu-editor')?.classList.add('is-hidden'); root.querySelector('.nu-panel-backdrop')?.classList.add('is-hidden'); }
+	#closePanels(root) { this.#detailChart?.close(); this.#detailChart = null; this.#detailsLinkId = ''; root.querySelector('.nu-panel')?.classList.add('is-hidden'); root.querySelector('.nu-editor')?.classList.add('is-hidden'); root.querySelector('.nu-panel-backdrop')?.classList.add('is-hidden'); }
 	#updateViewFreshness() { const root = this._contents?.querySelector('.netops-utilization'); if (!root || this.#lastSuccessfulUpdate === 0 || this.#editing) return; const age = Date.now() - this.#lastSuccessfulUpdate; const stale = age > Math.max(30000, Number(root.dataset.refreshSeconds ?? 60) * 2000); root.classList.toggle('is-view-stale', stale); root.querySelector('.nu-stale')?.classList.toggle('is-hidden', !stale); if (stale) root.querySelector('.nu-stale__age').textContent = this.#formatAge(Math.floor(age / 1000)); }
 	#formatAge(seconds) { return seconds >= 3600 ? `${Math.floor(seconds / 3600)}h ${Math.floor(seconds % 3600 / 60)}m ago` : seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s ago` : `${seconds}s ago`; }
 	#formatDuration(seconds) { return seconds >= 3600 ? `${Math.floor(seconds / 3600)}h ${Math.floor(seconds % 3600 / 60)}m` : `${Math.floor(seconds / 60)}m`; }

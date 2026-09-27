@@ -69,5 +69,11 @@ $group=$resolver->resolve($three,[['id'=>'dc','name'=>'DC','order'=>0]],$setting
 $assert(count($group['grouped_stale']['RTR-01'])===3&&count(array_filter($group['needs_attention'],fn($a)=>$a['kind']==='MONITORING_STALE'))===1,'grouped stale device');
 $ordered=$resolver->resolve([$link(['id'=>'b','order'=>20]),$link(['id'=>'a','order'=>10,'interface'=>['if_name'=>'Gi0/1']])],[['id'=>'dc','name'=>'DC','order'=>0]],$settings,$now);
 $assert(array_column($ordered['links'],'id')===['a','b'],'configured order');
+$assert($ordered['pinned_links']===[],'no Link is selected automatically');
+$pinned=$resolver->resolve([$link(['id'=>'a','show_graph'=>true,'graph_order'=>20]),
+	$link(['id'=>'b','show_graph'=>true,'graph_order'=>10,'interface'=>['if_name'=>'Gi0/1']]),
+	$link(['id'=>'c','show_graph'=>false,'graph_order'=>0,'interface'=>['if_name'=>'Gi0/2']])],
+	[['id'=>'dc','name'=>'DC','order'=>0]],$settings,$now);
+$assert(array_column($pinned['pinned_links'],'id')===['b','a'],'pinned graph selection and order remain explicit');
 
 echo "PASS: {$pass} utilization analytics assertions\n";

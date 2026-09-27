@@ -12,6 +12,8 @@
     "role": "ISP",
     "order": 10,
     "visible": true,
+    "show_graph": false,
+    "graph_order": 10,
     "required": true,
     "capacity_source": "service_override",
     "service_capacity_in_bps": 2000000000,

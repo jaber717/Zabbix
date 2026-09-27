@@ -35,7 +35,10 @@ final class LinkUtilizationResolver {
 			$site_links = array_values(array_filter($resolved, static fn($link) => $link['site_id'] === $site['id']));
 			$site_rows[] = $site + ['links' => $site_links, 'attention' => count(array_filter($site_links, static fn($l) => $l['attention_kind'] !== null))];
 		}
+		$pinned = array_values(array_filter($resolved, static fn(array $link): bool => (bool) ($link['show_graph'] ?? false)));
+		usort($pinned, static fn(array $a, array $b): int => [$a['graph_order'], $a['order'], $a['id']] <=> [$b['graph_order'], $b['order'], $b['id']]);
 		return ['generated_at' => $now, 'summary' => $summary, 'needs_attention' => $attention, 'links' => $resolved,
+			'pinned_links' => $pinned,
 			'sites' => $site_rows, 'grouped_stale' => $grouped_stale];
 	}
 
