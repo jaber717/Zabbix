@@ -2,8 +2,10 @@
 
 This directory is a Zabbix 7.0 frontend widget module. It is an incremental,
 implementation of platform-neutral Site, Node and Member availability. Release
-`1.2.1` keeps the tested collector/resolver authoritative while refining the
-NOC presentation and persistent Site/Node editor. Availability color and
+`1.3.0` keeps the tested collector/resolver authoritative while rebuilding the
+main NOC view around cohesive incident cards, compact multi-column healthy-Node
+grids, separate full-width problem rows, and collapsed healthy-Site chips.
+Availability color and
 monitoring visibility are separate. Needs Attention uses native Zabbix problem
 acknowledgement, never browser-local acknowledgement state. KPI filters apply
 to incidents and Site/Node presentation. An unset Tier is visibly “No tier”

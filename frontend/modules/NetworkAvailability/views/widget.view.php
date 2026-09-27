@@ -74,7 +74,6 @@ $content = (new CDiv([$stale_banner]))->addClass('na-content');
 $header = (new CDiv())->addClass('na-header');
 $header->addItem((new CSpan('Updated just now'))->addClass('na-updated'));
 $total_nodes = array_sum(array_intersect_key($snapshot['summary'], array_flip(['UP', 'DOWN', 'DEGRADED', 'UNKNOWN'])));
-$header->addItem((new CSpan($snapshot['summary']['UP'].'/'.$total_nodes.' up'))->addClass('na-up-note'));
 if ($data['user']['can_edit']) {
 	$header->addItem((new CTag('button', true, 'Edit sites'))->setAttribute('type', 'button')
 		->addClass('btn-alt')->addClass('na-edit-start'));
@@ -108,6 +107,8 @@ foreach ([
 	}
 	$summary->addItem($tile);
 }
+$summary->addItem((new CSpan($snapshot['summary']['UP'].'/'.$total_nodes.' UP'))
+	->addClass('na-up-note')->setAttribute('aria-label', $snapshot['summary']['UP'].' of '.$total_nodes.' Nodes up'));
 $content->addItem($summary);
 
 $attention = (new CDiv())->addClass('na-attention');
@@ -127,7 +128,8 @@ if ($snapshot['needs_attention'] === []) {
 else {
 	foreach ($snapshot['needs_attention'] as $index => $incident) {
 		$problem_count = count($incident['problems'] ?? []);
-		$meta = $incident['site'] ?? 'Unassigned';
+		$meta = ($incident['site'] ?? 'Unassigned').' · '
+			.ucwords(str_replace('_', ' ', (string) ($incident['kind'] ?? 'Node')));
 		$badges = (new CDiv())->addClass('na-attention__badges');
 		$badges->addItem((new CSpan($tier($incident['criticality'] ?? null)))
 			->addClass(($incident['criticality'] ?? null) === null ? 'na-badge is-no-tier' : 'na-badge is-tier'));
@@ -135,15 +137,21 @@ else {
 		if (($incident['visibility'] ?? 'FULL') !== 'FULL') $badges->addItem((new CSpan(ucfirst(strtolower($incident['visibility'])).' visibility'))->addClass('na-badge is-visibility'));
 		if ($incident['flapping'] ?? false) $badges->addItem((new CSpan('Flapping'))->addClass('na-badge is-flapping'));
 		$main = (new CDiv([
-			(new CDiv([(new CSpan($incident['name']))->addClass('na-attention__name')->setTitle($incident['name']), $badges]))->addClass('na-attention__name-line'),
+			(new CDiv([
+				(new CSpan(''))->addClass('na-state-dot')
+					->addClass('is-'.strtolower((string) ($incident['actual_state'] ?? 'UNKNOWN')))
+					->setAttribute('aria-label', (string) ($incident['actual_state'] ?? 'UNKNOWN')),
+				(new CSpan($incident['name']))->addClass('na-attention__name')->setTitle($incident['name']),
+				$badges
+			]))->addClass('na-attention__name-line'),
 			(new CSpan($meta))->addClass('na-attention__meta')->setTitle($meta)
 		]))->addClass('na-attention__main');
-		$summary = (new CDiv([
-			(new CSpan('P'.$incident['priority'].' · '.$incident['state'].' · '.$duration($incident['event_since'] ?? null)))
-				->addClass('na-attention__state'),
+		$incident_summary = (new CDiv([
+			(new CSpan('P'.$incident['priority'].' · '.$incident['state']))->addClass('na-attention__state'),
+			(new CSpan($duration($incident['event_since'] ?? null)))->addClass('na-attention__duration'),
 			$member_dots($incident)
 		]))->addClass('na-attention__summary');
-		$open = (new CTag('button', true, [$main, $summary]))->setAttribute('type', 'button')
+		$open = (new CTag('button', true, [$main, $incident_summary]))->setAttribute('type', 'button')
 			->setAttribute('data-node-id', (string) $incident['id'])->addClass('na-attention__open');
 		$row = (new CDiv([$open]))->addClass('na-attention__row')
 			->addClass('is-'.strtolower($incident['state']))
@@ -170,9 +178,15 @@ else {
 $content->addItem($attention);
 $content->addItem($toolbar);
 
-$render_node = static function(array $node) use ($member_dots, $duration, $tier): CDiv {
-	$is_healthy = $node['actual_state'] === 'UP' && $node['visibility'] === 'FULL'
-		&& !$node['maintenance'] && !$node['suppressed'];
+$display_healthy = static fn(array $node): bool => $node['actual_state'] === 'UP'
+	&& $node['visibility'] === 'FULL' && !$node['maintenance'] && !$node['suppressed'];
+$incident_priority = [];
+foreach ($snapshot['needs_attention'] as $incident) {
+	$incident_priority[$incident['id']] = $incident['priority'];
+}
+$render_node = static function(array $node) use ($member_dots, $duration, $tier, $display_healthy,
+		$incident_priority): CDiv {
+	$is_healthy = $display_healthy($node);
 	$card = (new CDiv())->addClass('na-node')->addClass('is-' . strtolower($node['actual_state']))
 		->addClass($is_healthy ? 'is-healthy' : 'is-problem')
 		->addClass($node['hidden'] ? 'is-config-hidden' : '')
@@ -196,7 +210,8 @@ $render_node = static function(array $node) use ($member_dots, $duration, $tier)
 		}
 	}
 	else {
-		$heading_items[] = (new CSpan($node['actual_state']))->addClass('na-node__state');
+		$heading_items[] = (new CSpan($tier($node['criticality'])))->addClass('na-badge')
+			->addClass($node['criticality'] === null ? 'is-no-tier' : 'is-tier');
 	}
 	$heading = (new CDiv($heading_items))->addClass('na-node__heading');
 	$card->addItem($heading);
@@ -204,11 +219,19 @@ $render_node = static function(array $node) use ($member_dots, $duration, $tier)
 		return $card;
 	}
 	$badges = (new CDiv())->addClass('na-node__badges');
-	$badges->addItem((new CSpan($tier($node['criticality'])))->addClass('na-badge')
-		->addClass($node['criticality'] === null ? 'is-no-tier' : 'is-tier'));
 	if ($node['visibility'] !== 'FULL') $badges->addItem((new CSpan(ucfirst(strtolower($node['visibility'])).' visibility'))->addClass('na-badge is-visibility'));
 	if ($node['maintenance']) $badges->addItem((new CSpan('Maintenance'))->addClass('na-badge is-maintenance'));
 	if ($node['flapping']) $badges->addItem((new CSpan('Flapping'))->addClass('na-badge is-flapping'));
+	$priority = $incident_priority[$node['id']] ?? null;
+	$incident = (new CDiv([
+		(new CSpan($node['actual_state'].($priority !== null ? ' · P'.$priority : '')))->addClass('na-node__state'),
+		(new CSpan($duration($node['event_since'] ?? null)))->addClass('na-node__duration')
+	]))->addClass('na-node__incident');
+	if (count($node['problems']) > 0) {
+		$incident->addItem((new CSpan($node['acknowledged'] ? 'Acknowledged' : 'Unacknowledged'))
+			->addClass('na-node__ack'));
+	}
+	$card->addItem($incident);
 	$card->addItem((new CDiv([$badges, $member_status]))->addClass('na-node__status-line'));
 	$problem_member = null;
 	foreach ($node['members'] as $member) {
@@ -217,7 +240,7 @@ $render_node = static function(array $node) use ($member_dots, $duration, $tier)
 			break;
 		}
 	}
-	if ($problem_member !== null) {
+	if ($problem_member !== null && count($node['members']) > 1) {
 		$card->addItem((new CDiv(sprintf('%s member: %s · %s%s',
 			$problem_member['fresh'] ? $problem_member['raw_availability_state'] : 'STALE',
 			$problem_member['name'], $duration($node['event_since']),
@@ -230,6 +253,7 @@ $render_node = static function(array $node) use ($member_dots, $duration, $tier)
 $affected_sites = (new CDiv())->addClass('na-sites')->addClass('na-affected-sites');
 $affected_sites->addItem((new CDiv([new CTag('h4', true, 'Affected sites')]))->addClass('na-section-title'));
 $healthy_sites = [];
+$healthy_site_boxes = [];
 $unassigned = null;
 foreach ($snapshot['sites'] as $site) {
 	if ($site['id'] === '__unassigned__') {
@@ -243,7 +267,6 @@ foreach ($snapshot['sites'] as $site) {
 	$affected_nodes = count(array_filter($site['nodes'], static fn(array $node): bool =>
 		$node['actual_state'] !== 'UP' || $node['visibility'] !== 'FULL'
 	));
-	$site_summary = $plural($affected_nodes, 'problem').' · '.$plural((int) $site['total'], 'node');
 	$site_box = (new CDiv())->addClass('na-site')->addClass($healthy ? 'is-healthy' : 'is-affected')
 		->addClass($healthy ? 'is-collapsed' : 'is-open')
 		->setAttribute('data-site-id', $site['id'])
@@ -251,27 +274,45 @@ foreach ($snapshot['sites'] as $site) {
 		->setAttribute('data-default-open', $healthy ? '0' : '1');
 	$site_box->addItem((new CTag('button', true, [
 		(new CSpan($healthy ? '▶' : '▼'))->addClass('na-site__chevron'),
-		(new CSpan($site['name']))->addClass('na-site__name')->setTitle($site['name']),
-		(new CSpan($site_summary))->addClass('na-site__issues'),
-		(new CSpan($site['healthy'] . '/' . $site['total'] . ' healthy'))->addClass('na-site__count'),
+		(new CDiv([
+			(new CSpan($site['name']))->addClass('na-site__name')->setTitle($site['name']),
+			(new CDiv([
+				(new CSpan($site['healthy'] . '/' . $site['total'] . ' healthy'))->addClass('na-site__count'),
+				(new CSpan($plural($affected_nodes, 'problem')))->addClass('na-site__issues')
+			]))->addClass('na-site__summary')
+		]))->addClass('na-site__identity'),
 		(new CSpan(''))->addClass('na-site__recovered')
 	]))->addClass('na-site__header')->setAttribute('type', 'button'));
-	$nodes = (new CDiv())->addClass('na-site__nodes');
+	$body = (new CDiv())->addClass('na-site__body');
+	$healthy_nodes = (new CDiv())->addClass('na-site__healthy-grid');
+	$problem_nodes = (new CDiv())->addClass('na-site__problem-list');
 	foreach ($site['nodes'] as $node) {
-		$nodes->addItem($render_node($node));
+		($display_healthy($node) ? $healthy_nodes : $problem_nodes)->addItem($render_node($node));
 	}
-	$site_box->addItem($nodes);
-	$affected_sites->addItem($site_box);
+	$body->addItem($healthy_nodes);
+	$body->addItem($problem_nodes);
+	$site_box->addItem($body);
+	if ($healthy) {
+		$healthy_site_boxes[] = $site_box;
+	}
+	else {
+		$affected_sites->addItem($site_box);
+	}
 }
 $content->addItem($affected_sites);
 
 if ($healthy_sites !== []) {
 	$healthy = (new CDiv())->addClass('na-healthy-sites');
 	$healthy->addItem((new CSpan('Healthy sites · ' . $plural(count($healthy_sites), 'site')))->addClass('na-section-title'));
+	$healthy_chips = (new CDiv())->addClass('na-healthy-sites__chips');
 	foreach ($healthy_sites as $site) {
-		$healthy->addItem((new CTag('button', true, '● ' . $site['name'] . ' · ' . $plural((int) $site['total'], 'node')))
+		$healthy_chips->addItem((new CTag('button', true, '● ' . $site['name'] . ' · ' . $plural((int) $site['total'], 'node')))
 			->setAttribute('type', 'button')->setAttribute('data-site-open', $site['id'])
 			->addClass('na-healthy-chip'));
+	}
+	$healthy->addItem($healthy_chips);
+	foreach ($healthy_site_boxes as $site_box) {
+		$healthy->addItem($site_box);
 	}
 	$content->addItem($healthy);
 }

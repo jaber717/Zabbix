@@ -22,16 +22,24 @@ async function layout(){return evaluate(`(()=>{const rect=e=>{const r=e.getBound
   const rows=[...document.querySelectorAll('.na-attention__row:not(.is-hidden):not(.is-filtered-out)')];
   const root=rect(document.querySelector('.netops-availability')),content=rect(document.querySelector('.na-content')),
     down=document.querySelector('.na-attention__row.is-down'),neutral=document.querySelector('.na-attention__row.is-visibility_lost'),open=rect(down.querySelector('.na-attention__open')),
-    state=rect(down.querySelector('.na-attention__state')),downStyle=getComputedStyle(down),neutralStyle=getComputedStyle(neutral);
+    state=rect(down.querySelector('.na-attention__state')),downStyle=getComputedStyle(down),neutralStyle=getComputedStyle(neutral),
+    cent=document.querySelector('.na-site[data-site-id="cent"]'),grid=rect(cent.querySelector('.na-site__healthy-grid')),
+    problem=rect(cent.querySelector('.na-site__problem-list .na-node.is-problem')),body=rect(cent.querySelector('.na-site__body')),
+    healthyRects=[...cent.querySelectorAll('.na-site__healthy-grid .na-node.is-healthy')].map(rect),
+    firstY=Math.min(...healthyRects.map(r=>r.y)),search=rect(document.querySelector('.na-search'));
   return {overflow:document.documentElement.scrollWidth>innerWidth+1,
     collision:rows.some(r=>{const name=rect(r.querySelector('.na-attention__name')),
       badges=rect(r.querySelector('.na-attention__badges')),summary=rect(r.querySelector('.na-attention__summary'));
       return overlap(name,badges)||overlap(name,summary)||overlap(badges,summary);}),contentWidth:content.width,
     contentCentered:Math.abs((content.x-root.x)-(root.width-content.width)/2)<2,
     kpiMax:Math.max(...[...document.querySelectorAll('.na-summary__tile')].map(x=>rect(x).width)),
-    attentionOpenWidth:open.width,attentionStateOffset:state.right-rect(down).x,
+    attentionOpenWidth:open.width,attentionRowWidth:rect(down).width,attentionStateOffset:state.right-rect(down).x,
     downBorder:parseFloat(downStyle.borderLeftWidth),downTint:downStyle.backgroundColor!==neutralStyle.backgroundColor,
     healthyHeights:[...document.querySelectorAll('.na-node.is-healthy')].map(x=>rect(x).height),
+    centHealthyCount:healthyRects.length,centColumns:healthyRects.filter(r=>Math.abs(r.y-firstY)<2).length,
+    problemBelowGrid:problem.y>=grid.bottom-1,problemFullWidth:Math.abs(problem.width-grid.width)<2,
+    siteHeaderGrouped:[...cent.querySelectorAll('.na-site__name,.na-site__count,.na-site__issues')].every(x=>x.closest('.na-site__header')===cent.querySelector('.na-site__header')),
+    searchWidth:search.width,bodyWidth:body.width,
     panel:document.querySelector('.na-details-panel').classList.contains('is-hidden')?null:
       (()=>{const p=document.querySelector('.na-details-panel');return {width:p.scrollWidth<=p.clientWidth+1,right:rect(p).right<=innerWidth+1};})()};})()`);}
 
@@ -54,7 +62,7 @@ async function layout(){return evaluate(`(()=>{const rect=e=>{const r=e.getBound
     return n.dataset.state==='UP'&&n.dataset.visibility==='PARTIAL'&&!!n.querySelector('.na-badge.is-visibility')&&
       getComputedStyle(n.querySelector('.na-state-dot')).backgroundColor===expected;})()`),true);
   check('maintenance and flapping overlays',await evaluate(`!!document.querySelector('.na-node[data-node-id="maint"] .na-badge.is-maintenance')&&!!document.querySelector('.na-node[data-node-id="degraded"] .na-badge.is-flapping')`),true);
-  check('healthy single-member row removes redundant signals',await evaluate(`(()=>{const n=document.querySelector('.na-node[data-node-id="healthy-sibling"]');return !n.textContent.includes('UP')&&n.querySelectorAll('.na-state-dot').length===1&&!n.querySelector('.na-member-glyphs');})()`),true);
+  check('healthy single-member row removes redundant signals',await evaluate(`(()=>{const n=document.querySelector('.na-node[data-node-id="cent-rtr-1"]');return !n.textContent.includes('UP')&&n.querySelectorAll('.na-state-dot').length===1&&!n.querySelector('.na-member-glyphs');})()`),true);
   check('7-member summary',await evaluate(`document.querySelector('.na-node[data-node-id="many"] .na-member-glyphs').textContent.includes('7/7 available')`),true);
   check('native acknowledgement action',await evaluate(`(()=>{const b=document.querySelector('.na-attention__row [data-ack-node-id="down"]');b.click();return window.__nativeAck?.action==='acknowledge.edit'&&window.__nativeAck.params.eventids[0]==='7001'&&b.textContent==='Unacknowledged';})()`),true);
   check('affected site starts open',await evaluate(`document.querySelector('.na-site[data-site-id="cent"]').classList.contains('is-open')`),true);
@@ -79,7 +87,7 @@ async function layout(){return evaluate(`(()=>{const rect=e=>{const r=e.getBound
   await evaluate(`(()=>{const input=document.querySelector('.na-search');input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
   await click('.na-attention__open[data-node-id="down"]');
   check('Details paired rows',await evaluate(`[...document.querySelectorAll('.na-detail-row')].every(r=>r.querySelectorAll('span').length===1&&r.querySelectorAll('strong').length===1)`),true);
-  check('Details long name',await evaluate(`document.querySelector('.na-details-panel h3').textContent.includes('exceptionally long circuit')`),true);
+  check('Details selected Node',await evaluate(`document.querySelector('.na-details-panel h3').textContent.includes('Fortigate-DMZ-CENT')`),true);
   await click('.na-details-panel .na-panel-close');check('Details close',await evaluate(`document.querySelector('.na-details-panel').classList.contains('is-hidden')`),true);
   await click('.na-attention__open[data-node-id="unknown"]');check('Details missing/freshness value pairing',await evaluate(`[...document.querySelectorAll('.na-detail-row')].every(r=>r.querySelectorAll('span').length===1&&r.querySelectorAll('strong').length===1)`),true);
   await click('.na-details-panel .na-panel-close');
@@ -89,8 +97,13 @@ async function layout(){return evaluate(`(()=>{const rect=e=>{const r=e.getBound
       await command('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:false});await evaluate('scrollTo(0,0)');await pause(150);
       const d=await layout();check(`${theme} ${width} no overflow`,d.overflow,false);check(`${theme} ${width} no attention collision`,d.collision,false);
       check(`${theme} ${width} content centered`,d.contentCentered,true);check(`${theme} ${width} content max width`,d.contentWidth<=1481,true);
-      if(width>=1440){check(`${theme} ${width} KPI controlled width`,d.kpiMax<=175,true);check(`${theme} ${width} cohesive attention width`,d.attentionOpenWidth<=1041,true);check(`${theme} ${width} attention state adjacency`,d.attentionStateOffset<=1060,true);}
+      if(width>=1440){check(`${theme} ${width} KPI controlled width`,d.kpiMax<=165,true);check(`${theme} ${width} cohesive attention width`,d.attentionRowWidth<=1081,true);check(`${theme} ${width} attention state adjacency`,d.attentionStateOffset<=1000,true);check(`${theme} ${width} search controlled width`,d.searchWidth<=481,true);}
       if(width>=1200){check(`${theme} ${width} healthy rows <=34px`,d.healthyHeights.length>0&&d.healthyHeights.every(h=>h<=34),true);}
+      check(`${theme} ${width} fixture has eight healthy Site Nodes`,d.centHealthyCount,8);
+      check(`${theme} ${width} healthy Site grid columns`,d.centColumns,width>=1440?3:(width>=900?2:1));
+      check(`${theme} ${width} affected Node below healthy grid`,d.problemBelowGrid,true);
+      check(`${theme} ${width} affected Node full grid width`,d.problemFullWidth,true);
+      check(`${theme} ${width} Site header grouped`,d.siteHeaderGrouped,true);
       check(`${theme} ${width} DOWN severity border`,d.downBorder>=4,true);check(`${theme} ${width} DOWN tint differs`,d.downTint,true);
       await click('.na-attention__open[data-node-id="down"]');const p=await layout();check(`${theme} ${width} details contained`,p.panel,{width:true,right:true});
       if(width===2200||width===420)await screenshot(`network-availability-details-${theme}-${width}`);
