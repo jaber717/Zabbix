@@ -4,6 +4,7 @@ class CWidgetNetworkUtilization extends CWidget {
 	#site = '';
 	#role = '';
 	#sort = 'current';
+	#sortDirection = 'desc';
 	#detailsLinkId = '';
 	#editing = false;
 	#workingConfig = null;
@@ -66,7 +67,11 @@ class CWidgetNetworkUtilization extends CWidget {
 			for (const row of rows) row.classList.toggle('is-hidden', !show);
 			event.currentTarget.textContent = show ? 'Show less' : `+${rows.length} more`;
 		});
-		for (const button of root.querySelectorAll('[data-sort]')) button.addEventListener('click', () => { this.#sort = button.dataset.sort; this.#sortRows(root); });
+		for (const button of root.querySelectorAll('[data-sort]')) button.addEventListener('click', () => {
+			if (this.#sort === button.dataset.sort) this.#sortDirection = this.#sortDirection === 'desc' ? 'asc' : 'desc';
+			else { this.#sort = button.dataset.sort; this.#sortDirection = 'desc'; }
+			this.#sortRows(root);
+		});
 		for (const element of root.querySelectorAll('[data-link-id]')) element.addEventListener('click', event => {
 			if (element.dataset.linkId !== '') { event.stopPropagation(); this.#openDetails(root, element.dataset.linkId); }
 		});
@@ -115,17 +120,20 @@ class CWidgetNetworkUtilization extends CWidget {
 	}
 
 	#sortRows(root) {
-		for (const button of root.querySelectorAll('[data-sort]')) button.classList.toggle('is-active', button.dataset.sort === this.#sort);
+		for (const button of root.querySelectorAll('[data-sort]')) {
+			const active = button.dataset.sort === this.#sort;
+			button.classList.toggle('is-active', active);
+			button.setAttribute('aria-pressed', active ? 'true' : 'false');
+			button.querySelector('.nu-sort-direction').textContent = active ? (this.#sortDirection === 'desc' ? '↓' : '↑') : '';
+		}
 		const body = root.querySelector('.nu-table tbody'); if (!body) return;
-		const ascending = this.#sort === 'headroom';
 		const rows = [...body.children];
 		rows.sort((a, b) => {
-			const av = Number(a.dataset[this.#sort] ?? -1); const bv = Number(b.dataset[this.#sort] ?? -1);
-			if (ascending && (av >= Number.MAX_SAFE_INTEGER || bv >= Number.MAX_SAFE_INTEGER)) {
-				if (av >= Number.MAX_SAFE_INTEGER && bv < Number.MAX_SAFE_INTEGER) return 1;
-				if (bv >= Number.MAX_SAFE_INTEGER && av < Number.MAX_SAFE_INTEGER) return -1;
-			}
-			if (av !== bv) return ascending ? av - bv : bv - av;
+			const av = Number(a.dataset[this.#sort]); const bv = Number(b.dataset[this.#sort]);
+			const aMissing = !Number.isFinite(av) || a.dataset[this.#sort] === '';
+			const bMissing = !Number.isFinite(bv) || b.dataset[this.#sort] === '';
+			if (aMissing !== bMissing) return aMissing ? 1 : -1;
+			if (!aMissing && av !== bv) return this.#sortDirection === 'desc' ? bv - av : av - bv;
 			return a.dataset.linkId.localeCompare(b.dataset.linkId);
 		});
 		for (const row of rows) body.append(row);
@@ -144,8 +152,14 @@ class CWidgetNetworkUtilization extends CWidget {
 			this.#element('span', `${link.interface.if_name} · ${link.role.replaceAll('_', ' ')}`, 'nu-panel-subtitle'));
 		panel.append(heading);
 		const section = (title, fields) => {
-			const box = this.#element('section', '', 'nu-detail-section'); box.append(this.#element('h4', title));
-			for (const [label, value] of fields) { const row = this.#element('div', '', 'nu-detail-row'); row.append(this.#element('span', label), this.#element('strong', value)); box.append(row); }
+			const box = this.#element('section', '', 'nu-detail-section');
+			if (title === 'CURRENT TRAFFIC' || title === 'REMAINING CAPACITY') box.classList.add('is-emphasized');
+			box.append(this.#element('h4', title));
+			for (const [label, value] of fields) {
+				const row = this.#element('div', '', 'nu-detail-row');
+				const valueElement = this.#element('strong', value); valueElement.title = value;
+				row.append(this.#element('span', label), valueElement); box.append(row);
+			}
 			panel.append(box);
 		};
 		section('IDENTITY', [['Site', link.site], ['Device', link.host_name], ['Interface', link.interface.if_name],
@@ -163,7 +177,7 @@ class CWidgetNetworkUtilization extends CWidget {
 		section('CURRENT TRAFFIC', [['IN', this.#metric(link.current_in_bps, link.in_util_pct)],
 			['OUT', this.#metric(link.current_out_bps, link.out_util_pct)]]);
 		section('REMAINING CAPACITY', [['IN', this.#remaining(link.remaining_in_bps, link.capacity_in_bps)], ['OUT', this.#remaining(link.remaining_out_bps, link.capacity_out_bps)]]);
-		section('HISTORICAL · 24H', [['P95 IN', this.#metric(link.p95_in_bps, link.p95_in_pct)],
+		section('24H STATISTICS', [['P95 IN', this.#metric(link.p95_in_bps, link.p95_in_pct)],
 			['P95 OUT', this.#metric(link.p95_out_bps, link.p95_out_pct)], ['Peak', this.#formatBps(link.peak_bps)],
 			['Sustained high', link.sustained ? this.#formatDuration(link.sustained_seconds) : 'No']]);
 		section('QUALITY', [['Errors', String(link.errors_total)], ['Discards', String(link.discards_total)]]);
@@ -198,11 +212,14 @@ class CWidgetNetworkUtilization extends CWidget {
 	#renderEditor(root) {
 		const panel = root.querySelector('.nu-editor'); panel.replaceChildren();
 		this.#capacityValidators = [];
-		panel.append(this.#element('h3', `Edit links · ${this.#unsavedChanges} unsaved changes`));
-		const actions = this.#element('div', '', 'nu-editor-actions'); actions.append(
-			this.#button('Add site', 'btn-alt', () => this.#addSite(root)), this.#button('Add link', 'btn-alt', () => this.#addLink(root)),
-			this.#button('Discard', 'btn-alt', () => this.#discardEdit(root)), this.#button('Save', 'btn', () => this.#saveWorking(root)));
-		panel.append(actions, this.#element('h4', 'Sites'));
+		const heading = this.#element('div', '', 'nu-editor-heading');
+		heading.append(this.#element('h3', `Editing Links · ${this.#unsavedChanges} unsaved changes`));
+		const actions = this.#element('div', '', 'nu-editor-actions');
+		actions.append(this.#button('Discard', 'btn-alt', () => this.#discardEdit(root)), this.#button('Save', 'btn', () => this.#saveWorking(root)));
+		heading.append(actions); panel.append(heading);
+		const creation = this.#element('div', '', 'nu-editor-create');
+		creation.append(this.#button('Add site', 'btn-alt', () => this.#addSite(root)), this.#button('Add link', 'btn-alt', () => this.#addLink(root)));
+		panel.append(creation, this.#element('h4', 'Sites'));
 		this.#workingConfig.sites.forEach((site, index) => {
 			const row = this.#element('div', '', 'nu-editor-row'); const name = this.#input(site.name, 'Site name');
 			name.addEventListener('input', () => { site.name = name.value; this.#dirty(root); });
@@ -225,9 +242,15 @@ class CWidgetNetworkUtilization extends CWidget {
 		const warning = this.#input(link.warning_util_pct ?? '', 'Use global default', 'number'); warning.min = '1'; warning.max = '100'; warning.addEventListener('input', () => { link.warning_util_pct = warning.value === '' ? null : Number(warning.value); this.#dirty(root); });
 		const critical = this.#input(link.critical_util_pct ?? '', 'Use global default', 'number'); critical.min = '1'; critical.max = '100'; critical.addEventListener('input', () => { link.critical_util_pct = critical.value === '' ? null : Number(critical.value); this.#dirty(root); });
 		const visible = document.createElement('input'); visible.type = 'checkbox'; visible.checked = Boolean(link.visible); visible.addEventListener('change', () => { link.visible = visible.checked; this.#dirty(root); });
-		fields.append(this.#label('Display name', name), this.#label('Site', this.#select(this.#workingConfig.sites.map(site => [site.id, site.name]), link.site_id, value => { link.site_id = value; this.#dirty(root); })),
-			this.#label('Role', this.#select(this.#roles().map(role => [role, role.replaceAll('_', ' ')]), link.role, value => { link.role = value; this.#dirty(root); })),
-			capacity.element, this.#label('Warning % override', warning), this.#label('Critical % override', critical), this.#label('Visible', visible));
+		const group = (title, controls) => { const section = this.#element('section', '', 'nu-editor-group'); section.append(this.#element('h5', title)); const body = this.#element('div', '', 'nu-editor-group__fields'); body.append(...controls); section.append(body); return section; };
+		fields.append(group('IDENTITY', [this.#label('Display name', name),
+			this.#label('Site', this.#select(this.#workingConfig.sites.map(site => [site.id, site.name]), link.site_id, value => { link.site_id = value; this.#dirty(root); })),
+			this.#label('Role', this.#select(this.#roles().map(role => [role, role.replaceAll('_', ' ')]), link.role, value => { link.role = value; this.#dirty(root); }))]),
+			group('INTERFACE', [this.#element('div', `${link.host} · ${link.interface.if_name} · ${link.interface.if_alias || 'No alias'}`, 'nu-editor-reference')]),
+			group('CAPACITY', [capacity.element]),
+			group('THRESHOLDS', [this.#label('Custom warning % (default '+this.#workingConfig.settings.warning_util_pct+'%)', warning),
+				this.#label('Custom critical % (default '+this.#workingConfig.settings.critical_util_pct+'%)', critical)]),
+			group('VISIBILITY', [this.#label('Visible on dashboard', visible)]));
 		box.append(fields);
 		const actions = this.#element('div', '', 'nu-editor-actions'); actions.append(this.#button('↑', 'btn-icon', () => this.#move(this.#workingConfig.links, index, -1, root)), this.#button('↓', 'btn-icon', () => this.#move(this.#workingConfig.links, index, 1, root)), this.#button('Delete link', 'btn-link', () => { this.#workingConfig.links.splice(index, 1); this.#dirty(root, true); })); box.append(actions); return box;
 	}
@@ -308,7 +331,7 @@ class CWidgetNetworkUtilization extends CWidget {
 	}
 
 	#move(items, index, delta, root) { const target = index + delta; if (target < 0 || target >= items.length) return; [items[index], items[target]] = [items[target], items[index]]; this.#dirty(root, true); }
-	#dirty(root, rerender = false) { this.#unsavedChanges++; this.#workingConfig.sites.forEach((site, index) => site.order = index * 10); this.#workingConfig.links.forEach((link, index) => link.order = index * 10); if (rerender) this.#renderEditor(root); else root.querySelector('.nu-editor h3').textContent = `Edit links · ${this.#unsavedChanges} unsaved changes`; }
+	#dirty(root, rerender = false) { this.#unsavedChanges++; this.#workingConfig.sites.forEach((site, index) => site.order = index * 10); this.#workingConfig.links.forEach((link, index) => link.order = index * 10); if (rerender) this.#renderEditor(root); else root.querySelector('.nu-editor h3').textContent = `Editing Links · ${this.#unsavedChanges} unsaved changes`; }
 	#discardEdit(root) { this.#editing = false; this.#workingConfig = null; this.#unsavedChanges = 0; root.classList.remove('is-editing'); this.#closePanels(root); this._resumeUpdating(); this._startUpdating({delay_sec: 0}); }
 
 	async #saveWorking(root) {

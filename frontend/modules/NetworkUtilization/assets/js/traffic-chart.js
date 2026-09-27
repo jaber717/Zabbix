@@ -160,6 +160,12 @@ class NetworkUtilizationTrafficChart {
 				line.textContent = `${direction}  ${NetworkUtilizationTrafficChart.formatValue(point?.value ?? null, model.unit)}`
 					+ (point && point.clock !== clock ? ` · sample ${NetworkUtilizationTrafficChart.formatTime(point.clock, this.hours)}` : '');
 				tooltip.append(line);
+				const capacity = this.link[`capacity_${direction.toLowerCase()}_bps`];
+				if (point && Number(capacity) > 0) {
+					const utilization = document.createElement('div'); utilization.className = 'nu-chart__tooltip-util';
+					utilization.textContent = `${direction} utilization  ${(100 * point.value / capacity).toFixed(1)}%`;
+					tooltip.append(utilization);
+				}
 			}
 			tooltip.hidden = false;
 			tooltip.style.left = `${Math.max(82, Math.min(width - 82, x(clock)))}px`;

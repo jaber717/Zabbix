@@ -1,4 +1,4 @@
-# Network Utilization 1.2.1
+# Network Utilization 1.3.0
 
 A Zabbix 7.0 widget for operator-selected network Links. It reads existing Zabbix Items; it does not poll devices.
 
@@ -22,3 +22,7 @@ Runtime configuration is stored outside the module at:
 The installer preserves this file and its last-known-good copy. Production-specific Hosts, interfaces, Sites, aliases and capacities are never stored in source control.
 
 Use **Edit links → Add link** to choose a monitored Host and one of its interfaces. Do not enter item IDs or ifIndex values.
+
+## NOC interface
+
+The compact attention rows distinguish operational alerts from neutral configuration/data issues. The Top Links view supports Current, P95, Remaining, Errors and Discards sorting; clicking the active sort reverses direction. Long identity text truncates in the list and remains available in Details. The inspector pairs every label with its value and retains the traffic chart's real-time and throughput axes. The 1h/6h/24h/7d range buttons redraw the existing bounded history/trend datasets. Blue and Dark themes and narrow dashboard cells use the same module components; no new API calls are made for presentation.
