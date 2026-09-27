@@ -1,7 +1,7 @@
 # Network Availability production deployment
 
 This procedure installs the LAB-validated Network Availability widget from the
-immutable `availability-v1.1.0` tag. It does not modify Zabbix core files,
+immutable `network-availability-v1.2.0` tag. It does not modify Zabbix core files,
 restart services, or invent production Node topology.
 
 ## Install from GitHub
@@ -9,11 +9,8 @@ restart services, or invent production Node topology.
 Run on the production Zabbix frontend VM:
 
 ```bash
-git clone https://github.com/jaber717/Zabbix.git
+git clone --depth 1 --branch network-availability-v1.2.0 https://github.com/jaber717/Zabbix.git
 cd Zabbix
-git fetch --tags origin
-git checkout --detach availability-v1.1.0
-test "$(git rev-parse HEAD)" = "$(git rev-list -n 1 availability-v1.1.0)"
 sha256sum --check scripts/network-availability-release.sha256
 sudo ./scripts/install-network-availability.sh
 sudo ./scripts/verify-network-availability.sh
@@ -48,8 +45,8 @@ sudo ./scripts/verify-network-availability.sh
 
 ## Upgrade
 
-From a clean checkout of a future immutable tag, verify its tag and release
-checksums, then run the same install and verify commands. The installer backs
+From a clean checkout of an immutable tag, verify its release checksums, then run
+the same install and verify commands. The installer backs
 up module code and preserves the external runtime configuration.
 
 ## Rollback

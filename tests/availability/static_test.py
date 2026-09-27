@@ -19,7 +19,8 @@ def require(condition: bool, message: str) -> None:
 manifest = json.loads((MODULE / "manifest.json").read_text(encoding="utf-8"))
 require(manifest["manifest_version"] == 2.0, "Zabbix 7.0 manifest v2 is required")
 require(manifest["type"] == "widget", "module must be a widget")
-require(manifest["version"] == "1.1.0", "module release must be 1.1.0")
+require(manifest["version"] == (MODULE / "VERSION").read_text(encoding="utf-8").strip(),
+        "manifest and module release must match")
 require(manifest["widget"]["refresh_rate"] >= 10, "refresh must respect the configured floor")
 require(manifest["actions"]["networkavailability.config.update"].get("layout") == "layout.json",
         "configuration update action must return the native JSON layout")
@@ -63,8 +64,8 @@ require("resolver_time_ms" in action and "total_widget_time_ms" in action,
         "resolver and total request timing instrumentation is required")
 
 view = (MODULE / "views" / "widget.view.php").read_text(encoding="utf-8")
-require("Needs attention" in view and "Unassigned hosts" in view and "Tier not set" in view,
-        "v1.1 operational presentation is required")
+require("Needs attention" in view and "Unassigned hosts" in view and "No tier" in view,
+        "NOC operational presentation is required")
 require("Details" not in view or "na-details-panel" in view, "Details panel must be present")
 require("data-instrumentation" in view, "bounded collector performance must remain observable")
 
@@ -81,4 +82,4 @@ update = (MODULE / "actions" / "ConfigUpdate.php").read_text(encoding="utf-8")
 require("UI_ADMINISTRATION_GENERAL" in update, "server-side edit permission is required")
 require("disableCsrfValidation" not in update, "native module CSRF validation must remain enabled")
 
-print("PASS: Availability v1.1 static contracts")
+print("PASS: Availability static contracts")

@@ -1,113 +1,122 @@
-.netops-availability {
-	container-type: inline-size;
-	position: relative;
-	display: grid;
-	gap: 10px;
-	min-width: 0;
-	color: inherit;
-}
-.netops-availability *, .netops-availability *::before, .netops-availability *::after { box-sizing: border-box; }
-.netops-availability .is-hidden { display: none !important; }
-.netops-availability .na-toolbar { display: flex; gap: 8px; align-items: center; }
-.netops-availability .na-search { flex: 1 1 240px; min-width: 120px; max-width: 420px; }
-.netops-availability .na-edit-start { margin-left: auto; }
-.netops-availability .na-filter-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 8px; border-radius: 3px; background: color-mix(in srgb, #1976d2 12%, transparent); }
-.netops-availability .na-filter-clear { border: 0; padding: 0; color: #1976d2; background: transparent; cursor: pointer; }
-.netops-availability .na-summary { display: grid; grid-template-columns: repeat(7, minmax(76px, 1fr)); gap: 5px; }
-.netops-availability .na-summary__tile { min-width: 0; padding: 7px 8px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 3px; color: inherit; text-align: left; background: transparent; cursor: pointer; }
-.netops-availability .na-summary__tile.is-zero { opacity: .42; cursor: default; }
-.netops-availability .na-summary__tile[aria-pressed="true"] { outline: 2px solid #1976d2; outline-offset: -2px; }
-.netops-availability .na-summary__tile.is-down.is-active .na-summary__count { color: #d63638; }
-.netops-availability .na-summary__tile.is-degraded.is-active .na-summary__count { color: #e87500; }
-.netops-availability .na-summary__count { display: block; font-size: 20px; font-weight: 700; line-height: 1; }
-.netops-availability .na-summary__label { display: block; margin-top: 4px; overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; opacity: .72; }
-.netops-availability .na-section-title { font-size: 12px; font-weight: 700; }
-.netops-availability .na-attention { display: grid; gap: 4px; }
-.netops-availability .na-attention__row { display: grid; grid-template-columns: 34px 90px minmax(130px, 1.5fr) minmax(130px, 1fr) 70px 64px 110px; gap: 8px; align-items: center; width: 100%; min-width: 0; padding: 7px 9px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-left: 4px solid #6b7280; border-radius: 3px; color: inherit; text-align: left; background: transparent; cursor: pointer; }
-.netops-availability .na-attention__row.is-down { border-left-color: #d63638; }
-.netops-availability .na-attention__row.is-degraded { border-left-color: #e87500; }
-.netops-availability .na-attention__priority, .netops-availability .na-attention__state, .netops-availability .na-attention__name { min-width: 0; overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.netops-availability .na-attention__meta, .netops-availability .na-attention__duration, .netops-availability .na-attention__ack { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .76; }
-.netops-availability .na-attention__members { letter-spacing: 2px; }
-.netops-availability .na-attention-more { justify-self: start; border: 0; color: #1976d2; background: transparent; cursor: pointer; }
-.netops-availability .na-all-clear { padding: 7px 0; opacity: .76; }
-.netops-availability .na-sites { display: grid; gap: 6px; }
-.netops-availability .na-site { overflow: hidden; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-left: 4px solid #6b7280; border-radius: 3px; }
-.netops-availability .na-site.is-affected { border-left-color: #e87500; }
-.netops-availability .na-site:has(.na-node.is-down) { border-left-color: #d63638; }
-.netops-availability .na-site.is-healthy { display: none; }
-.netops-availability .na-site.is-healthy.is-expanded-from-chip, .netops-availability .na-site.is-recovered { display: block; }
-.netops-availability .na-site__header { display: grid; grid-template-columns: 18px minmax(130px, 1fr) minmax(120px, 1fr) 70px 70px; gap: 8px; align-items: center; width: 100%; padding: 8px 9px; border: 0; color: inherit; text-align: left; background: transparent; cursor: pointer; }
-.netops-availability .na-site__name { overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.netops-availability .na-site__recovered { color: #2d9d55; font-size: 10px; }
-.netops-availability .na-site.is-collapsed .na-site__nodes { display: none; }
-.netops-availability .na-site__nodes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 7px; padding: 7px; background: color-mix(in srgb, currentColor 3%, transparent); }
-.netops-availability .na-node { min-width: 0; padding: 9px; border-left: 3px solid #2d9d55; border-radius: 2px; background: color-mix(in srgb, currentColor 2.5%, transparent); cursor: pointer; }
-.netops-availability .na-node.is-down { border-left-color: #d63638; }
-.netops-availability .na-node.is-degraded { border-left-color: #e87500; }
-.netops-availability .na-node.is-unknown { border-left-color: #6b7280; }
-.netops-availability .na-node.is-config-hidden { display: none; }
-.netops-availability .na-node__heading { display: flex; gap: 8px; justify-content: space-between; min-width: 0; }
-.netops-availability .na-node__name { overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.netops-availability .na-node__state { font-weight: 700; }
-.netops-availability .na-node__status-line { display: flex; justify-content: space-between; margin-top: 6px; opacity: .76; }
-.netops-availability .na-members__dots { letter-spacing: 2px; }
-.netops-availability .na-node__problem-line, .netops-availability .na-node__tier { display: block; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .76; }
-.netops-availability .na-healthy-sites { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.netops-availability .na-healthy-chip { padding: 4px 7px; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 12px; color: inherit; background: transparent; cursor: pointer; }
-.netops-availability .na-healthy-chip::first-letter { color: #2d9d55; }
-.netops-availability .na-unassigned { border: 1px dashed color-mix(in srgb, currentColor 28%, transparent); border-radius: 3px; opacity: .88; }
-.netops-availability .na-unassigned__header { display: flex; gap: 7px; width: 100%; padding: 8px 10px; border: 0; color: inherit; text-align: left; background: transparent; cursor: pointer; }
-.netops-availability .na-unassigned__rows { display: grid; }
-.netops-availability .na-unassigned__row { display: grid; grid-template-columns: 20px minmax(120px, 1fr) 90px 100px auto; gap: 8px; align-items: center; padding: 7px 10px; border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent); cursor: pointer; }
-.netops-availability .na-unassigned__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.netops-availability .is-filtered-out { display: none !important; }
-.netops-availability .na-stale-view { padding: 9px 11px; border: 1px solid #6b7280; border-left-width: 4px; border-radius: 3px; background: color-mix(in srgb, #6b7280 12%, transparent); }
-.netops-availability .na-stale-view__title { display: block; font-weight: 700; }
-.netops-availability.is-view-stale > :not(.na-stale-view, .na-panel-backdrop, .na-details-panel, .na-editor-panel) { filter: grayscale(.85); opacity: .58; }
-.netops-availability .na-panel-backdrop { position: absolute; z-index: 20; inset: 0; background: rgba(0, 0, 0, .22); }
-.netops-availability .na-details-panel, .netops-availability .na-editor-panel { position: absolute; z-index: 21; top: 0; right: 0; width: min(480px, 94%); max-height: max(420px, 95%); padding: 14px; overflow: auto; border: 1px solid color-mix(in srgb, currentColor 24%, transparent); border-radius: 4px; color: #1f2c33; background: #fff; box-shadow: 0 5px 24px rgba(0, 0, 0, .24); }
-.netops-availability.is-dark-theme .na-details-panel, .netops-availability.is-dark-theme .na-editor-panel { color: #f2f2f2; background: #2b2f33; }
-.netops-availability .na-editor-panel { width: min(620px, 98%); }
-.netops-availability .na-panel-close { float: right; border: 0; color: inherit; font-size: 22px; background: transparent; cursor: pointer; }
-.netops-availability .na-details-panel h3, .netops-availability .na-editor-panel h3 { margin: 0 28px 12px 0; font-size: 16px; font-weight: 700; }
-.netops-availability .na-details-panel h4, .netops-availability .na-editor-panel h4 { margin: 14px 0 7px; font-weight: 700; }
-.netops-availability .na-detail-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
-.netops-availability .na-member-detail { display: grid; grid-template-columns: minmax(110px, 1fr) 70px 100px 90px; gap: 6px; padding: 5px 0; border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
-.netops-availability .na-detail-links, .netops-availability .na-editor-actions, .netops-availability .na-node-editor__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.netops-availability.is-editing { padding: 6px; border: 2px dashed #1976d2; }
-.netops-availability.is-editing > :not(.na-panel-backdrop, .na-editor-panel) { filter: saturate(.45); }
-.netops-availability .na-editor-row { display: grid; grid-template-columns: minmax(150px, 1fr) auto auto auto; gap: 6px; margin: 5px 0; }
-.netops-availability .na-node-editor { margin: 6px 0; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 3px; }
-.netops-availability .na-node-editor summary { padding: 8px; font-weight: 700; cursor: pointer; }
-.netops-availability .na-node-editor__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 8px; }
-.netops-availability .na-editor-label { display: grid; gap: 3px; min-width: 0; }
-.netops-availability .na-editor-label > span { font-size: 10px; opacity: .72; }
-.netops-availability .na-editor-label input, .netops-availability .na-editor-label select { width: 100%; min-width: 0; }
-.netops-availability .na-node-editor__actions { padding: 0 8px 8px; }
-.netops-availability .na-editor-note { margin-top: 12px; opacity: .76; }
-.netops-availability .na-batch-editor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0; padding: 10px; border: 1px solid #1976d2; border-radius: 3px; }
-.netops-availability .na-batch-editor h4, .netops-availability .na-batch-editor > select, .netops-availability .na-batch-editor > button { grid-column: 1 / -1; }
-.netops-availability .na-editor-error, .netops-availability .na-error, .netops-availability .na-warning-box { margin-bottom: 8px; padding: 8px; border: 1px solid #d63638; border-radius: 3px; }
-.netops-availability .na-warning-box { border-color: #e87500; }
-.netops-availability .na-error__title { display: block; font-weight: 700; }
-.netops-availability .na-tier-choice { display: flex; gap: 6px; }
-.netops-availability .na-tier-choice .is-selected { outline: 2px solid #1976d2; }
-.netops-availability .na-debug { padding: 6px; overflow-wrap: anywhere; font-family: monospace; font-size: 10px; opacity: .7; }
-
-@container (max-width: 900px) {
-	.netops-availability .na-summary { grid-template-columns: repeat(4, minmax(70px, 1fr)); }
-	.netops-availability .na-attention__row { grid-template-columns: 34px 78px minmax(110px, 1fr) 64px; }
-	.netops-availability .na-attention__meta, .netops-availability .na-attention__members, .netops-availability .na-attention__ack { display: none; }
-}
-@container (max-width: 520px) {
-	.netops-availability .na-summary { grid-template-columns: repeat(2, minmax(70px, 1fr)); }
-	.netops-availability .na-toolbar { flex-wrap: wrap; }
-	.netops-availability .na-attention__row { grid-template-columns: 32px 72px minmax(90px, 1fr); }
-	.netops-availability .na-attention__duration { display: none; }
-	.netops-availability .na-site__header { grid-template-columns: 18px minmax(100px, 1fr) 60px; }
-	.netops-availability .na-site__header > :nth-child(3), .netops-availability .na-site__header > :nth-child(5) { display: none; }
-	.netops-availability .na-unassigned__row { grid-template-columns: 18px minmax(90px, 1fr) 70px; }
-	.netops-availability .na-unassigned__row > :nth-child(4) { display: none; }
-	.netops-availability .na-node-editor__fields { grid-template-columns: 1fr; }
-}
+.netops-availability { --surface:#fff; --surface-2:#f7f9fb; --surface-hover:#f2f5f7; --border:#dce2e7; --border-soft:#e9edf0; --text:#1e2a31; --text-2:#596873; --text-3:#78858e; --red:#c8383e; --amber:#a96a16; --grey:#677580; --green:#237f53; --teal:#187e8a; --violet:#6852d6; --blue:#1976d2; --scrim:rgba(15,24,31,.3); container-type:inline-size; position:relative; display:grid; gap:10px; min-width:0; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif; font-size:12px; line-height:1.4; }
+.netops-availability.is-dark-theme { --surface:#292f34; --surface-2:#323a40; --surface-hover:#39434a; --border:#4b5861; --border-soft:#3d484f; --text:#edf2f5; --text-2:#b6c2ca; --text-3:#94a3ac; --red:#ff858a; --amber:#f3ad5d; --grey:#aebcc6; --green:#7ed6a8; --teal:#75cbd3; --violet:#b4a8ff; --blue:#78bdff; --scrim:rgba(0,0,0,.48); }
+.netops-availability *, .netops-availability *::before, .netops-availability *::after { box-sizing:border-box; }
+.netops-availability .is-hidden, .netops-availability .is-filtered-out { display:none !important; }
+.netops-availability button, .netops-availability input, .netops-availability select { font:inherit; }
+.netops-availability button { cursor:pointer; }
+.netops-availability :focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+.netops-availability .na-header { display:flex; align-items:center; gap:10px; min-width:0; padding-bottom:6px; border-bottom:1px solid var(--border); }
+.netops-availability .na-header__title { margin:0 auto 0 0; font-size:15px; line-height:1.2; }
+.netops-availability .na-updated, .netops-availability .na-up-note { color:var(--text-3); font-size:11px; white-space:nowrap; }
+.netops-availability .na-up-note { padding-left:8px; border-left:1px solid var(--border); }
+.netops-availability .na-summary { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; min-width:0; }
+.netops-availability .na-summary__tile { display:grid; align-content:center; min-width:0; min-height:58px; padding:7px 9px; border:1px solid var(--border); border-left:3px solid var(--grey); border-radius:4px; color:var(--text); text-align:left; background:var(--surface); }
+.netops-availability .na-summary__tile:not(:disabled):hover { background:var(--surface-hover); }
+.netops-availability .na-summary__tile.is-zero { opacity:.55; cursor:default; border-left-color:var(--border); }
+.netops-availability .na-summary__tile[aria-pressed="true"] { outline:2px solid var(--blue); outline-offset:-2px; }
+.netops-availability .na-summary__tile.is-down { border-left-color:var(--red); } .netops-availability .na-summary__tile.is-degraded { border-left-color:var(--amber); }
+.netops-availability .na-summary__tile.is-visibility-loss { border-left-color:var(--teal); } .netops-availability .na-summary__tile.is-maintenance { border-left-color:var(--violet); }
+.netops-availability .na-summary__count { font-size:21px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1; }
+.netops-availability .na-summary__label { margin-top:5px; overflow:hidden; color:var(--text-2); font-size:9px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+.netops-availability .na-section-title { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; padding-bottom:4px; border-bottom:1px solid var(--border); font-size:12px; font-weight:700; }
+.netops-availability .na-section-title h4 { margin:0; font:inherit; }
+.netops-availability .na-section-count { color:var(--text-3); font-size:10px; font-weight:400; }
+.netops-availability .na-attention { display:grid; gap:5px; min-width:0; }
+.netops-availability .na-attention__row { display:flex; align-items:center; min-width:0; min-height:62px; border:1px solid var(--border); border-left:3px solid var(--grey); border-radius:4px; background:var(--surface); }
+.netops-availability .na-attention__row.is-down { border-left-color:var(--red); } .netops-availability .na-attention__row.is-degraded { border-left-color:var(--amber); }
+.netops-availability .na-attention__row:hover { background:var(--surface-hover); }
+.netops-availability .na-attention__open { display:grid; grid-template-columns:minmax(0,1fr) minmax(130px,22%); gap:12px; align-items:center; flex:1 1 auto; min-width:0; padding:8px 10px; border:0; color:inherit; text-align:left; background:transparent; }
+.netops-availability .na-attention__main, .netops-availability .na-attention__summary { display:grid; gap:3px; min-width:0; }
+.netops-availability .na-attention__name-line { display:flex; align-items:center; gap:7px; min-width:0; }
+.netops-availability .na-attention__name { min-width:0; overflow:hidden; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+.netops-availability .na-attention__badges, .netops-availability .na-node__badges { display:flex; flex-wrap:wrap; gap:4px; min-width:0; }
+.netops-availability .na-attention__meta { overflow:hidden; color:var(--text-2); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+.netops-availability .na-attention__state { font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; }
+.netops-availability .na-attention__ack-action { flex:0 0 auto; margin-right:9px; padding:4px 7px; border:1px solid var(--border); border-radius:3px; color:var(--text-2); background:var(--surface-2); font-size:10px; }
+.netops-availability .na-attention__ack-action.is-acked { color:var(--green); }
+.netops-availability .na-attention-more { justify-self:start; padding:3px 0; border:0; color:var(--blue); background:transparent; }
+.netops-availability .na-all-clear { padding:10px; color:var(--text-2); }
+.netops-availability .na-badge { display:inline-flex; align-items:center; max-width:100%; padding:1px 5px; border:1px solid var(--border); border-radius:3px; color:var(--text-2); background:var(--surface-2); font-size:9px; font-weight:700; white-space:nowrap; }
+.netops-availability .na-badge.is-no-tier { color:var(--grey); } .netops-availability .na-badge.is-maintenance { color:var(--violet); border-color:color-mix(in srgb,var(--violet) 32%,var(--border)); }
+.netops-availability .na-badge.is-visibility { color:var(--teal); border-color:color-mix(in srgb,var(--teal) 32%,var(--border)); }
+.netops-availability .na-badge.is-flapping { color:var(--amber); border-color:color-mix(in srgb,var(--amber) 32%,var(--border)); }
+.netops-availability .na-member-glyphs { display:flex; align-items:center; gap:3px; min-width:0; font-size:13px; line-height:1; }
+.netops-availability .na-member-glyphs .is-up { color:var(--green); } .netops-availability .na-member-glyphs .is-down { color:var(--red); } .netops-availability .na-member-glyphs .is-stale { color:var(--grey); }
+.netops-availability .na-member-glyphs__summary { color:var(--text-2); font-size:10px; font-weight:600; }
+.netops-availability .na-toolbar { display:flex; align-items:center; gap:8px; min-width:0; padding:7px; border:1px solid var(--border); border-radius:4px; background:var(--surface-2); }
+.netops-availability .na-search { flex:1 1 240px; min-width:0; max-width:460px; padding:5px 7px; border:1px solid var(--border); border-radius:3px; color:var(--text); background:var(--surface); }
+.netops-availability .na-filter-chip { display:inline-flex; align-items:center; gap:6px; min-width:0; padding:4px 7px; border-radius:3px; color:var(--blue); background:color-mix(in srgb,var(--blue) 12%,transparent); }
+.netops-availability .na-filter-clear { border:0; color:var(--blue); background:transparent; }
+.netops-availability .na-sites { display:grid; gap:4px; min-width:0; }
+.netops-availability .na-site { min-width:0; border-bottom:1px solid var(--border-soft); }
+.netops-availability .na-site__header { display:grid; grid-template-columns:14px minmax(0,1fr) minmax(0,28%) 72px 58px; gap:8px; align-items:center; width:100%; min-width:0; padding:8px; border:0; color:var(--text); text-align:left; background:transparent; }
+.netops-availability .na-site__header:hover { background:var(--surface-hover); }
+.netops-availability .na-site__name, .netops-availability .na-site__issues { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.netops-availability .na-site__name { font-weight:700; } .netops-availability .na-site__issues, .netops-availability .na-site__count { color:var(--text-2); font-size:10px; }
+.netops-availability .na-site__recovered { color:var(--green); font-size:10px; }
+.netops-availability .na-site.is-healthy { display:none; } .netops-availability .na-site.is-healthy.is-expanded-from-chip, .netops-availability .na-site.is-recovered { display:block; }
+.netops-availability .na-site.is-collapsed .na-site__nodes { display:none; }
+.netops-availability .na-site__nodes { display:grid; gap:2px; padding:0 0 5px 19px; }
+.netops-availability .na-node { display:grid; gap:4px; min-width:0; padding:6px 9px; border:0; border-radius:3px; color:var(--text); background:transparent; cursor:pointer; }
+.netops-availability .na-node:hover, .netops-availability .na-node:focus-visible { background:var(--surface-hover); }
+.netops-availability .na-node.is-config-hidden { display:none; }
+.netops-availability .na-node__heading { display:flex; align-items:center; gap:8px; min-width:0; }
+.netops-availability .na-state-dot { display:inline-block; flex:0 0 8px; width:8px; height:8px; border-radius:50%; background:var(--grey); }
+.netops-availability .na-node.is-up .na-state-dot, .netops-availability .na-state-dot.is-up { background:var(--green); }
+.netops-availability .na-node.is-down .na-state-dot, .netops-availability .na-state-dot.is-down { background:var(--red); }
+.netops-availability .na-node.is-degraded .na-state-dot, .netops-availability .na-state-dot.is-degraded { background:var(--amber); }
+.netops-availability .na-node__name { min-width:0; overflow:hidden; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
+.netops-availability .na-node__state { margin-left:auto; color:var(--text-2); font-size:10px; font-weight:700; }
+.netops-availability .na-node__status-line { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; padding-left:16px; }
+.netops-availability .na-node__problem-line { padding-left:16px; overflow:hidden; color:var(--text-2); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+.netops-availability .na-healthy-sites { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.netops-availability .na-healthy-sites .na-section-title { border:0; color:var(--text-3); font-size:11px; }
+.netops-availability .na-healthy-chip { padding:4px 8px; border:1px solid var(--border); border-radius:4px; color:var(--text-2); background:var(--surface-2); }
+.netops-availability .na-healthy-chip:hover { background:var(--surface-hover); }
+.netops-availability .na-unassigned { border:1px dashed var(--border); border-radius:4px; color:var(--text); }
+.netops-availability .na-unassigned__header { width:100%; padding:8px 10px; border:0; color:var(--text-2); text-align:left; background:transparent; }
+.netops-availability .na-unassigned__rows { display:grid; }
+.netops-availability .na-unassigned__row { display:grid; grid-template-columns:10px minmax(0,1fr) 70px minmax(90px,120px) auto; gap:8px; align-items:center; min-width:0; padding:6px 10px; border-top:1px solid var(--border-soft); cursor:pointer; }
+.netops-availability .na-unassigned__row:hover { background:var(--surface-hover); }
+.netops-availability .na-unassigned__name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.netops-availability .na-stale-view { padding:8px 10px; border:1px solid var(--grey); border-left-width:3px; border-radius:3px; background:var(--surface-2); }
+.netops-availability .na-stale-view__title { display:block; font-weight:700; }
+.netops-availability.is-view-stale > :not(.na-stale-view,.na-panel-backdrop,.na-details-panel,.na-editor-panel) { filter:grayscale(.85); opacity:.58; }
+.netops-availability .na-panel-backdrop { position:absolute; z-index:20; inset:0; background:var(--scrim); }
+.netops-availability .na-details-panel, .netops-availability .na-editor-panel { position:absolute; z-index:21; top:0; right:0; width:min(480px,98%); max-height:min(88vh,100%); padding:14px; overflow:auto; border:1px solid var(--border); border-radius:4px; color:var(--text); background:var(--surface); box-shadow:0 5px 24px rgba(0,0,0,.24); }
+.netops-availability .na-editor-panel { width:min(680px,99%); }
+.netops-availability .na-panel-close { float:right; border:0; color:var(--text); background:transparent; font-size:20px; }
+.netops-availability .na-details-panel h3, .netops-availability .na-editor-panel h3 { margin:0 28px 12px 0; overflow-wrap:anywhere; font-size:16px; }
+.netops-availability .na-details-panel h4, .netops-availability .na-editor-panel h4 { margin:13px 0 6px; padding-top:7px; border-top:1px solid var(--border); color:var(--text-3); font-size:10px; letter-spacing:.04em; }
+.netops-availability .na-detail-row { display:grid; grid-template-columns:minmax(95px,38%) minmax(0,1fr); gap:10px; padding:4px 0; }
+.netops-availability .na-detail-row span { color:var(--text-2); } .netops-availability .na-detail-row strong { min-width:0; overflow-wrap:anywhere; text-align:right; }
+.netops-availability .na-member-detail { display:grid; grid-template-columns:minmax(0,1fr) 65px 85px 80px; gap:6px; padding:5px 0; border-top:1px solid var(--border-soft); }
+.netops-availability .na-member-detail > * { min-width:0; overflow-wrap:anywhere; }
+.netops-availability .na-detail-links, .netops-availability .na-editor-actions, .netops-availability .na-node-editor__actions { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+.netops-availability .na-details-panel a { color:var(--blue); }
+.netops-availability.is-editing { border:2px solid var(--violet); border-radius:4px; }
+.netops-availability.is-editing > :not(.na-panel-backdrop,.na-editor-panel) { filter:saturate(.55); }
+.netops-availability .na-editor-title { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:-14px -14px 10px; padding:10px 14px; border-bottom:1px solid var(--border); background:color-mix(in srgb,var(--violet) 11%,var(--surface)); }
+.netops-availability .na-editor-title h3 { margin:0; color:var(--violet); font-size:13px; }
+.netops-availability .na-editor-title .na-editor-actions { margin:0; }
+.netops-availability .na-editor-create { display:flex; flex-wrap:wrap; gap:6px; }
+.netops-availability .na-editor-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto auto; gap:5px; margin:5px 0; }
+.netops-availability .na-node-editor { margin:6px 0; border:1px solid var(--border); border-radius:4px; }
+.netops-availability .na-node-editor summary { padding:8px; font-weight:700; cursor:pointer; overflow-wrap:anywhere; }
+.netops-availability .na-node-editor__fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:8px; }
+.netops-availability .na-editor-label { display:grid; gap:3px; min-width:0; }
+.netops-availability .na-editor-label > span { color:var(--text-2); font-size:10px; }
+.netops-availability .na-editor-label input, .netops-availability .na-editor-label select { width:100%; min-width:0; padding:5px; border:1px solid var(--border); border-radius:3px; color:var(--text); background:var(--surface); }
+.netops-availability .na-node-editor__actions { padding:0 8px 8px; }
+.netops-availability .na-editor-note { color:var(--text-2); }
+.netops-availability .na-batch-editor { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:10px 0; padding:10px; border:1px solid var(--blue); border-radius:3px; }
+.netops-availability .na-batch-editor h4, .netops-availability .na-batch-editor > select, .netops-availability .na-batch-editor > button { grid-column:1 / -1; }
+.netops-availability .na-editor-error, .netops-availability .na-error, .netops-availability .na-warning-box { margin-bottom:8px; padding:8px; border:1px solid var(--red); border-radius:3px; }
+.netops-availability .na-warning-box { border-color:var(--amber); }
+.netops-availability .na-error__title { display:block; font-weight:700; }
+.netops-availability .na-tier-choice { display:flex; gap:6px; }
+.netops-availability .na-tier-choice .is-selected { outline:2px solid var(--blue); }
+.netops-availability .na-debug { padding:6px; overflow-wrap:anywhere; font-family:monospace; font-size:10px; color:var(--text-2); }
+@container (max-width:900px) { .netops-availability .na-summary { grid-template-columns:repeat(3,minmax(0,1fr)); } .netops-availability .na-attention__open { grid-template-columns:minmax(0,1fr) 110px; } }
+@container (max-width:640px) { .netops-availability .na-attention__open { grid-template-columns:minmax(0,1fr); gap:5px; } .netops-availability .na-attention__summary { display:flex; align-items:center; gap:8px; } .netops-availability .na-attention__name-line { flex-wrap:wrap; } .netops-availability .na-site__header { grid-template-columns:14px minmax(0,1fr) 80px; } .netops-availability .na-site__issues, .netops-availability .na-site__recovered { display:none; } .netops-availability .na-unassigned__row { grid-template-columns:10px minmax(0,1fr) 70px auto; } .netops-availability .na-unassigned__row > :nth-child(4) { display:none; } }
+@container (max-width:520px) { .netops-availability .na-header { flex-wrap:wrap; } .netops-availability .na-header__title { flex-basis:100%; } .netops-availability .na-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } .netops-availability .na-toolbar { flex-wrap:wrap; } .netops-availability .na-search { max-width:none; flex-basis:100%; } .netops-availability .na-attention__row { flex-wrap:wrap; } .netops-availability .na-attention__open { flex-basis:100%; } .netops-availability .na-attention__ack-action { margin:0 10px 8px; } .netops-availability .na-node-editor__fields, .netops-availability .na-batch-editor { grid-template-columns:1fr; } .netops-availability .na-member-detail { grid-template-columns:repeat(2,minmax(0,1fr)); } }

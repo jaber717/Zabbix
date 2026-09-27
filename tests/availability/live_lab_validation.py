@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sanitized authenticated LAB validation for Network Availability v1.1."""
+"""Sanitized authenticated LAB validation for Network Availability."""
 
 from __future__ import annotations
 
@@ -273,7 +273,10 @@ def main() -> int:
         print(f"RENDER_HAS_DETAILS={'PASS' if 'na-details-panel' in body else 'FAIL'}")
         print(f"RENDER_HAS_FILTER={'PASS' if 'na-filter-chip' in body else 'FAIL'}")
         print(f"RENDER_HAS_SEARCH={'PASS' if 'Search Nodes or Hosts' in body else 'FAIL'}")
-        print(f"RENDER_HAS_HEALTHY_CHIPS={'PASS' if 'na-healthy-sites' in body else 'FAIL'}")
+        healthy_sites = any(site["state"] == "HEALTHY" for site in snapshot["sites"])
+        if healthy_sites and 'na-healthy-sites' not in body:
+            raise RuntimeError('healthy Site is missing compact chip presentation')
+        print(f"RENDER_HAS_HEALTHY_CHIPS={'PASS' if 'na-healthy-sites' in body else 'NOT_APPLICABLE_NO_HEALTHY_SITE' if not healthy_sites else 'FAIL'}")
 
         if args.restore_empty:
             token = data_attribute(body, "csrf-token")

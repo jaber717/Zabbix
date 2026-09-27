@@ -56,6 +56,8 @@ class CWidgetNetworkAvailability extends CWidget {
 		this.#snapshot = this.#decode(root.dataset.snapshot);
 		this.#configuration = this.#decode(root.dataset.configuration);
 		this.#availableHosts = this.#decode(root.dataset.availableHosts);
+		root.querySelector('.na-updated').textContent = `Updated ${new Intl.DateTimeFormat(undefined,
+			{hour: '2-digit', minute: '2-digit'}).format(new Date(this.#snapshot.generated_at * 1000))}`;
 		root.classList.toggle('is-dark-theme', [...document.querySelectorAll('link[rel="stylesheet"]')]
 			.some(link => /(?:dark-theme|hc-dark)\.css(?:\?|$)/.test(link.href)));
 		this.#bind(root);
@@ -124,6 +126,7 @@ class CWidgetNetworkAvailability extends CWidget {
 				if (site !== null) {
 					site.classList.add('is-expanded-from-chip');
 					this.#setSiteOpen(site, true);
+					this.#siteState.set(site.dataset.siteId, {open: true, signature: site.dataset.issueSignature});
 					site.scrollIntoView({block: 'nearest'});
 				}
 			});
@@ -136,12 +139,20 @@ class CWidgetNetworkAvailability extends CWidget {
 		});
 
 		for (const element of root.querySelectorAll('[data-node-id]')) {
-			if (!element.matches('.na-node, .na-attention__row, .na-unassigned__row')) continue;
+			if (!element.matches('.na-node, .na-attention__open, .na-unassigned__row')) continue;
 			element.addEventListener('click', event => {
 				if (event.target.closest('[data-quick-assign]')) return;
 				this.#openDetails(root, element.dataset.nodeId);
 			});
+			if (element.matches('[role="button"]')) element.addEventListener('keydown', event => {
+				if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); element.click(); }
+			});
 		}
+		for (const action of root.querySelectorAll('[data-ack-node-id]')) action.addEventListener('click', event => {
+			event.stopPropagation();
+			const node = this.#findNode(action.dataset.ackNodeId);
+			this.#openNativeAck(node?.problems ?? []);
+		});
 		for (const assign of root.querySelectorAll('[data-quick-assign]')) {
 			assign.addEventListener('click', event => {
 				event.stopPropagation();
@@ -171,17 +182,31 @@ class CWidgetNetworkAvailability extends CWidget {
 		if (chip !== null && this.#filter !== '') {
 			chip.querySelector('.na-filter-chip__label').textContent = `Filtered: ${this.#filter.replaceAll('_', ' ')}`;
 		}
-		for (const element of root.querySelectorAll('.na-node, .na-unassigned__row')) {
+		for (const element of root.querySelectorAll('.na-node, .na-unassigned__row, .na-attention__row')) {
 			const searchMatch = this.#search === '' || (element.dataset.search ?? '').includes(this.#search);
 			let filterMatch = true;
 			switch (this.#filter) {
 				case 'DOWN': case 'DEGRADED': case 'UNKNOWN': case 'UP':
 					filterMatch = element.dataset.state === this.#filter; break;
-				case 'VISIBILITY_LOSS': filterMatch = element.dataset.visibility !== undefined
-					&& element.dataset.visibility !== 'FULL'; break;
+				case 'VISIBILITY_LOSS': filterMatch = element.dataset.visibility === 'LOST'; break;
 				case 'MAINTENANCE': filterMatch = element.classList.contains('is-maintenance'); break;
+				case 'IMPACTED_SITES': filterMatch = element.closest('.na-site')?.classList.contains('is-affected')
+					|| element.dataset.impactedSite === '1'
+					|| element.closest('.na-unassigned')?.dataset.impactedSite === '1'; break;
 			}
 			element.classList.toggle('is-filtered-out', !(searchMatch && filterMatch));
+		}
+		const active = this.#filter !== '' || this.#search !== '';
+		for (const site of root.querySelectorAll('.na-site')) {
+			const hasMatch = !!site.querySelector('.na-node:not(.is-config-hidden):not(.is-filtered-out)');
+			site.classList.toggle('is-filtered-out', active && !hasMatch);
+		}
+		const unassigned = root.querySelector('.na-unassigned');
+		if (unassigned) unassigned.classList.toggle('is-filtered-out', active
+			&& !unassigned.querySelector('.na-unassigned__row:not(.is-filtered-out)'));
+		for (const chip of root.querySelectorAll('.na-healthy-chip')) {
+			const site = root.querySelector(`.na-site[data-site-id="${CSS.escape(chip.dataset.siteOpen)}"]`);
+			chip.classList.toggle('is-filtered-out', active && !!site?.classList.contains('is-filtered-out'));
 		}
 	}
 
@@ -204,7 +229,7 @@ class CWidgetNetworkAvailability extends CWidget {
 			if (incident === undefined) return;
 			panel.append(this.#element('h3', incident.name));
 			for (const [label, value] of [['Site', incident.site], ['State', incident.state],
-				['Tier', incident.criticality === null ? 'Tier not set' : `Tier-${incident.criticality.slice(-1)}`],
+				['Tier', incident.criticality === null ? 'No tier' : `Tier-${incident.criticality.slice(-1)}`],
 				['Affected Nodes', String(incident.affected_nodes ?? '—')], ['Source', incident.source_id ?? '—']]) {
 				const row = this.#element('div', '', 'na-detail-row');
 				row.append(this.#element('span', label), this.#element('strong', value)); panel.append(row);
@@ -214,8 +239,9 @@ class CWidgetNetworkAvailability extends CWidget {
 		panel.append(this.#element('h3', node.name));
 		const fields = [
 			['Site', node.site], ['Type', node.kind ?? 'Unassigned'],
-			['Tier', node.criticality === null ? 'Tier not set' : `Tier-${node.criticality.slice(-1)}`],
+			['Tier', node.criticality === null ? 'No tier' : `Tier-${node.criticality.slice(-1)}`],
 			['State', node.actual_state], ['Visibility', node.visibility],
+			['Maintenance', node.maintenance ? 'Active' : 'No'], ['Flapping', node.flapping ? 'Yes' : 'No'],
 			['Freshness', `${node.members.filter(member => member.fresh).length}/${node.members.length} fresh`],
 			['Aggregation', node.policy], ['Required N', String(node.required_members)]
 		];
@@ -241,12 +267,7 @@ class CWidgetNetworkAvailability extends CWidget {
 				link.textContent = `${problem.name} · ${problem.acknowledged ? 'Acknowledged' : 'Unacknowledged'}`;
 				panel.append(link);
 			}
-			if (node.problems.some(problem => !problem.acknowledged) && typeof PopUp === 'function') {
-				panel.append(this.#button('Use native acknowledge workflow', 'btn-alt', () => {
-					PopUp('acknowledge.edit', {eventids: node.problems.map(problem => problem.eventid)},
-						{dialogue_class: 'modal-popup-generic'});
-				}));
-			}
+			panel.append(this.#button('Open native acknowledgement', 'btn-alt', () => this.#openNativeAck(node.problems)));
 		}
 		if (node.hostids.length > 0) {
 			const links = this.#element('div', '', 'na-detail-links');
@@ -257,6 +278,15 @@ class CWidgetNetworkAvailability extends CWidget {
 		}
 		panel.classList.remove('is-hidden');
 		backdrop.classList.remove('is-hidden');
+	}
+
+	#openNativeAck(problems) {
+		const eventids = problems.map(problem => problem.eventid).filter(Boolean);
+		if (eventids.length === 0) return;
+		if (typeof PopUp === 'function') {
+			PopUp('acknowledge.edit', {eventids}, {dialogue_class: 'modal-popup-generic'});
+		}
+		else window.location.assign(`tr_events.php?triggerid=0&eventid=${encodeURIComponent(eventids[0])}`);
 	}
 
 	#findNode(nodeId) {
@@ -282,14 +312,15 @@ class CWidgetNetworkAvailability extends CWidget {
 		const backdrop = root.querySelector('.na-panel-backdrop');
 		panel.replaceChildren();
 		const title = this.#element('div', '', 'na-editor-title');
-		title.append(this.#element('h3', `Editing layout · ${this.#unsavedChanges} unsaved changes`));
-		panel.append(title);
-		const actions = this.#element('div', '', 'na-editor-actions');
+		title.append(this.#element('h3', `Editing sites · ${this.#unsavedChanges} unsaved changes`));
+		const saveActions = this.#element('div', '', 'na-editor-actions');
+		saveActions.append(this.#button('Discard', 'btn-alt', () => this.#discardEdit(root)),
+			this.#button('Save', 'btn', () => this.#saveWorking(root)));
+		title.append(saveActions); panel.append(title);
+		const actions = this.#element('div', '', 'na-editor-create');
 		actions.append(this.#button('Add site', 'btn-alt', () => this.#addSite(root)),
 			this.#button('Add Node', 'btn-alt', () => this.#addNode(root)),
-			this.#button('Batch / multi-member', 'btn-alt', () => this.#openBatchCreator(root, panel)),
-			this.#button('Discard', 'btn-alt', () => this.#discardEdit(root)),
-			this.#button('Save', 'btn', () => this.#saveWorking(root)));
+			this.#button('Batch / multi-member', 'btn-alt', () => this.#openBatchCreator(root, panel)));
 		panel.append(actions);
 
 		panel.append(this.#element('h4', 'Sites'));
@@ -332,7 +363,7 @@ class CWidgetNetworkAvailability extends CWidget {
 			['logical_service', 'Logical service']
 		], node.kind, value => { node.kind = value; this.#dirty(root); })));
 		fields.append(this.#label('Tier', this.#select([
-			['', 'Tier required'], ['tier1', 'Tier-1'], ['tier2', 'Tier-2'], ['tier3', 'Tier-3']
+			['', 'Not set (Tier required to save)'], ['tier1', 'Tier-1'], ['tier2', 'Tier-2'], ['tier3', 'Tier-3']
 		], node.criticality, value => { node.criticality = value; this.#dirty(root); })));
 		fields.append(this.#label('Policy', this.#select([
 			['ANY_REQUIRED', 'ANY_REQUIRED'], ['ALL_REQUIRED', 'ALL_REQUIRED'],
@@ -395,7 +426,7 @@ class CWidgetNetworkAvailability extends CWidget {
 			mode, value => { mode = value; });
 		const siteSelect = this.#select(this.#workingConfig.sites.map(site => [site.id, site.name]), siteId,
 			value => { siteId = value; });
-		const tierSelect = this.#select([['', 'Tier required'], ['tier1', 'Tier-1'], ['tier2', 'Tier-2'], ['tier3', 'Tier-3']],
+		const tierSelect = this.#select([['', 'Not set (Tier required to save)'], ['tier1', 'Tier-1'], ['tier2', 'Tier-2'], ['tier3', 'Tier-3']],
 			tier, value => { tier = value; });
 		const required = this.#input('1', 'Required N', 'number'); required.min = '1';
 		const search = this.#input('', 'Search monitored Hosts');
@@ -446,11 +477,18 @@ class CWidgetNetworkAvailability extends CWidget {
 	}
 
 	#dirty(root, rerender = false) {
-		this.#unsavedChanges++;
 		this.#workingConfig.sites.forEach((site, index) => { site.order = index * 10; });
 		this.#workingConfig.nodes.forEach((node, index) => { node.order = index * 10; });
+		const changed = (current, saved) => {
+			const baseline = new Map(saved.map(item => [item.id, item]));
+			const ids = new Set(current.map(item => item.id));
+			return current.filter(item => JSON.stringify(item) !== JSON.stringify(baseline.get(item.id))).length
+				+ saved.filter(item => !ids.has(item.id)).length;
+		};
+		this.#unsavedChanges = changed(this.#workingConfig.sites, this.#configuration.sites)
+			+ changed(this.#workingConfig.nodes, this.#configuration.nodes);
 		if (rerender) this.#renderEditor(root);
-		else root.querySelector('.na-editor-title h3').textContent = `Editing layout · ${this.#unsavedChanges} unsaved changes`;
+		else root.querySelector('.na-editor-title h3').textContent = `Editing sites · ${this.#unsavedChanges} unsaved changes`;
 	}
 
 	#discardEdit(root) {
