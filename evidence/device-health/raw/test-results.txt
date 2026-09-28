@@ -1,0 +1,10 @@
+PASS: 12 Device Health domain assertions
+STATIC=PASS
+FIXTURE_BROWSER=PASS blue/dark widths=2200,1920,1440,1200,900,640,420
+LIVE_BROWSER=PASS blue/dark widths=2200,1920,1440,1200,900,640,420
+PASS: 41 Availability v1 assertions
+PASS: 11 Availability configuration assertions
+PASS: Availability static contracts
+PASS: 27 utilization analytics assertions
+PASS: configuration persistence, LKG, validation and stable identity
+PASS: utilization performance/static contracts

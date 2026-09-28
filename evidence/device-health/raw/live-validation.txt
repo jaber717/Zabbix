@@ -1,0 +1,7 @@
+MODULE_STATUS=1 MODULE_VERSION=1.0.0
+WIDGET_HTTP=200 REQUEST_MS=149.865
+DEVICES=5 ATTENTION=6 SITES=2
+SUMMARY={"CRITICAL":3,"HA":0,"HARDWARE":0,"MONITORED":5,"RESOURCE":0,"UNKNOWN_STALE":0,"WARNING":1}
+PROFILES=firewall,linux_host,load_balancer,router_switch
+INSTRUMENTATION={"api_call_count":4,"collector_time_ms":79.702,"history_rows":0,"hosts_retrieved":5,"items_retrieved":261,"problems_retrieved":6,"resolver_time_ms":0.377,"total_widget_time_ms":81.041,"trend_rows":0}
+RESULT=PASS

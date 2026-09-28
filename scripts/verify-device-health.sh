@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")"&&pwd -P);source "$DIR/lib/device-health-common.sh";[[ $# -eq 0 ]]||dh_fail 'usage: verify-device-health.sh';dh_environment;dh_identity;TARGET="$DH_MODULES/DeviceHealth";dh_release "$TARGET";RUNTIME=${DEVICE_HEALTH_RUNTIME_DIR:-/var/lib/zabbix/device-health};CONFIG="$RUNTIME/device-health.json";[[ -r $CONFIG ]]||dh_fail 'runtime config missing';dh_config "$TARGET" "$CONFIG";[[ $(stat -c %a "$RUNTIME") == 750 ]]||dh_fail 'runtime mode mismatch';dh_info "MODULE_RELEASE=$DH_VERSION";dh_info "RUNTIME_CONFIG=$CONFIG";dh_info CHECKSUMS=PASS;dh_info PHP_SYNTAX=PASS;dh_info PASS

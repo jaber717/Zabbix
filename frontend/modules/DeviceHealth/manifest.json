@@ -1,0 +1,24 @@
+{
+  "manifest_version": 2.0,
+  "id": "netops_device_health",
+  "type": "widget",
+  "name": "Device Health & Capacity",
+  "namespace": "DeviceHealth",
+  "version": "1.0.0",
+  "author": "NetOps",
+  "description": "Trigger-led device resource, hardware, environmental and HA health.",
+  "widget": {
+    "name": "Device Health & Capacity",
+    "size": {"width": 72, "height": 12},
+    "js_class": "CWidgetDeviceHealth",
+    "use_time_selector": false,
+    "refresh_rate": 30
+  },
+  "actions": {
+    "widget.netops_device_health.view": {"class": "WidgetView"}
+  },
+  "assets": {
+    "css": ["device-health.css"],
+    "js": ["class.widget.js"]
+  }
+}

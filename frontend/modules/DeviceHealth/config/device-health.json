@@ -1,0 +1,23 @@
+{
+  "schema": "device-health-config-v1",
+  "revision": 1,
+  "settings": {
+    "freshness_multiplier": 3,
+    "no_data_grace_s": 3600,
+    "storage_rollup_include": ["^/$", "^/home$"] ,
+    "storage_rollup_exclude": ["^/run(?:/|$)", "^/proc(?:/|$)", "^/sys(?:/|$)", "^/dev(?:/|$)"]
+  },
+  "profile_rules": [
+    {"template": "Linux by Zabbix agent", "profile": "linux_host"},
+    {"template": "FortiGate by SNMP", "profile": "firewall"},
+    {"template": "F5 Big-IP by SNMP", "profile": "load_balancer"},
+    {"template": "Cisco Nexus 9000 Series by SNMP", "profile": "router_switch"}
+  ],
+  "profiles": {
+    "linux_host": {"cpu": true, "memory": true, "temperature": false, "storage": true, "power_fan": false, "ha": false},
+    "firewall": {"cpu": true, "memory": true, "temperature": true, "storage": true, "power_fan": true, "ha": true},
+    "load_balancer": {"cpu": true, "memory": true, "temperature": true, "storage": true, "power_fan": true, "ha": true},
+    "router_switch": {"cpu": true, "memory": true, "temperature": true, "storage": true, "power_fan": true, "ha": true},
+    "aci_apic": {"cpu": true, "memory": true, "temperature": true, "storage": true, "power_fan": true, "ha": true}
+  }
+}
