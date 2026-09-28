@@ -26,6 +26,7 @@ class StaticContracts(unittest.TestCase):
             "scripts/rollback_daily_reporting.sh",
             "scripts/build_offline_bundle.sh",
             "scripts/daily-reporting-release.sha256",
+            "tests/daily-reporting/native_rollback_test.sh",
             "docs/DAILY-REPORTING.md",
         ]
         self.assertEqual([path for path in required if not (ROOT / path).is_file()], [])
@@ -46,6 +47,8 @@ class StaticContracts(unittest.TestCase):
         self.assertIn("zabbix_server -T", install)
         self.assertIn("--apply-native-config", install)
         self.assertIn("CONFIGURATION=PRESERVED", rollback)
+        self.assertIn("NATIVE_CONFIGURATION_VALIDATION=PASS", rollback)
+        self.assertIn("dr_restore_native_state", rollback)
         self.assertNotIn("setenforce", install)
         self.assertNotIn("systemctl stop firewalld", install)
         self.assertNotIn("ssl._create_unverified_context", (ROOT / "reporting/daily-reporting/bin/zabbix_daily_report.py").read_text())

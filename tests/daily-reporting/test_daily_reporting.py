@@ -94,11 +94,34 @@ class DailyReportingTests(unittest.TestCase):
     def test_native_payload_is_previous_day_daily_and_explicit(self):
         native = self.config["native_pdf"]
         native.update({"owner_user_id": "1", "dashboard_id": "57", "recipient_user_ids": ["2"], "enabled": True})
-        payload = native_reporting.report_payload(self.config)
+        self.config["report"]["timezone"] = "Pacific/Kiritimati"
+        payload = native_reporting.report_payload(self.config, datetime(2026, 1, 1, 23, 30, tzinfo=ZoneInfo("UTC")))
         self.assertEqual(payload["period"], 0)
         self.assertEqual(payload["cycle"], 0)
         self.assertEqual(payload["dashboardid"], "57")
         self.assertEqual(payload["users"][0]["userid"], "2")
+        self.assertEqual(payload["active_since"], "2026-01-02")
+
+    def test_native_reconcile_updates_existing_report_without_duplicate(self):
+        native = self.config["native_pdf"]
+        native.update({"owner_user_id": "1", "dashboard_id": "57", "recipient_user_ids": ["2"], "enabled": True})
+        payload = native_reporting.report_payload(self.config, datetime(2026, 9, 28, 8, tzinfo=ZoneInfo("Asia/Riyadh")))
+
+        class ExistingReportApi:
+            def __init__(self):
+                self.calls = []
+
+            def call(self, method, params):
+                self.calls.append((method, params))
+                return {}
+
+        api = ExistingReportApi()
+        for _ in range(2):
+            action, report_id = native_reporting.reconcile(api, self.config, payload, {"url": self.config["zabbix"]["frontend_url"]}, [{"reportid": "88", "name": payload["name"]}])
+            self.assertEqual((action, report_id), ("UPDATED", "88"))
+        methods = [method for method, _ in api.calls]
+        self.assertEqual(methods, ["report.update", "report.update"])
+        self.assertNotIn("report.create", methods)
 
 
 if __name__ == "__main__":

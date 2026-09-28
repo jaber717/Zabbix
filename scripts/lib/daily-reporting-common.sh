@@ -28,3 +28,23 @@ dr_has_credentials(){
   [[ -r $file ]] || return 1
   grep -Eq '^ZABBIX_API_TOKEN=.+$' "$file" || { grep -Eq '^ZABBIX_API_USER=.+$' "$file" && grep -Eq '^ZABBIX_API_PASSWORD=.+$' "$file"; }
 }
+dr_schedule_calendar(){
+  local app=$1 config=$2
+  PYTHONPATH="$app/bin" "$DR_PYTHON" -c 'import sys;from zabbix_daily_report import load_config;c=load_config(sys.argv[1]);print("*-*-* "+c["report"]["schedule_local"]+":00")' "$config"
+}
+dr_capture_native_state(){
+  local destination=$1 dropin=$2
+  [[ -e $destination/state ]] && return 0
+  install -d -m 0750 "$destination"
+  if [[ -f $dropin ]]; then cp -a "$dropin" "$destination/daily-reporting.conf"; printf 'PRESENT\n' >"$destination/state"; else printf 'ABSENT\n' >"$destination/state"; fi
+}
+dr_restore_native_state(){
+  local source=$1 dropin=$2 state
+  [[ -r $source/state ]] || dr_fail "native baseline state missing: $source/state"
+  state=$(tr -d '[:space:]' <"$source/state")
+  case "$state" in
+    PRESENT) [[ -f $source/daily-reporting.conf ]] || dr_fail 'native baseline copy missing'; install -d -m 0755 "$(dirname "$dropin")"; cp -a "$source/daily-reporting.conf" "$dropin"; DR_NATIVE_RESTORE_ACTION=RESTORED ;;
+    ABSENT) rm -f -- "$dropin"; DR_NATIVE_RESTORE_ACTION=REMOVED ;;
+    *) dr_fail "invalid native baseline state: $state" ;;
+  esac
+}

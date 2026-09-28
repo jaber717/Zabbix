@@ -1,6 +1,6 @@
 # Zabbix Daily Reporting
 
-Version `1.0.0-rc1` provides two deliberately independent reporting paths:
+Version `1.0.0-rc2` provides two deliberately independent reporting paths:
 
 1. A configuration-driven Python report that reads Zabbix 7.0 API data and writes bounded previous-day JSON and HTML summaries.
 2. Native Zabbix Scheduled PDF preparation, prerequisite detection, and an explicit API apply step.
@@ -32,21 +32,21 @@ On the connected workstation:
 git switch codex/daily-reporting
 git pull --ff-only
 ./scripts/build_offline_bundle.sh
-(cd dist && sha256sum -c zabbix-daily-reporting-1.0.0-rc1.tar.gz.sha256)
+(cd dist && sha256sum -c zabbix-daily-reporting-1.0.0-rc2.tar.gz.sha256)
 ```
 
 Transfer the archive and its `.sha256` file through the approved offline process. On the isolated RHEL 9 server:
 
 ```bash
-sha256sum -c zabbix-daily-reporting-1.0.0-rc1.tar.gz.sha256
-tar -xzf zabbix-daily-reporting-1.0.0-rc1.tar.gz
-cd zabbix-daily-reporting-1.0.0-rc1
+sha256sum -c zabbix-daily-reporting-1.0.0-rc2.tar.gz.sha256
+tar -xzf zabbix-daily-reporting-1.0.0-rc2.tar.gz
+cd zabbix-daily-reporting-1.0.0-rc2
 sudo ./scripts/install_daily_reporting.sh --preflight
 sudo ./scripts/install_daily_reporting.sh
 sudo ./scripts/verify_daily_reporting.sh
 ```
 
-The default install does not enable the timer and does not alter `zabbix_server.conf`. Configure the files below first.
+Preflight reports `RELEASE_CONFIG=PASS` for the packaged template and independently reports `INSTALLED_CONFIG=PASS`, `WARNING`, or `NOT_INSTALLED` for `/etc/zabbix-daily-reporting/report.json`. The installed configuration is authoritative when present. The default install does not enable the timer and does not alter `zabbix_server.conf`. Configure the files below first.
 
 ## Configuration
 
@@ -120,7 +120,7 @@ sudo ./scripts/install_daily_reporting.sh --enable-timer
 systemctl list-timers zabbix-daily-report.timer
 ```
 
-Changing the schedule requires updating both `schedule_local` and the timer `OnCalendar`, followed by `systemctl daemon-reload && systemctl restart zabbix-daily-report.timer`.
+`report.schedule_local` is the single schedule authority. Change that value and rerun `sudo ./scripts/install_daily_reporting.sh`; the installer validates `HH:MM`, renders `OnCalendar`, reloads systemd, and restarts an already-active timer. The verifier compares the installed/active timer with the JSON value.
 
 ## Manual custom report test
 
@@ -155,7 +155,7 @@ sudo ./scripts/install_daily_reporting.sh --apply-native-config
 sudo bash -c 'set -a; . /etc/zabbix-daily-reporting/secrets.env; set +a; exec sudo -E -u zabbix-report /usr/bin/python3 /opt/zabbix-daily-reporting/bin/native_reporting.py --config /etc/zabbix-daily-reporting/report.json --apply'
 ```
 
-The installer writes only `/etc/zabbix/zabbix_server.conf.d/daily-reporting.conf`, validates with `zabbix_server -T`, retains backups, and refuses the change if prerequisites or the include convention are absent. The API helper validates dashboard visibility before changing the Frontend URL or scheduled report.
+The installer writes only `/etc/zabbix/zabbix_server.conf.d/daily-reporting.conf`, validates with `zabbix_server -T`, retains an immutable pre-project baseline, and refuses the change if prerequisites or the include convention are absent. Repeated API application updates the named scheduled report instead of creating duplicates. The API helper validates dashboard visibility before changing the Frontend URL or scheduled report, and calculates calendar dates in `report.timezone`.
 
 ## Sites, recipients, and thresholds
 
@@ -177,7 +177,7 @@ sudo ./scripts/verify_daily_reporting.sh
 sudo ./scripts/rollback_daily_reporting.sh --confirm
 ```
 
-Rollback disables the timer, restores the most recent application/native drop-in backup where present, and preserves operator configuration, secrets, and generated reports.
+Rollback disables the timer and preserves operator configuration, secrets, and generated reports. If the native drop-in existed before this project, rollback restores its exact baseline; if it did not exist, rollback removes the project-created drop-in. It then runs `zabbix_server -T`, restarts `zabbix-server` only after validation passes, and reports `RESTORED`, `REMOVED`, or `UNCHANGED` explicitly.
 
 ## Troubleshooting
 
