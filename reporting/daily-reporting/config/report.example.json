@@ -1,0 +1,59 @@
+{
+  "schema": "zabbix-daily-reporting-v1",
+  "report": {
+    "name": "Daily Network Health",
+    "period": "previous_day",
+    "schedule_local": "07:00",
+    "timezone": "Asia/Riyadh",
+    "output_directory": "/var/lib/zabbix-daily-reporting/reports",
+    "retention_days": 90
+  },
+  "zabbix": {
+    "api_url": "https://zabbix.example.com/api_jsonrpc.php",
+    "frontend_url": "https://zabbix.example.com/",
+    "ca_file": "/etc/pki/ca-trust/source/anchors/corporate-ca.crt",
+    "request_timeout_seconds": 30,
+    "maximum_hosts": 2000,
+    "maximum_items": 30000,
+    "maximum_problems": 10000
+  },
+  "scope": {
+    "sites": [],
+    "site_tag": "site",
+    "include_host_groups": [],
+    "exclude_host_groups": []
+  },
+  "severity": ["high", "disaster"],
+  "thresholds": {
+    "cpu_percent": 85,
+    "memory_percent": 85,
+    "interface_utilization_percent": 80,
+    "stale_data_minutes": 15,
+    "flapping_events": 4,
+    "raw_metric_evaluation": false
+  },
+  "classification": {
+    "downtime_problem_patterns": ["unavailable", "unreachable", "no snmp data", "no agent data", "icmp ping"],
+    "utilization_problem_patterns": ["utilization", "bandwidth", "traffic"],
+    "ha_problem_patterns": ["cluster", "failover", "not in sync", "ha "]
+  },
+  "delivery": {
+    "custom_email_enabled": false,
+    "recipients": ["noc@example.com"],
+    "smtp_host": "smtp.example.com",
+    "smtp_port": 25,
+    "smtp_starttls": false,
+    "smtp_username": "",
+    "sender": "zabbix@example.com"
+  },
+  "native_pdf": {
+    "enabled": false,
+    "owner_user_id": "",
+    "dashboard_id": "",
+    "dashboard_name": "Daily Network Health",
+    "web_service_url": "http://127.0.0.1:10053/report",
+    "report_writers": 1,
+    "recipient_user_ids": [],
+    "recipient_group_ids": []
+  }
+}

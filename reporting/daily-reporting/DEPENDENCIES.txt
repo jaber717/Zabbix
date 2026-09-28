@@ -1,0 +1,14 @@
+Runtime (custom HTML/JSON report):
+- RHEL 9.x
+- Python 3.9 or newer (standard library only)
+- Network/TLS access to the Zabbix 7.0 API
+
+Optional native Zabbix Scheduled PDF reporting prerequisites (not bundled):
+- zabbix-web-service matching the installed Zabbix 7.0 release
+- A current supported Google Chrome or Chromium executable
+- Zabbix server WebServiceURL ending in /report
+- Zabbix server StartReportWriters greater than zero
+- Configured Zabbix frontend URL
+- Enabled email media type and recipient user media
+
+No Python packages, JavaScript packages, external fonts, or remote runtime assets are required.

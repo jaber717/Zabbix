@@ -1,0 +1,16 @@
+{
+  "name": "Daily Network Health",
+  "purpose": "Dedicated compact source dashboard for native scheduled PDF reports",
+  "recommended_sections": [
+    "Network Availability widget",
+    "Device Health & Capacity widget",
+    "Network Utilization widget filtered to exceptions",
+    "Problems widget filtered to High and Disaster",
+    "Top triggers / problem severity summary"
+  ],
+  "notes": [
+    "Use an operator-owned dashboard with read access to every intended host.",
+    "Keep the dashboard compact because native PDF captures the rendered dashboard.",
+    "Set native_pdf.dashboard_id in report.json only after the dashboard is accepted."
+  ]
+}

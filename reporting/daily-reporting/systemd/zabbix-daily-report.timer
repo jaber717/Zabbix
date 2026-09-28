@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Zabbix daily network health report
+
+[Timer]
+OnCalendar=*-*-* 07:00:00
+Persistent=true
+RandomizedDelaySec=60
+Unit=zabbix-daily-report.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,18 @@
+{
+  "allowed_ip": "",
+  "blockers": [
+    "zabbix-web-service RPM is not installed",
+    "Chrome/Chromium executable is not installed",
+    "WebServiceURL is missing or does not end in /report",
+    "StartReportWriters is not configured above zero",
+    "zabbix_web_service.conf is absent"
+  ],
+  "chrome_executable": "",
+  "native_pdf_ready": false,
+  "server_config_readable": true,
+  "start_report_writers": "",
+  "web_service_config_present": false,
+  "web_service_url": "",
+  "zabbix_web_service_package": false,
+  "exit_code": 2
+}
