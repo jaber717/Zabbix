@@ -12,12 +12,13 @@
 set -euo pipefail
 
 : "${BUNDLE:=$HOME/.config/netops/claude-access}"
-: "${NETFLOW_IP:?set NETFLOW_IP to netflow-01's management IP}"
-: "${EXPORTER_HOST:=PNET-STC}"            # Zabbix / ssh-config alias key
-: "${EXPORTER_IOS_ALIAS:=wanlab-stc}"     # ssh-config entry
-: "${INTERFACE:=GigabitEthernet0/0}"      # the Gi0/0 TO-INT-CORE interface
-: "${SAMPLING_RATE:=1000}"                # 1:1000, bump down only after CPU proof
-: "${EVIDENCE_DIR:=$HOME/netflow-evidence/stc-$(date -u +%Y%m%dT%H%M%SZ)}"
+: "${NETFLOW_IP:?set NETFLOW_IP to the netflow-01 management IP}"
+: "${EXPORTER_HOST:=PNET-STC}"
+: "${EXPORTER_IOS_ALIAS:=wanlab-stc}"
+: "${INTERFACE:=GigabitEthernet0/0}"
+: "${SAMPLING_RATE:=1000}"
+TS=$(date -u +%Y%m%dT%H%M%SZ)
+: "${EVIDENCE_DIR:=$HOME/netflow-evidence/stc-$TS}"
 mkdir -p "$EVIDENCE_DIR"/{pre,change,post,flow}
 
 if ! command -v plink >/dev/null 2>&1; then
