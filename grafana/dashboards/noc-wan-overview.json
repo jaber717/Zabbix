@@ -1,0 +1,147 @@
+{
+  "title": "NOC — WAN Overview",
+  "uid": "noc-wan-overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {
+    "refresh_intervals": ["30s", "1m", "5m"],
+    "time_options": ["1h", "6h", "24h", "7d"]
+  },
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "weekStart": "",
+  "style": "dark",
+  "timezone": "browser",
+  "tags": ["netops", "wan", "wallboard"],
+  "templating": {"list": []},
+  "annotations": {"list": []},
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "STC — Gi0/0 → INT-CORE",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
+      "gridPos": {"h": 10, "w": 8, "x": 0, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "min": 0,
+          "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"},
+          "color": {"mode": "palette-classic"}
+        },
+        "overrides": [
+          {"matcher": {"id": "byRegexp", "options": ".*(sent|out|OUT).*"},
+           "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "#1F6FEB"}}]},
+          {"matcher": {"id": "byRegexp", "options": ".*(received|in|IN).*"},
+           "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "#2EA043"}}]}
+        ]
+      },
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "none"},
+        "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["last", "max"]}
+      },
+      "targets": [
+        {"refId": "A", "queryType": "0", "resultFormat": "time_series",
+         "application": {"filter": ""}, "group": {"filter": "/.*/"},
+         "host": {"filter": "PNET-STC"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits received/"},
+         "itemids": ["51487"]},
+        {"refId": "B", "queryType": "0", "resultFormat": "time_series",
+         "application": {"filter": ""}, "group": {"filter": "/.*/"},
+         "host": {"filter": "PNET-STC"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits sent/"},
+         "itemids": ["51496"]}
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "MOBILY — Gi0/0 → INT-CORE",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
+      "gridPos": {"h": 10, "w": 8, "x": 8, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "bps", "min": 0, "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"}, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"tooltip": {"mode": "multi"}, "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["last", "max"]}},
+      "targets": [
+        {"refId": "A", "queryType": "0", "resultFormat": "time_series",
+         "application": {"filter": ""}, "group": {"filter": "/.*/"},
+         "host": {"filter": "PNET-MOBILY"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits received/"},
+         "itemids": ["51751"]},
+        {"refId": "B", "queryType": "0", "resultFormat": "time_series",
+         "application": {"filter": ""}, "group": {"filter": "/.*/"},
+         "host": {"filter": "PNET-MOBILY"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits sent/"},
+         "itemids": ["51760"]}
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "SAIX-A — Gi0/0 → SAIX-CORE",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
+      "gridPos": {"h": 10, "w": 8, "x": 16, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "bps", "min": 0, "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"}, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"tooltip": {"mode": "multi"}, "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["last", "max"]}},
+      "targets": [
+        {"refId": "A", "queryType": "0", "resultFormat": "time_series",
+         "host": {"filter": "PNET-SAIX-A"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits received/"},
+         "itemids": ["51610"]},
+        {"refId": "B", "queryType": "0", "resultFormat": "time_series",
+         "host": {"filter": "PNET-SAIX-A"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits sent/"},
+         "itemids": ["51619"]}
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "SAIX-B — Gi0/0 → SAIX-CORE",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
+      "gridPos": {"h": 10, "w": 8, "x": 0, "y": 10},
+      "fieldConfig": {"defaults": {"unit": "bps", "min": 0, "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"}, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"tooltip": {"mode": "multi"}, "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["last", "max"]}},
+      "targets": [
+        {"refId": "A", "queryType": "0", "resultFormat": "time_series",
+         "host": {"filter": "PNET-SAIX-B"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits received/"},
+         "itemids": ["51528"]},
+        {"refId": "B", "queryType": "0", "resultFormat": "time_series",
+         "host": {"filter": "PNET-SAIX-B"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits sent/"},
+         "itemids": ["51537"]}
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "SITE-A — Gi0/0 → SAIX-A",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
+      "gridPos": {"h": 10, "w": 8, "x": 8, "y": 10},
+      "fieldConfig": {"defaults": {"unit": "bps", "min": 0, "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"}, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"tooltip": {"mode": "multi"}, "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["last", "max"]}},
+      "targets": [
+        {"refId": "A", "queryType": "0", "resultFormat": "time_series",
+         "host": {"filter": "PNET-SITE-A"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits received/"},
+         "itemids": ["51661"]},
+        {"refId": "B", "queryType": "0", "resultFormat": "time_series",
+         "host": {"filter": "PNET-SITE-A"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits sent/"},
+         "itemids": ["51679"]}
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "SITE-B — Gi0/0 → SAIX-B",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
+      "gridPos": {"h": 10, "w": 8, "x": 16, "y": 10},
+      "fieldConfig": {"defaults": {"unit": "bps", "min": 0, "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"}, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"tooltip": {"mode": "multi"}, "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["last", "max"]}},
+      "targets": [
+        {"refId": "A", "queryType": "0", "resultFormat": "time_series",
+         "host": {"filter": "PNET-SITE-B"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits received/"},
+         "itemids": ["51570"]},
+        {"refId": "B", "queryType": "0", "resultFormat": "time_series",
+         "host": {"filter": "PNET-SITE-B"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits sent/"},
+         "itemids": ["51585"]}
+      ]
+    }
+  ],
+  "description": "NOC wallboard. Six fixed WAN uplink IN/OUT graphs. Position is stable; no auto-reorder. Each panel 8w×10h on a 24-col grid = 3×2 at ≥1920px, matches the frozen WARP wall contract. itemids are supplied as hints to the Zabbix datasource plugin; the stable name regex (Gi0/0 Bits received/sent) is the primary selector so an itemid regeneration does not break the dashboard."
+}

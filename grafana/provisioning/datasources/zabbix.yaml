@@ -1,0 +1,33 @@
+# Grafana datasource provisioning — reads live Zabbix via the official
+# Zabbix datasource plugin (alexanderzobnin-zabbix-datasource).
+#
+# Codex delivers grafana-01 with the plugin installed; this file is dropped
+# at /etc/grafana/provisioning/datasources/zabbix.yaml and Grafana loads it
+# on service start / SIGHUP. The datasource UID is pinned to "zbx-noc" so
+# dashboard JSON stays portable.
+#
+# ZABBIX_GRAFANA_USER / ZABBIX_GRAFANA_PASSWORD come from
+# claude-access/grafana.env and are substituted by apply-grafana.sh at deploy
+# time. The literal values NEVER appear in Git.
+
+apiVersion: 1
+
+datasources:
+  - name: Zabbix NOC
+    uid: zbx-noc
+    type: alexanderzobnin-zabbix-datasource
+    access: proxy
+    url: https://192.168.1.91:8443/api_jsonrpc.php
+    editable: false
+    isDefault: true
+    jsonData:
+      username: ${ZABBIX_GRAFANA_USER}
+      trends: true
+      trendsFrom: "7d"
+      trendsRange: "4d"
+      cacheTTL: "60s"
+      alerting: false
+      disableReadOnlyUsersAck: true
+      tlsSkipVerify: true   # LAB only; replace with internal CA mount in prod
+    secureJsonData:
+      password: ${ZABBIX_GRAFANA_PASSWORD}

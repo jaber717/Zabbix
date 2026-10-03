@@ -1,0 +1,17 @@
+# Grafana dashboard provisioning — points at the on-disk JSON tree.
+# Dropped at /etc/grafana/provisioning/dashboards/noc.yaml.
+
+apiVersion: 1
+
+providers:
+  - name: NetOps NOC
+    orgId: 1
+    folder: NetOps NOC
+    folderUid: netops-noc
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false   # dashboards are code; UI edits don't persist
+    options:
+      path: /var/lib/grafana/dashboards/netops-noc
+      foldersFromFilesStructure: false
