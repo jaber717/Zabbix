@@ -59,7 +59,7 @@ api_mode() {
   echo "== upsert datasource (uid=zbx-noc, url=$ZABBIX_URL) =="
   DS_PAYLOAD=$(cat <<JSON
 {
-  "name": "Zabbix NOC", "uid": "zbx-noc",
+  "name": "Zabbix NOC", "uid": "zabbix-lab",
   "type": "alexanderzobnin-zabbix-datasource", "access": "proxy",
   "url": "${ZABBIX_URL}",
   "editable": false, "isDefault": true,
@@ -75,7 +75,7 @@ JSON
   code=$(curl -skS -u "$AUTH" -o /tmp/ds.resp -w '%{http_code}' -H 'Content-Type: application/json' \
     -X POST --data "$DS_PAYLOAD" "$GRAFANA_URL/api/datasources")
   if [ "$code" = 409 ]; then
-    DS_ID=$(curl -skS -u "$AUTH" "$GRAFANA_URL/api/datasources/uid/zbx-noc" | sed -E 's/.*"id":([0-9]+).*/\1/')
+    DS_ID=$(curl -skS -u "$AUTH" "$GRAFANA_URL/api/datasources/uid/zabbix-lab" | sed -E 's/.*"id":([0-9]+).*/\1/')
     code=$(curl -skS -u "$AUTH" -o /tmp/ds.resp -w '%{http_code}' -H 'Content-Type: application/json' \
       -X PUT --data "$DS_PAYLOAD" "$GRAFANA_URL/api/datasources/${DS_ID}")
   fi
@@ -84,14 +84,14 @@ JSON
 
   echo "== upsert folder =="
   curl -skS -u "$AUTH" -X POST -H 'Content-Type: application/json' \
-    -d '{"uid":"netops-noc","title":"NetOps NOC"}' "$GRAFANA_URL/api/folders" >/dev/null || true
+    -d '{"uid":"noc","title":"NOC"}' "$GRAFANA_URL/api/folders" >/dev/null || true
 
   echo "== upsert dashboards (grafana/dashboards/ only; drafts/ skipped) =="
   shopt -s nullglob
   for f in grafana/dashboards/*.json; do
     [ -s "$f" ] || continue
     jq -n --slurpfile dash "$f" \
-      '{dashboard: $dash[0], folderUid: "netops-noc", overwrite: true, message: "apply-grafana.sh"}' \
+      '{dashboard: $dash[0], folderUid: "noc", overwrite: true, message: "apply-grafana.sh"}' \
       > /tmp/dash.body
     code=$(curl -skS -u "$AUTH" -o /tmp/dash.resp -w '%{http_code}' \
       -X POST -H 'Content-Type: application/json' --data @/tmp/dash.body \
@@ -120,7 +120,7 @@ files_mode() {
 
   echo "== rsync provisioning + dashboards (drafts/ excluded) =="
   rsync -az --delete /tmp/grafana-prov/ grafana-01:/etc/grafana/provisioning/
-  rsync -az --delete --exclude 'drafts/' grafana/dashboards/ grafana-01:/var/lib/grafana/dashboards/netops-noc/
+  rsync -az --delete --exclude 'drafts/' grafana/dashboards/ grafana-01:/var/lib/grafana/dashboards/noc/
   ssh grafana-01 'systemctl reload grafana-server || systemctl restart grafana-server'
   rm -rf /tmp/grafana-prov
   echo "files_mode done; Grafana will reload provisioning"

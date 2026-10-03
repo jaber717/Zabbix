@@ -24,7 +24,7 @@
       "id": 1,
       "type": "timeseries",
       "title": "STC — Gi0/0 → INT-CORE",
-      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
       "gridPos": {"h": 10, "w": 8, "x": 0, "y": 0},
       "fieldConfig": {
         "defaults": {
@@ -48,7 +48,7 @@
       "id": 2,
       "type": "timeseries",
       "title": "MOBILY — Gi0/0 → INT-CORE",
-      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
       "gridPos": {"h": 10, "w": 8, "x": 8, "y": 0},
       "fieldConfig": {
         "defaults": {"unit": "bps", "min": 0,
@@ -69,7 +69,7 @@
       "id": 3,
       "type": "timeseries",
       "title": "SAIX-A — Gi0/0 → SAIX-CORE",
-      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
       "gridPos": {"h": 10, "w": 8, "x": 16, "y": 0},
       "fieldConfig": {
         "defaults": {"unit": "bps", "min": 0,
@@ -90,7 +90,7 @@
       "id": 4,
       "type": "timeseries",
       "title": "SAIX-B — Gi0/0 → SAIX-CORE",
-      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
       "gridPos": {"h": 10, "w": 8, "x": 0, "y": 10},
       "fieldConfig": {
         "defaults": {"unit": "bps", "min": 0,
@@ -111,7 +111,7 @@
       "id": 5,
       "type": "timeseries",
       "title": "SITE-A — Gi0/0 → SAIX-A",
-      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
       "gridPos": {"h": 10, "w": 8, "x": 8, "y": 10},
       "fieldConfig": {
         "defaults": {"unit": "bps", "min": 0,
@@ -132,7 +132,7 @@
       "id": 6,
       "type": "timeseries",
       "title": "SITE-B — Gi0/0 → SAIX-B",
-      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
       "gridPos": {"h": 10, "w": 8, "x": 16, "y": 10},
       "fieldConfig": {
         "defaults": {"unit": "bps", "min": 0,

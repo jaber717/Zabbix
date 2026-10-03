@@ -6,12 +6,12 @@ apiVersion: 1
 providers:
   - name: NetOps NOC
     orgId: 1
-    folder: NetOps NOC
-    folderUid: netops-noc
+    folder: NOC
+    folderUid: noc
     type: file
     disableDeletion: false
     updateIntervalSeconds: 30
     allowUiUpdates: false   # dashboards are code; UI edits don't persist
     options:
-      path: /var/lib/grafana/dashboards/netops-noc
+      path: /var/lib/grafana/dashboards/noc
       foldersFromFilesStructure: false
