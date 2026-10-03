@@ -1,4 +1,13 @@
 #cloud-config
+# cloud-init for netflow-01 running the OFFICIAL Akvorado v2026.10.0 stack.
+# Runtime: Docker Engine + Docker Compose plugin (upstream compose mounts
+# /var/run/docker.sock for Traefik's Docker provider — we match that).
+# SELinux stays Enforcing. firewalld stays active.
+#
+# This file never embeds stack logic; it installs the canonical scripts from
+# netflow-vm/bin/ and runs bin/stack-up.sh, which is the single supported
+# bring-up path.
+
 hostname: ${NETFLOW_HOSTNAME}
 preserve_hostname: false
 users:
@@ -8,118 +17,65 @@ users:
     lock_passwd: true
     ssh_authorized_keys:
       - ${NETOPS_ADMIN_PUBKEY}
-package_update: true
-packages:
-  - podman
-  - podman-plugins
-  - podman-compose
-  - firewalld
-  - jq
-  - lvm2
-  - xfsprogs
-  - cloud-init
-  - zabbix-agent2
 disable_root: true
 ssh_pwauth: false
 
+package_update: true
+packages:
+  - dnf-plugins-core
+  - firewalld
+  - lvm2
+  - xfsprogs
+  - jq
+  - python3
+  - rsync
+  - zabbix-agent2
+
 write_files:
-  - path: /etc/akvorado/clickhouse-default-password
-    permissions: '0600'
+  # Codex ships netflow-vm/ as /opt/akvorado on the target host via
+  # provisioning/sync-tree.sh or by rsync from the controller. The vendored
+  # upstream, overlay, bin/, flow-api/, and sql/ all land at /opt/akvorado/.
+
+  # NetOps provisioning parameters surfaced to the orchestrator:
+  - path: /etc/akvorado/netops.env
+    permissions: '0640'
     owner: root:root
-    content: ${CH_DEFAULT_PASSWORD}
-
-  - path: /etc/akvorado/zbx-flow-ro-password
-    permissions: '0600'
-    owner: root:root
-    content: ${ZBX_FLOW_RO_PASSWORD}
-
-  - path: /etc/akvorado/console-htpasswd
-    permissions: '0600'
-    owner: root:root
-    content: ${CONSOLE_HTPASSWD}
-
-  - path: /opt/akvorado/bin/pin-digests.sh
-    permissions: '0755'
     content: |
-      #!/usr/bin/env bash
-      set -euo pipefail
-      cd /opt/akvorado/compose
-      podman-compose --no-ansi pull
-      podman image inspect --format '{{.RepoDigests}}' \
-        ghcr.io/akvorado/akvorado:1.11.4 \
-        docker.io/confluentinc/cp-kafka:7.6.1 \
-        docker.io/confluentinc/cp-zookeeper:7.6.1 \
-        docker.io/clickhouse/clickhouse-server:24.8.4.13 \
-        | tee /opt/akvorado/compose/.digests.lock
-
-  - path: /opt/akvorado/bin/rollback.sh
-    permissions: '0755'
-    content: |
-      #!/usr/bin/env bash
-      set -euo pipefail
-      if [ ! -s /opt/akvorado/compose/.digests.lock.prev ]; then
-        echo "no previous .digests.lock.prev — nothing to roll back to"; exit 1
-      fi
-      mv /opt/akvorado/compose/.digests.lock.prev /opt/akvorado/compose/.digests.lock
-      cd /opt/akvorado/compose
-      podman-compose down
-      podman-compose up -d
-
-  - path: /opt/akvorado/bin/clickhouse-apply.sh
-    permissions: '0755'
-    content: |
-      #!/usr/bin/env bash
-      set -euo pipefail
-      PASS=$(cat /etc/akvorado/zbx-flow-ro-password)
-      sed "s|\${ZBX_FLOW_RO_PASSWORD}|${PASS}|" /opt/akvorado/sql/views.sql | \
-        podman exec -i akvorado-clickhouse clickhouse-client --multiquery
-      echo "flows_v1 view + zbx_flow_ro user applied"
-
-  - path: /etc/systemd/system/akvorado.service
-    permissions: '0644'
-    content: |
-      [Unit]
-      Description=Akvorado Flow Platform (podman-compose)
-      After=network-online.target firewalld.service
-      Wants=network-online.target
-
-      [Service]
-      Type=simple
-      WorkingDirectory=/opt/akvorado/compose
-      ExecStartPre=/usr/bin/podman-compose pull
-      ExecStart=/usr/bin/podman-compose up
-      ExecStop=/usr/bin/podman-compose down
-      Restart=on-failure
-      RestartSec=10
-      TimeoutStartSec=180
-      User=root
-
-      [Install]
-      WantedBy=multi-user.target
+      NETFLOW_HOSTNAME=${NETFLOW_HOSTNAME}
+      ZABBIX_SERVER_IP=${ZABBIX_SERVER_IP}
+      EXPORTER_CIDRS=${EXPORTER_CIDRS}
+      NOC_MGMT_CIDRS=${NOC_MGMT_CIDRS}
+      AKVORADO_VERSION=2026.10.0
 
 runcmd:
-  # 1. Mount the dedicated flow data disk (second disk, /dev/sdb).
+  # 1. Dedicated flow data LV on /dev/sdb → /var/lib/akvorado/data (xfs, LVM).
   - [ bash, -lc, 'if [ -b /dev/sdb ] && ! vgs vg_flow >/dev/null 2>&1; then
-      pvcreate -ff -y /dev/sdb &&
-      vgcreate vg_flow /dev/sdb &&
-      lvcreate -l 100%FREE -n lv_flows vg_flow &&
-      mkfs.xfs /dev/vg_flow/lv_flows &&
-      mkdir -p /var/lib/akvorado/data &&
-      echo "/dev/vg_flow/lv_flows /var/lib/akvorado/data xfs defaults 0 0" >> /etc/fstab &&
-      mount -a &&
-      mkdir -p /var/lib/akvorado/data/clickhouse &&
-      chcon -R -t container_file_t /var/lib/akvorado/data; fi' ]
+        pvcreate -ff -y /dev/sdb &&
+        vgcreate vg_flow /dev/sdb &&
+        lvcreate -l 100%FREE -n lv_flows vg_flow &&
+        mkfs.xfs /dev/vg_flow/lv_flows &&
+        mkdir -p /var/lib/akvorado/data/{clickhouse,kafka} &&
+        echo "/dev/vg_flow/lv_flows /var/lib/akvorado/data xfs defaults 0 0" >> /etc/fstab &&
+        mount -a &&
+        chcon -R -t container_file_t /var/lib/akvorado/data; fi' ]
 
-  # 2. firewalld baseline.
+  # 2. Docker Engine + Compose plugin from the official Docker repo (RHEL 9).
+  - [ dnf, config-manager, --add-repo, https://download.docker.com/linux/rhel/docker-ce.repo ]
+  - [ dnf, install, -y, docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin ]
+  - [ systemctl, enable, --now, docker ]
+
+  # 3. firewalld baseline, zones for exporters/mgmt/zabbix.
   - [ systemctl, enable, --now, firewalld ]
-  - [ bash, -lc, '/opt/akvorado/bin/firewalld-apply.sh "${EXPORTER_CIDRS}" "${NOC_MGMT_CIDRS}"' ]
+  - [ bash, -lc, '/opt/akvorado/provisioning/firewalld-apply.sh "${EXPORTER_CIDRS}" "${NOC_MGMT_CIDRS}" "${ZABBIX_SERVER_IP}"' ]
 
-  # 3. SELinux booleans needed by rootless/root-containers using host bind mounts.
+  # 4. SELinux booleans needed by containers + the flow-api nginx reverse proxy
+  #    to talk to local PHP-FPM.
   - [ setsebool, -P, container_manage_cgroup, "on" ]
+  - [ setsebool, -P, httpd_can_network_connect, "on" ]
 
-  # 4. Enable podman socket + the compose service.
-  - [ systemctl, enable, --now, podman.socket ]
-  - [ systemctl, enable, --now, akvorado.service ]
-
-  # 5. Zabbix agent2 self-monitoring enabled with the Akvorado platform template.
+  # 5. Single supported bring-up path. The orchestrator enforces order:
+  #    docker compose up (stack) → wait for Akvorado schema →
+  #    generate flow-api secrets → apply ClickHouse compat view/user →
+  #    install + start flow-api → validate console reachability.
+  - [ bash, -lc, 'cd /opt/akvorado && bin/stack-up.sh --from-cloud-init' ]
   - [ systemctl, enable, --now, zabbix-agent2 ]

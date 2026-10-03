@@ -15,7 +15,8 @@ Dedicated **appliance-style** VM, operationally separate from the Zabbix server.
 | `akvorado-inlet` | same image | UDP 2055/4739/6343 (NetFlow / IPFIX / sFlow) |
 | `akvorado-outlet` | same image | Kafka → ClickHouse writer |
 | `akvorado-console` | same image | Web UI (served behind Traefik) |
-| `kafka` | `apache/kafka:4.3.1` | **KRaft mode, no Zookeeper** |
+| `kafka` | `apache/kafka:4.3.1` | **KRaft mode, no ZK** (upstream dropped ZK in this release) |  <!-- BAN:keep -->
+
 | `redis` | `valkey/valkey:9.0` | Session / metadata cache |
 | `clickhouse` | `clickhouse/clickhouse-server:26.8` | Flow store |
 | `traefik` | `traefik:v3.7` | Reverse proxy (private 8080 loopback, public 8081 — our overlay also binds 8081 to loopback) |
@@ -75,7 +76,7 @@ Browser → Zabbix PHP (FlowSearch) → HTTPS/Bearer → flow-api/nginx+PHP
 
 - Flow API gateway: `netflow-vm/flow-api/`.
 - Zabbix server-side code: `frontend/modules/FlowSearch/`.
-- Compat view: `frontend/modules/FlowSearch/sql/views.sql` — created by `bin/clickhouse-apply.sh`.
+- Compat view: `../frontend/modules/FlowSearch/sql/views.sql` — created by `bin/clickhouse-apply.sh`.
 - Peak bitrate is **sampling-aware**: `sum(Bytes * SamplingRate) * 8 / 60` bucketed per minute, with a materialised `netops.flow_bps_1m` MV for long windows.
 
 ## 4. Sizing (initial, re-measure after 7 days)
