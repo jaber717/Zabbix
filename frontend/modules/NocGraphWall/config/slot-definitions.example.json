@@ -1,0 +1,63 @@
+{
+  "$schema_version": 1,
+  "defaults": {
+    "refresh_seconds": 30,
+    "default_range_hours": 1,
+    "columns_desktop": 3,
+    "columns_narrow": 2,
+    "columns_phone": 1
+  },
+  "slots": [
+    {
+      "position": 1,
+      "label": "STC Internet — IN/OUT",
+      "kind": "paired_interface",
+      "in_itemid": null,
+      "out_itemid": null,
+      "unit": "bps",
+      "capacity_bps": null,
+      "notes": "Fill in_itemid/out_itemid with the real items on the STC-facing WAN interface. Confirm via Zabbix API before publishing."
+    },
+    {
+      "position": 2,
+      "label": "Mobily Internet — IN/OUT",
+      "kind": "paired_interface",
+      "in_itemid": null,
+      "out_itemid": null,
+      "unit": "bps",
+      "capacity_bps": null
+    },
+    {
+      "position": 3,
+      "label": "SAIX — IN/OUT",
+      "kind": "paired_interface",
+      "in_itemid": null,
+      "out_itemid": null,
+      "unit": "bps",
+      "capacity_bps": null
+    },
+    {
+      "position": 4,
+      "label": "DCI / Site-to-site",
+      "kind": "paired_interface",
+      "in_itemid": null,
+      "out_itemid": null,
+      "unit": "bps",
+      "capacity_bps": null
+    },
+    {
+      "position": 5,
+      "label": "Internet edge firewall throughput",
+      "kind": "single_item",
+      "itemid": null,
+      "unit": "bps"
+    },
+    {
+      "position": 6,
+      "label": "Core / ACI / WAN trend",
+      "kind": "single_item",
+      "itemid": null,
+      "unit": "bps"
+    }
+  ]
+}

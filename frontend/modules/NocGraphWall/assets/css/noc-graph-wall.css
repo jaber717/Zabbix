@@ -1,0 +1,24 @@
+/* NOC Graph Wall — fixed 6-slot wallboard. Theme-aware (Blue/light + Dark). */
+.netops-noc-wall { --ngw-gap: 8px; --ngw-cols: 3; display: flex; flex-direction: column; min-height: calc(100vh - 56px); background: var(--ui-background-color, #fff); color: var(--ui-text-color, #202b40); }
+.netops-noc-wall.is-fullscreen { position: fixed; inset: 0; z-index: 9999; min-height: 100vh; }
+.ngw-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-bottom: 1px solid var(--ui-border-color, #d6dfe6); flex: 0 0 auto; }
+.ngw-header__title h3 { margin: 0; font-size: 18px; letter-spacing: 0.3px; }
+.ngw-updated { margin-left: 12px; font-size: 12px; opacity: 0.65; }
+.ngw-ranges button { padding: 4px 10px; margin-right: 4px; border: 1px solid var(--ui-border-color, #d6dfe6); background: transparent; color: inherit; cursor: pointer; border-radius: 3px; }
+.ngw-ranges button.is-active { background: var(--ui-accent-color, #0275d8); color: #fff; border-color: transparent; }
+.ngw-header__actions > button { margin-left: 6px; }
+.ngw-grid { flex: 1 1 auto; display: grid; grid-template-columns: repeat(var(--ngw-cols), 1fr); gap: var(--ngw-gap); padding: var(--ngw-gap); min-height: 0; }
+.ngw-slot { display: flex; flex-direction: column; background: var(--ui-widget-background, #f8fafc); border: 1px solid var(--ui-border-color, #e2e8ef); border-radius: 4px; min-height: 0; min-width: 0; padding: 10px 14px; }
+.ngw-slot__header { display: flex; align-items: baseline; justify-content: space-between; flex: 0 0 auto; margin-bottom: 6px; }
+.ngw-slot__label { font-weight: 600; font-size: 14px; letter-spacing: 0.2px; }
+.ngw-slot__value { font-variant-numeric: tabular-nums; font-size: 13px; opacity: 0.8; }
+.ngw-slot__canvas { flex: 1 1 auto; width: 100%; height: 100%; min-height: 160px; }
+.ngw-slot__hint { font-size: 12px; opacity: 0.7; padding: 6px 0; }
+.ngw-slot--unconfigured { outline: 1px dashed var(--ui-warning-color, #d9822b); }
+.ngw-slot--empty { opacity: 0.35; }
+@media (max-width: 1440px) { .netops-noc-wall { --ngw-cols: 2; } }
+@media (max-width: 900px)  { .netops-noc-wall { --ngw-cols: 1; } }
+/* Dark theme hook — Zabbix sets .theme-dark on <html> */
+.theme-dark .netops-noc-wall { background: #11161e; color: #d8e1ea; }
+.theme-dark .ngw-slot { background: #182029; border-color: #263040; }
+.theme-dark .ngw-ranges button { border-color: #2a3340; }

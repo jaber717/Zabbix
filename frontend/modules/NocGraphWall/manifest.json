@@ -1,0 +1,26 @@
+{
+  "manifest_version": 2.0,
+  "id": "netops_noc_graph_wall",
+  "type": "widget",
+  "name": "NOC Graph Wall",
+  "namespace": "NocGraphWall",
+  "version": "0.1.0",
+  "author": "NetOps",
+  "description": "Six fixed graph slots for a NOC wallboard. Server-resolved items, no browser-side truth, no automatic reordering, no analytical drawers.",
+  "widget": {
+    "name": "NOC Graph Wall",
+    "size": {"width": 72, "height": 36},
+    "js_class": "CWidgetNocGraphWall",
+    "use_time_selector": false,
+    "refresh_rate": 30
+  },
+  "actions": {
+    "widget.netops_noc_graph_wall.view": {"class": "WidgetView"},
+    "nocgraphwall.config.update": {"class": "ConfigUpdate", "layout": "layout.json"},
+    "nocgraphwall.items.search": {"class": "ItemSearch", "layout": "layout.json"}
+  },
+  "assets": {
+    "css": ["noc-graph-wall.css"],
+    "js": ["traffic-chart.js", "slot-editor.js", "class.widget.js"]
+  }
+}
