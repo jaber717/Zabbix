@@ -8,7 +8,7 @@ Codex delivers `grafana-01` LXC with the `alexanderzobnin-zabbix-app` plugin ins
 grafana/
 ├── README.md
 ├── provisioning/
-│   ├── datasources/zabbix.yaml       # Zabbix datasource via alexanderzobnin plugin, uid=zbx-noc
+│   ├── datasources/zabbix.yaml       # Zabbix datasource via alexanderzobnin plugin, uid=zabbix-lab
 │   └── dashboards/noc.yaml           # dashboard provider → /var/lib/grafana/dashboards/netops-noc
 ├── dashboards/
 │   └── noc-wan-overview.json         # 6-panel wallboard (3×2 at ≥1920px), itemid mode
@@ -26,7 +26,7 @@ grafana/
 bash grafana/bin/apply-grafana.sh api
 ```
 
-Reads `claude-access/grafana.env`, verifies the Zabbix plugin is installed, upserts the datasource (`uid=zbx-noc`), the folder (`uid=netops-noc`), and every dashboard under `grafana/dashboards/`. Secrets are base64-decoded in memory, never printed, never written.
+Reads `claude-access/grafana.env`, verifies the Zabbix plugin is installed, upserts the datasource (`uid=zabbix-lab`), the folder (`uid=noc`), and every dashboard under `grafana/dashboards/`. Secrets are base64-decoded in memory, never printed, never written.
 
 ### Mode `files` (true dashboards-as-code; requires SSH to grafana-01)
 

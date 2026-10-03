@@ -56,7 +56,7 @@ api_mode() {
          echo "      grafana-cli plugins install alexanderzobnin-zabbix-app && systemctl restart grafana-server"
          exit 5; }
 
-  echo "== upsert datasource (uid=zbx-noc, url=$ZABBIX_URL) =="
+  echo "== upsert datasource (uid=zabbix-lab, url=$ZABBIX_URL) =="
   DS_PAYLOAD=$(cat <<JSON
 {
   "name": "Zabbix NOC", "uid": "zabbix-lab",
