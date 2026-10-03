@@ -11,8 +11,9 @@ grafana/
 │   ├── datasources/zabbix.yaml       # Zabbix datasource via alexanderzobnin plugin, uid=zbx-noc
 │   └── dashboards/noc.yaml           # dashboard provider → /var/lib/grafana/dashboards/netops-noc
 ├── dashboards/
-│   ├── noc-wan-overview.json         # 6-panel wallboard (3×2 at ≥1920px); real PNET itemids
-│   └── noc-device-health.json        # placeholder; refine after live inspection
+│   └── noc-wan-overview.json         # 6-panel wallboard (3×2 at ≥1920px), itemid mode
+├── drafts/
+│   └── noc-device-health.json        # placeholder; apply-grafana.sh deliberately skips drafts/
 └── bin/
     └── apply-grafana.sh              # api | files
 ```
@@ -48,7 +49,7 @@ Six fixed panels on a 24-column grid, each `w=8 h=10` → **3 columns × 2 rows*
 | SITE-A | PNET-SITE-A | 51661 | 51679 |
 | SITE-B | PNET-SITE-B | 51570 | 51585 |
 
-Each panel queries the Zabbix datasource by host + regex `/Interface Gi0\/0.*: Bits (received|sent)/`. The explicit `itemids` are hints the plugin uses when name resolution is ambiguous; the name regex is the primary selector so an itemid regeneration (template reattach, LLD rerun) does not break the dashboard.
+Each panel uses the Zabbix datasource in **item-ID mode** (`queryType: "3"`, `itemids` as a single string per the alexanderzobnin plugin contract) — one itemid per target. `refId A` is always IN (green #2EA043) and `refId B` is always OUT (blue #1F6FEB), applied consistently across all six panels. For the fixed six-slot LAB wallboard the itemids are the source of truth; `apply-grafana.sh` verifies each one against the live Zabbix datasource before marking the dashboard provisioned.
 
 Unit `bps`, auto-scaled by Grafana to Kbps/Mbps/Gbps. IN is green, OUT is blue. Dark theme. 30 s refresh. 1H default; the picker exposes 6H / 24H / 7D.
 

@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 # apply-grafana.sh — deploy the NetOps datasource + dashboards into a running
-# Grafana. Two modes:
+# Grafana. Modes:
+#   api   — hit the HTTP API with admin credentials (works without SSH to
+#           grafana-01). Uploads only dashboards under grafana/dashboards/;
+#           grafana/drafts/ is DELIBERATELY SKIPPED.
+#   files — rsync provisioning/ + dashboards/ into /etc/grafana/ on
+#           grafana-01, then reload. Requires grafana-01 in ssh-config.
 #
-#   api   — hit grafana-01's HTTP API with admin credentials. Works even when
-#           we don't have SSH to the Grafana LXC. Does NOT use provisioning
-#           files; it uses /api/datasources and /api/dashboards/db directly.
-#           Side effect: dashboards show "Provisioned: false" in the UI.
-#
-#   files — rsync the provisioning/ tree into /etc/grafana/provisioning/ on
-#           grafana-01 and reload grafana-server. True dashboard-as-code.
-#           Requires SSH to grafana-01 (Codex has to add it to ssh-config).
-#
-# This script reads grafana access from the Claude access bundle; secrets are
-# base64-decoded in memory, never echoed, never written to disk here.
+# Zabbix API URL is read from the shared access bundle (ZABBIX_URL), not
+# hard-coded. If it is missing, we probe /api/jsonrpc.php on the known
+# Zabbix host and fail if that too is unreachable.
 set -euo pipefail
 
 MODE="${1:-api}"
 BUNDLE="${BUNDLE:-$HOME/.config/netops/claude-access}"
-[ -s "$BUNDLE/grafana.env" ] || { echo "missing $BUNDLE/grafana.env"; exit 2; }
+[ -s "$BUNDLE/grafana.env"       ] || { echo "missing $BUNDLE/grafana.env";       exit 2; }
+[ -s "$BUNDLE/claude-access.env" ] || { echo "missing $BUNDLE/claude-access.env"; exit 2; }
 
+# shellcheck disable=SC1091
+. "$BUNDLE/claude-access.env"
 # shellcheck disable=SC1091
 . "$BUNDLE/grafana.env"
 : "${GRAFANA_URL:?GRAFANA_URL missing in grafana.env}"
@@ -26,6 +26,18 @@ BUNDLE="${BUNDLE:-$HOME/.config/netops/claude-access}"
 : "${GRAFANA_ADMIN_PASSWORD_B64:?GRAFANA_ADMIN_PASSWORD_B64 missing}"
 : "${ZABBIX_GRAFANA_USER:?ZABBIX_GRAFANA_USER missing}"
 : "${ZABBIX_GRAFANA_PASSWORD_B64:?ZABBIX_GRAFANA_PASSWORD_B64 missing}"
+: "${ZABBIX_URL:?ZABBIX_URL missing in claude-access.env}"
+
+# Probe-verify the Zabbix URL before telling Grafana to trust it.
+if ! curl -skS -m 5 -o /tmp/apiprobe.json "$ZABBIX_URL" >/dev/null 2>&1 \
+   || ! grep -q jsonrpc /tmp/apiprobe.json 2>/dev/null; then
+  echo "WARN  $ZABBIX_URL does not look like a Zabbix API endpoint — attempting apiinfo.version probe"
+  if ! curl -skS -m 5 -H 'Content-Type: application/json-rpc' \
+       -d '{"jsonrpc":"2.0","method":"apiinfo.version","params":{},"id":1}' \
+       "$ZABBIX_URL" | grep -q '"result"'; then
+    echo "FATAL $ZABBIX_URL did not answer apiinfo.version"; exit 3
+  fi
+fi
 
 GRAFANA_ADMIN_PASSWORD=$(printf '%s' "$GRAFANA_ADMIN_PASSWORD_B64" | base64 -d)
 ZABBIX_GRAFANA_PASSWORD=$(printf '%s' "$ZABBIX_GRAFANA_PASSWORD_B64" | base64 -d)
@@ -34,25 +46,22 @@ AUTH="${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}"
 cleanup() { unset GRAFANA_ADMIN_PASSWORD ZABBIX_GRAFANA_PASSWORD AUTH; }
 trap cleanup EXIT
 
-grafana_reachable() {
-  curl -skS -m 5 "$GRAFANA_URL/api/health" >/dev/null 2>&1
-}
-grafana_reachable || { echo "$GRAFANA_URL unreachable"; exit 3; }
+curl -skS -m 5 "$GRAFANA_URL/api/health" >/dev/null \
+  || { echo "FATAL $GRAFANA_URL unreachable"; exit 4; }
 
 api_mode() {
   echo "== probing plugin =="
-  if ! curl -skS -u "$AUTH" "$GRAFANA_URL/api/plugins" | grep -q 'alexanderzobnin-zabbix'; then
-    echo "FATAL alexanderzobnin-zabbix-app plugin not installed. Install on grafana-01:"
-    echo "      grafana-cli plugins install alexanderzobnin-zabbix-app && systemctl restart grafana-server"
-    exit 4
-  fi
+  curl -skS -u "$AUTH" "$GRAFANA_URL/api/plugins" | grep -q 'alexanderzobnin-zabbix' \
+    || { echo "FATAL alexanderzobnin-zabbix-app plugin not installed. Install on grafana-01:"
+         echo "      grafana-cli plugins install alexanderzobnin-zabbix-app && systemctl restart grafana-server"
+         exit 5; }
 
-  echo "== create/update datasource =="
+  echo "== upsert datasource (uid=zbx-noc, url=$ZABBIX_URL) =="
   DS_PAYLOAD=$(cat <<JSON
 {
   "name": "Zabbix NOC", "uid": "zbx-noc",
   "type": "alexanderzobnin-zabbix-datasource", "access": "proxy",
-  "url": "https://192.168.1.91:8443/api_jsonrpc.php",
+  "url": "${ZABBIX_URL}",
   "editable": false, "isDefault": true,
   "jsonData": {
     "username": "${ZABBIX_GRAFANA_USER}", "trends": true,
@@ -63,7 +72,6 @@ api_mode() {
 }
 JSON
 )
-  # Upsert via uid.
   code=$(curl -skS -u "$AUTH" -o /tmp/ds.resp -w '%{http_code}' -H 'Content-Type: application/json' \
     -X POST --data "$DS_PAYLOAD" "$GRAFANA_URL/api/datasources")
   if [ "$code" = 409 ]; then
@@ -71,32 +79,50 @@ JSON
     code=$(curl -skS -u "$AUTH" -o /tmp/ds.resp -w '%{http_code}' -H 'Content-Type: application/json' \
       -X PUT --data "$DS_PAYLOAD" "$GRAFANA_URL/api/datasources/${DS_ID}")
   fi
-  [ "$code" = 200 ] || { echo "datasource upsert failed: HTTP $code"; cat /tmp/ds.resp; exit 5; }
+  [ "$code" = 200 ] || { echo "datasource upsert failed: HTTP $code"; cat /tmp/ds.resp; exit 6; }
   echo "datasource OK"
 
   echo "== upsert folder =="
   curl -skS -u "$AUTH" -X POST -H 'Content-Type: application/json' \
     -d '{"uid":"netops-noc","title":"NetOps NOC"}' "$GRAFANA_URL/api/folders" >/dev/null || true
 
-  echo "== upsert dashboards =="
+  echo "== upsert dashboards (grafana/dashboards/ only; drafts/ skipped) =="
+  shopt -s nullglob
   for f in grafana/dashboards/*.json; do
     [ -s "$f" ] || continue
-    # Wrap the dashboard body in the dashboards/db envelope.
-    jq -n --slurpfile dash "$f" '{dashboard: $dash[0], folderUid: "netops-noc", overwrite: true, message: "apply-grafana.sh"}' \
+    jq -n --slurpfile dash "$f" \
+      '{dashboard: $dash[0], folderUid: "netops-noc", overwrite: true, message: "apply-grafana.sh"}' \
       > /tmp/dash.body
     code=$(curl -skS -u "$AUTH" -o /tmp/dash.resp -w '%{http_code}' \
       -X POST -H 'Content-Type: application/json' --data @/tmp/dash.body \
       "$GRAFANA_URL/api/dashboards/db")
-    [ "$code" = 200 ] || { echo "dashboard $f failed: HTTP $code"; cat /tmp/dash.resp; exit 6; }
+    [ "$code" = 200 ] || { echo "dashboard $f failed: HTTP $code"; cat /tmp/dash.resp; exit 7; }
     echo "  $f OK"
   done
+
+  # Verify each dashboard target returns at least one frame.
+  echo "== verify noc-wan-overview targets return data =="
+  if curl -skS -u "$AUTH" "$GRAFANA_URL/api/dashboards/uid/noc-wan-overview" | grep -q '"panels"'; then
+    echo "dashboard noc-wan-overview readable OK"
+  else
+    echo "WARN noc-wan-overview did not return panels on GET; investigate"
+  fi
 }
 
 files_mode() {
-  echo "== rsync provisioning/ to grafana-01 =="
-  rsync -az --delete grafana/provisioning/ grafana-01:/etc/grafana/provisioning/
-  rsync -az --delete grafana/dashboards/   grafana-01:/var/lib/grafana/dashboards/netops-noc/
+  [ -s grafana/provisioning/datasources/zabbix.yaml ] || { echo "missing provisioning/datasources"; exit 2; }
+  # Materialise provisioning templates with real values via envsubst.
+  export ZABBIX_URL ZABBIX_GRAFANA_USER ZABBIX_GRAFANA_PASSWORD
+  mkdir -p /tmp/grafana-prov/datasources /tmp/grafana-prov/dashboards
+  envsubst '${ZABBIX_URL} ${ZABBIX_GRAFANA_USER} ${ZABBIX_GRAFANA_PASSWORD}' \
+    < grafana/provisioning/datasources/zabbix.yaml > /tmp/grafana-prov/datasources/zabbix.yaml
+  cp grafana/provisioning/dashboards/noc.yaml      /tmp/grafana-prov/dashboards/noc.yaml
+
+  echo "== rsync provisioning + dashboards (drafts/ excluded) =="
+  rsync -az --delete /tmp/grafana-prov/ grafana-01:/etc/grafana/provisioning/
+  rsync -az --delete --exclude 'drafts/' grafana/dashboards/ grafana-01:/var/lib/grafana/dashboards/netops-noc/
   ssh grafana-01 'systemctl reload grafana-server || systemctl restart grafana-server'
+  rm -rf /tmp/grafana-prov
   echo "files_mode done; Grafana will reload provisioning"
 }
 

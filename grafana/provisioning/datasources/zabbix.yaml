@@ -3,12 +3,13 @@
 #
 # Codex delivers grafana-01 with the plugin installed; this file is dropped
 # at /etc/grafana/provisioning/datasources/zabbix.yaml and Grafana loads it
-# on service start / SIGHUP. The datasource UID is pinned to "zbx-noc" so
-# dashboard JSON stays portable.
+# on service start / SIGHUP. UID is pinned to "zbx-noc" so dashboard JSON
+# stays portable.
 #
-# ZABBIX_GRAFANA_USER / ZABBIX_GRAFANA_PASSWORD come from
-# claude-access/grafana.env and are substituted by apply-grafana.sh at deploy
-# time. The literal values NEVER appear in Git.
+# ZABBIX_URL, ZABBIX_GRAFANA_USER, and ZABBIX_GRAFANA_PASSWORD come from
+# claude-access/{claude-access.env,grafana.env} and are substituted by
+# apply-grafana.sh (files mode) using `envsubst` at deploy time. The literal
+# values NEVER appear in Git.
 
 apiVersion: 1
 
@@ -17,7 +18,7 @@ datasources:
     uid: zbx-noc
     type: alexanderzobnin-zabbix-datasource
     access: proxy
-    url: https://192.168.1.91:8443/api_jsonrpc.php
+    url: ${ZABBIX_URL}
     editable: false
     isDefault: true
     jsonData:

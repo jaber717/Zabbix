@@ -2,7 +2,7 @@
   "title": "NOC — WAN Overview",
   "uid": "noc-wan-overview",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "editable": false,
   "graphTooltip": 1,
   "refresh": "30s",
@@ -28,31 +28,20 @@
       "gridPos": {"h": 10, "w": 8, "x": 0, "y": 0},
       "fieldConfig": {
         "defaults": {
-          "unit": "bps",
-          "min": 0,
+          "unit": "bps", "min": 0,
           "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"},
           "color": {"mode": "palette-classic"}
         },
         "overrides": [
-          {"matcher": {"id": "byRegexp", "options": ".*(sent|out|OUT).*"},
-           "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "#1F6FEB"}}]},
-          {"matcher": {"id": "byRegexp", "options": ".*(received|in|IN).*"},
-           "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "#2EA043"}}]}
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "IN"},  {"id": "color", "value": {"mode": "fixed", "fixedColor": "#2EA043"}}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "OUT"}, {"id": "color", "value": {"mode": "fixed", "fixedColor": "#1F6FEB"}}]}
         ]
       },
-      "options": {
-        "tooltip": {"mode": "multi", "sort": "none"},
-        "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["last", "max"]}
-      },
+      "options": {"tooltip": {"mode": "multi", "sort": "none"},
+                   "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["last", "max"]}},
       "targets": [
-        {"refId": "A", "queryType": "0", "resultFormat": "time_series",
-         "application": {"filter": ""}, "group": {"filter": "/.*/"},
-         "host": {"filter": "PNET-STC"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits received/"},
-         "itemids": ["51487"]},
-        {"refId": "B", "queryType": "0", "resultFormat": "time_series",
-         "application": {"filter": ""}, "group": {"filter": "/.*/"},
-         "host": {"filter": "PNET-STC"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits sent/"},
-         "itemids": ["51496"]}
+        {"refId": "A", "queryType": "3", "itemids": "51487", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51496", "resultFormat": "time_series"}
       ]
     },
     {
@@ -61,17 +50,19 @@
       "title": "MOBILY — Gi0/0 → INT-CORE",
       "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
       "gridPos": {"h": 10, "w": 8, "x": 8, "y": 0},
-      "fieldConfig": {"defaults": {"unit": "bps", "min": 0, "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"}, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "fieldConfig": {
+        "defaults": {"unit": "bps", "min": 0,
+                     "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"},
+                     "color": {"mode": "palette-classic"}},
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "IN"},  {"id": "color", "value": {"mode": "fixed", "fixedColor": "#2EA043"}}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "OUT"}, {"id": "color", "value": {"mode": "fixed", "fixedColor": "#1F6FEB"}}]}
+        ]
+      },
       "options": {"tooltip": {"mode": "multi"}, "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["last", "max"]}},
       "targets": [
-        {"refId": "A", "queryType": "0", "resultFormat": "time_series",
-         "application": {"filter": ""}, "group": {"filter": "/.*/"},
-         "host": {"filter": "PNET-MOBILY"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits received/"},
-         "itemids": ["51751"]},
-        {"refId": "B", "queryType": "0", "resultFormat": "time_series",
-         "application": {"filter": ""}, "group": {"filter": "/.*/"},
-         "host": {"filter": "PNET-MOBILY"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits sent/"},
-         "itemids": ["51760"]}
+        {"refId": "A", "queryType": "3", "itemids": "51751", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51760", "resultFormat": "time_series"}
       ]
     },
     {
@@ -80,15 +71,19 @@
       "title": "SAIX-A — Gi0/0 → SAIX-CORE",
       "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
       "gridPos": {"h": 10, "w": 8, "x": 16, "y": 0},
-      "fieldConfig": {"defaults": {"unit": "bps", "min": 0, "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"}, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "fieldConfig": {
+        "defaults": {"unit": "bps", "min": 0,
+                     "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"},
+                     "color": {"mode": "palette-classic"}},
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "IN"},  {"id": "color", "value": {"mode": "fixed", "fixedColor": "#2EA043"}}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "OUT"}, {"id": "color", "value": {"mode": "fixed", "fixedColor": "#1F6FEB"}}]}
+        ]
+      },
       "options": {"tooltip": {"mode": "multi"}, "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["last", "max"]}},
       "targets": [
-        {"refId": "A", "queryType": "0", "resultFormat": "time_series",
-         "host": {"filter": "PNET-SAIX-A"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits received/"},
-         "itemids": ["51610"]},
-        {"refId": "B", "queryType": "0", "resultFormat": "time_series",
-         "host": {"filter": "PNET-SAIX-A"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits sent/"},
-         "itemids": ["51619"]}
+        {"refId": "A", "queryType": "3", "itemids": "51610", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51619", "resultFormat": "time_series"}
       ]
     },
     {
@@ -97,15 +92,19 @@
       "title": "SAIX-B — Gi0/0 → SAIX-CORE",
       "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
       "gridPos": {"h": 10, "w": 8, "x": 0, "y": 10},
-      "fieldConfig": {"defaults": {"unit": "bps", "min": 0, "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"}, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "fieldConfig": {
+        "defaults": {"unit": "bps", "min": 0,
+                     "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"},
+                     "color": {"mode": "palette-classic"}},
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "IN"},  {"id": "color", "value": {"mode": "fixed", "fixedColor": "#2EA043"}}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "OUT"}, {"id": "color", "value": {"mode": "fixed", "fixedColor": "#1F6FEB"}}]}
+        ]
+      },
       "options": {"tooltip": {"mode": "multi"}, "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["last", "max"]}},
       "targets": [
-        {"refId": "A", "queryType": "0", "resultFormat": "time_series",
-         "host": {"filter": "PNET-SAIX-B"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits received/"},
-         "itemids": ["51528"]},
-        {"refId": "B", "queryType": "0", "resultFormat": "time_series",
-         "host": {"filter": "PNET-SAIX-B"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits sent/"},
-         "itemids": ["51537"]}
+        {"refId": "A", "queryType": "3", "itemids": "51528", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51537", "resultFormat": "time_series"}
       ]
     },
     {
@@ -114,15 +113,19 @@
       "title": "SITE-A — Gi0/0 → SAIX-A",
       "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
       "gridPos": {"h": 10, "w": 8, "x": 8, "y": 10},
-      "fieldConfig": {"defaults": {"unit": "bps", "min": 0, "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"}, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "fieldConfig": {
+        "defaults": {"unit": "bps", "min": 0,
+                     "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"},
+                     "color": {"mode": "palette-classic"}},
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "IN"},  {"id": "color", "value": {"mode": "fixed", "fixedColor": "#2EA043"}}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "OUT"}, {"id": "color", "value": {"mode": "fixed", "fixedColor": "#1F6FEB"}}]}
+        ]
+      },
       "options": {"tooltip": {"mode": "multi"}, "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["last", "max"]}},
       "targets": [
-        {"refId": "A", "queryType": "0", "resultFormat": "time_series",
-         "host": {"filter": "PNET-SITE-A"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits received/"},
-         "itemids": ["51661"]},
-        {"refId": "B", "queryType": "0", "resultFormat": "time_series",
-         "host": {"filter": "PNET-SITE-A"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits sent/"},
-         "itemids": ["51679"]}
+        {"refId": "A", "queryType": "3", "itemids": "51661", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51679", "resultFormat": "time_series"}
       ]
     },
     {
@@ -131,17 +134,21 @@
       "title": "SITE-B — Gi0/0 → SAIX-B",
       "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zbx-noc"},
       "gridPos": {"h": 10, "w": 8, "x": 16, "y": 10},
-      "fieldConfig": {"defaults": {"unit": "bps", "min": 0, "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"}, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "fieldConfig": {
+        "defaults": {"unit": "bps", "min": 0,
+                     "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"},
+                     "color": {"mode": "palette-classic"}},
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "IN"},  {"id": "color", "value": {"mode": "fixed", "fixedColor": "#2EA043"}}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "OUT"}, {"id": "color", "value": {"mode": "fixed", "fixedColor": "#1F6FEB"}}]}
+        ]
+      },
       "options": {"tooltip": {"mode": "multi"}, "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["last", "max"]}},
       "targets": [
-        {"refId": "A", "queryType": "0", "resultFormat": "time_series",
-         "host": {"filter": "PNET-SITE-B"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits received/"},
-         "itemids": ["51570"]},
-        {"refId": "B", "queryType": "0", "resultFormat": "time_series",
-         "host": {"filter": "PNET-SITE-B"}, "item": {"filter": "/Interface Gi0\\/0.*: Bits sent/"},
-         "itemids": ["51585"]}
+        {"refId": "A", "queryType": "3", "itemids": "51570", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51585", "resultFormat": "time_series"}
       ]
     }
   ],
-  "description": "NOC wallboard. Six fixed WAN uplink IN/OUT graphs. Position is stable; no auto-reorder. Each panel 8w×10h on a 24-col grid = 3×2 at ≥1920px, matches the frozen WARP wall contract. itemids are supplied as hints to the Zabbix datasource plugin; the stable name regex (Gi0/0 Bits received/sent) is the primary selector so an itemid regeneration does not break the dashboard."
+  "description": "NOC wallboard — six fixed WAN uplink IN/OUT graphs. Each panel 8w×10h on a 24-col grid → 3×2 at ≥1920px. Zabbix datasource queryType=3 (itemid mode), one itemid per target as a string per the alexanderzobnin plugin contract. IN is green, OUT is blue, consistently across all six panels. refId A always = IN, refId B always = OUT. itemids were verified via host.get on 2026-10-04 but item.get access remains role-gated for nbzsync; apply-grafana.sh verifies them against the live Zabbix datasource before marking the dashboard provisioned."
 }
