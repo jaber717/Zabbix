@@ -9,7 +9,7 @@ grafana/
 ├── README.md
 ├── provisioning/
 │   ├── datasources/zabbix.yaml       # Zabbix datasource via alexanderzobnin plugin, uid=zabbix-lab
-│   └── dashboards/noc.yaml           # dashboard provider → /var/lib/grafana/dashboards/netops-noc
+│   └── dashboards/noc.yaml           # dashboard provider → /var/lib/grafana/dashboards/noc
 ├── dashboards/
 │   └── noc-wan-overview.json         # 6-panel wallboard (3×2 at ≥1920px), itemid mode
 ├── drafts/
@@ -34,7 +34,7 @@ Reads `claude-access/grafana.env`, verifies the Zabbix plugin is installed, upse
 bash grafana/bin/apply-grafana.sh files
 ```
 
-Rsyncs `provisioning/` into `/etc/grafana/provisioning/` and dashboards into `/var/lib/grafana/dashboards/netops-noc/`, then reloads grafana-server. Prefer this mode when `grafana-01` appears in `ssh-config`.
+Rsyncs `provisioning/` into `/etc/grafana/provisioning/` and dashboards into `/var/lib/grafana/dashboards/noc/`, then reloads grafana-server. Prefer this mode when `grafana-01` appears in `ssh-config`.
 
 ## NOC — WAN Overview
 
@@ -57,7 +57,7 @@ Unit `bps`, auto-scaled by Grafana to Kbps/Mbps/Gbps. IN is green, OUT is blue. 
 
 1. `apply-grafana.sh api` returns 0.
 2. `GET $GRAFANA_URL/api/health` → `{"database":"ok"}`.
-3. `GET $GRAFANA_URL/api/datasources/uid/zbx-noc` → `type=alexanderzobnin-zabbix-datasource`.
+3. `GET $GRAFANA_URL/api/datasources/uid/zabbix-lab` → `type=alexanderzobnin-zabbix-datasource`.
 4. `GET $GRAFANA_URL/api/dashboards/uid/noc-wan-overview` returns the dashboard with 6 panels, each with 2 targets.
 5. For each panel: `POST $GRAFANA_URL/api/ds/query` with its target → non-empty frames (confirms live Zabbix roundtrip).
 6. One controlled traffic generation on one PNET router (ICMP flood from the lab controller via pnet-jump) — verify the matching panel's live value moves within ~30 s.
