@@ -1,53 +1,54 @@
-# Akvorado flow platform — all internal services bound to 127.0.0.1 only.
-# Only akvorado-inlet exposes a non-loopback port (UDP/2055), gated by firewalld to exporter CIDRs.
-# Tags are pinned to a validated release; digests are captured on first pull into .digests.lock
-# via bin/pin-digests.sh and this file is edited to use the `@sha256:...` form thereafter.
-# Do NOT use `:latest` for any of these.
-version: "3.9"
-
+# Akvorado flow platform — CURRENT architecture (Kafka KRaft, no Zookeeper).
+#
+# Pinning policy: tags are the current stable Akvorado + Kafka + ClickHouse
+# release lineage. Digests are captured on first pull into .digests.lock by
+# bin/pin-digests.sh and this file is edited to use the `@sha256:...` form
+# thereafter. Do NOT use `:latest` for any of these services.
+#
+# Verify current Akvorado release before deployment: see release notes at
+#   https://github.com/akvorado/akvorado/releases
+# This file pins AKVORADO_IMAGE as a variable so Codex can bump without diff.
+#
+# Expose policy:
+# - UDP/2055 (inlet) exposed on 0.0.0.0; firewalld restricts to EXPORTER_CIDRS.
+# - All other service ports are bound to 127.0.0.1 ONLY. Cross-VM access
+#   (Zabbix -> ClickHouse) runs via the local flow-api gateway (nginx+PHP) over
+#   HTTPS; see ../flow-api/.
 services:
 
-  zookeeper:
-    image: docker.io/confluentinc/cp-zookeeper:7.6.1
-    container_name: akvorado-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    volumes:
-      - zookeeper-data:/var/lib/zookeeper/data
-      - zookeeper-log:/var/lib/zookeeper/log
-    restart: unless-stopped
-    networks: [akvorado]
-    healthcheck:
-      test: ["CMD", "nc", "-z", "127.0.0.1", "2181"]
-      interval: 10s
-
   kafka:
-    image: docker.io/confluentinc/cp-kafka:7.6.1
+    image: ${KAFKA_IMAGE:-docker.io/confluentinc/cp-kafka:7.7.1}
     container_name: akvorado-kafka
-    depends_on:
-      zookeeper: {condition: service_healthy}
+    # KRaft mode — no Zookeeper. Single broker lab config.
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:-akvorado-lab-cluster-01}
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_HEAP_OPTS: "-Xms512M -Xmx1024M"
     volumes:
       - kafka-data:/var/lib/kafka/data
     ports:
-      - "127.0.0.1:9092:9092"   # loopback only
+      - "127.0.0.1:9092:9092"   # loopback only; akvorado services reach it inside the compose network
     networks: [akvorado]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "nc", "-z", "127.0.0.1", "9092"]
-      interval: 10s
+      test: ["CMD", "sh", "-c", "kafka-broker-api-versions --bootstrap-server kafka:9092 >/dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
 
   clickhouse:
-    image: docker.io/clickhouse/clickhouse-server:24.8.4.13
+    image: ${CLICKHOUSE_IMAGE:-docker.io/clickhouse/clickhouse-server:25.3.3.42}
     container_name: akvorado-clickhouse
     environment:
       CLICKHOUSE_USER: default
@@ -58,8 +59,8 @@ services:
       - /var/lib/akvorado/data/clickhouse:/var/lib/clickhouse:z
       - ./clickhouse/users.d:/etc/clickhouse-server/users.d:ro,z
     ports:
-      - "127.0.0.1:8123:8123"   # HTTP interface — loopback only
-      - "127.0.0.1:9000:9000"   # native — loopback only
+      - "127.0.0.1:8123:8123"   # loopback only — flow-api gateway is the only reader
+      - "127.0.0.1:9000:9000"
     secrets: [ch_default_password]
     networks: [akvorado]
     restart: unless-stopped
@@ -68,9 +69,10 @@ services:
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
       interval: 10s
+      retries: 20
 
   akvorado-inlet:
-    image: ghcr.io/akvorado/akvorado:1.11.4
+    image: ${AKVORADO_IMAGE:-ghcr.io/akvorado/akvorado:2026.10.0}
     container_name: akvorado-inlet
     command: ["inlet", "/etc/akvorado/inlet.yaml"]
     depends_on:
@@ -84,9 +86,10 @@ services:
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/api/v0/healthcheck"]
       interval: 15s
+      retries: 10
 
   akvorado-outlet:
-    image: ghcr.io/akvorado/akvorado:1.11.4
+    image: ${AKVORADO_IMAGE:-ghcr.io/akvorado/akvorado:2026.10.0}
     container_name: akvorado-outlet
     command: ["outlet", "/etc/akvorado/outlet.yaml"]
     depends_on:
@@ -99,9 +102,10 @@ services:
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/api/v0/healthcheck"]
       interval: 15s
+      retries: 10
 
   akvorado-console:
-    image: ghcr.io/akvorado/akvorado:1.11.4
+    image: ${AKVORADO_IMAGE:-ghcr.io/akvorado/akvorado:2026.10.0}
     container_name: akvorado-console
     command: ["console", "/etc/akvorado/console.yaml"]
     depends_on:
@@ -109,19 +113,18 @@ services:
     volumes:
       - ../config/console.yaml:/etc/akvorado/console.yaml:ro,z
     ports:
-      - "127.0.0.1:8081:8080"   # local nginx TLS-terminates and reverse-proxies this
+      - "127.0.0.1:8081:8080"   # local nginx TLS-fronts this
     networks: [akvorado]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/api/v0/healthcheck"]
       interval: 15s
+      retries: 10
 
 networks:
   akvorado: {}
 
 volumes:
-  zookeeper-data: {}
-  zookeeper-log: {}
   kafka-data: {}
 
 secrets:

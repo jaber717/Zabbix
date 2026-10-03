@@ -1,0 +1,14 @@
+{
+  "$schema_version": 1,
+  "$note": "LAB-seeded. Items are NOT yet populated — Codex is still onboarding SNMPv3 on the four mock devices (DR-FW01, DR-LB01, DR-LEAF01, DR-LEAF02 at hostids 10683-10686). This file reserves slot bindings per host; itemids become real as Codex finishes SNMP. Do NOT guess itemids.",
+  "defaults": {"refresh_seconds": 30, "default_range_hours": 1, "columns_desktop": 3, "columns_narrow": 2},
+  "slots": [
+    {"position": 1, "label": "DR-LEAF01 — Uplink IN/OUT",   "kind": "paired_interface", "hostid": 10685, "in_itemid": null, "out_itemid": null, "unit": "bps", "capacity_bps": null,
+      "notes": "Set in_itemid/out_itemid to the WAN-facing uplink's net.if.in / net.if.out items once Codex's SNMP template attaches."},
+    {"position": 2, "label": "DR-LEAF02 — Uplink IN/OUT",   "kind": "paired_interface", "hostid": 10686, "in_itemid": null, "out_itemid": null, "unit": "bps", "capacity_bps": null},
+    {"position": 3, "label": "DR-FW01 — Internet IN/OUT",   "kind": "paired_interface", "hostid": 10683, "in_itemid": null, "out_itemid": null, "unit": "bps", "capacity_bps": null},
+    {"position": 4, "label": "DR-LB01 — VIP throughput",    "kind": "paired_interface", "hostid": 10684, "in_itemid": null, "out_itemid": null, "unit": "bps", "capacity_bps": null},
+    {"position": 5, "label": "DR-FW01 — CPU",               "kind": "single_item",      "hostid": 10683, "itemid": null, "unit": "%"},
+    {"position": 6, "label": "DR-LEAF01 — CPU",             "kind": "single_item",      "hostid": 10685, "itemid": null, "unit": "%"}
+  ]
+}
