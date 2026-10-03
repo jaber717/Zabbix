@@ -1,0 +1,129 @@
+# Akvorado flow platform — all internal services bound to 127.0.0.1 only.
+# Only akvorado-inlet exposes a non-loopback port (UDP/2055), gated by firewalld to exporter CIDRs.
+# Tags are pinned to a validated release; digests are captured on first pull into .digests.lock
+# via bin/pin-digests.sh and this file is edited to use the `@sha256:...` form thereafter.
+# Do NOT use `:latest` for any of these.
+version: "3.9"
+
+services:
+
+  zookeeper:
+    image: docker.io/confluentinc/cp-zookeeper:7.6.1
+    container_name: akvorado-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-log:/var/lib/zookeeper/log
+    restart: unless-stopped
+    networks: [akvorado]
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "2181"]
+      interval: 10s
+
+  kafka:
+    image: docker.io/confluentinc/cp-kafka:7.6.1
+    container_name: akvorado-kafka
+    depends_on:
+      zookeeper: {condition: service_healthy}
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_HEAP_OPTS: "-Xms512M -Xmx1024M"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    ports:
+      - "127.0.0.1:9092:9092"   # loopback only
+    networks: [akvorado]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "9092"]
+      interval: 10s
+
+  clickhouse:
+    image: docker.io/clickhouse/clickhouse-server:24.8.4.13
+    container_name: akvorado-clickhouse
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD_FILE: /run/secrets/ch_default_password
+      CLICKHOUSE_DB: akvorado
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - /var/lib/akvorado/data/clickhouse:/var/lib/clickhouse:z
+      - ./clickhouse/users.d:/etc/clickhouse-server/users.d:ro,z
+    ports:
+      - "127.0.0.1:8123:8123"   # HTTP interface — loopback only
+      - "127.0.0.1:9000:9000"   # native — loopback only
+    secrets: [ch_default_password]
+    networks: [akvorado]
+    restart: unless-stopped
+    ulimits:
+      nofile: {soft: 262144, hard: 262144}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
+      interval: 10s
+
+  akvorado-inlet:
+    image: ghcr.io/akvorado/akvorado:1.11.4
+    container_name: akvorado-inlet
+    command: ["inlet", "/etc/akvorado/inlet.yaml"]
+    depends_on:
+      kafka: {condition: service_healthy}
+    volumes:
+      - ../config/inlet.yaml:/etc/akvorado/inlet.yaml:ro,z
+    ports:
+      - "0.0.0.0:2055:2055/udp"   # exporter ingress; firewalld filters sources
+    networks: [akvorado]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/api/v0/healthcheck"]
+      interval: 15s
+
+  akvorado-outlet:
+    image: ghcr.io/akvorado/akvorado:1.11.4
+    container_name: akvorado-outlet
+    command: ["outlet", "/etc/akvorado/outlet.yaml"]
+    depends_on:
+      kafka: {condition: service_healthy}
+      clickhouse: {condition: service_healthy}
+    volumes:
+      - ../config/outlet.yaml:/etc/akvorado/outlet.yaml:ro,z
+    networks: [akvorado]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/api/v0/healthcheck"]
+      interval: 15s
+
+  akvorado-console:
+    image: ghcr.io/akvorado/akvorado:1.11.4
+    container_name: akvorado-console
+    command: ["console", "/etc/akvorado/console.yaml"]
+    depends_on:
+      clickhouse: {condition: service_healthy}
+    volumes:
+      - ../config/console.yaml:/etc/akvorado/console.yaml:ro,z
+    ports:
+      - "127.0.0.1:8081:8080"   # local nginx TLS-terminates and reverse-proxies this
+    networks: [akvorado]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/api/v0/healthcheck"]
+      interval: 15s
+
+networks:
+  akvorado: {}
+
+volumes:
+  zookeeper-data: {}
+  zookeeper-log: {}
+  kafka-data: {}
+
+secrets:
+  ch_default_password:
+    file: /etc/akvorado/clickhouse-default-password

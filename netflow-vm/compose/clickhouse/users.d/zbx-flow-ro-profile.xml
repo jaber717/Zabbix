@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!-- Read-only profile for Zabbix Flow Search; applied to zbx_flow_ro.
+     The user itself is created by frontend/modules/FlowSearch/sql/views.sql
+     once Akvorado has created the base `akvorado.flows` table. -->
+<clickhouse>
+  <profiles>
+    <zbx_flow_ro_profile>
+      <readonly>1</readonly>
+      <max_execution_time>10</max_execution_time>
+      <max_memory_usage>2000000000</max_memory_usage>
+      <max_bytes_to_read>4000000000</max_bytes_to_read>
+      <max_result_rows>10000</max_result_rows>
+      <max_result_bytes>100000000</max_result_bytes>
+      <max_concurrent_queries_for_user>8</max_concurrent_queries_for_user>
+    </zbx_flow_ro_profile>
+  </profiles>
+</clickhouse>

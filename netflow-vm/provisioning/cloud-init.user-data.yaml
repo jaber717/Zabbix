@@ -1,0 +1,125 @@
+#cloud-config
+hostname: ${NETFLOW_HOSTNAME}
+preserve_hostname: false
+users:
+  - name: netflow-admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${NETOPS_ADMIN_PUBKEY}
+package_update: true
+packages:
+  - podman
+  - podman-plugins
+  - podman-compose
+  - firewalld
+  - jq
+  - lvm2
+  - xfsprogs
+  - cloud-init
+  - zabbix-agent2
+disable_root: true
+ssh_pwauth: false
+
+write_files:
+  - path: /etc/akvorado/clickhouse-default-password
+    permissions: '0600'
+    owner: root:root
+    content: ${CH_DEFAULT_PASSWORD}
+
+  - path: /etc/akvorado/zbx-flow-ro-password
+    permissions: '0600'
+    owner: root:root
+    content: ${ZBX_FLOW_RO_PASSWORD}
+
+  - path: /etc/akvorado/console-htpasswd
+    permissions: '0600'
+    owner: root:root
+    content: ${CONSOLE_HTPASSWD}
+
+  - path: /opt/akvorado/bin/pin-digests.sh
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      cd /opt/akvorado/compose
+      podman-compose --no-ansi pull
+      podman image inspect --format '{{.RepoDigests}}' \
+        ghcr.io/akvorado/akvorado:1.11.4 \
+        docker.io/confluentinc/cp-kafka:7.6.1 \
+        docker.io/confluentinc/cp-zookeeper:7.6.1 \
+        docker.io/clickhouse/clickhouse-server:24.8.4.13 \
+        | tee /opt/akvorado/compose/.digests.lock
+
+  - path: /opt/akvorado/bin/rollback.sh
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      if [ ! -s /opt/akvorado/compose/.digests.lock.prev ]; then
+        echo "no previous .digests.lock.prev — nothing to roll back to"; exit 1
+      fi
+      mv /opt/akvorado/compose/.digests.lock.prev /opt/akvorado/compose/.digests.lock
+      cd /opt/akvorado/compose
+      podman-compose down
+      podman-compose up -d
+
+  - path: /opt/akvorado/bin/clickhouse-apply.sh
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      PASS=$(cat /etc/akvorado/zbx-flow-ro-password)
+      sed "s|\${ZBX_FLOW_RO_PASSWORD}|${PASS}|" /opt/akvorado/sql/views.sql | \
+        podman exec -i akvorado-clickhouse clickhouse-client --multiquery
+      echo "flows_v1 view + zbx_flow_ro user applied"
+
+  - path: /etc/systemd/system/akvorado.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Akvorado Flow Platform (podman-compose)
+      After=network-online.target firewalld.service
+      Wants=network-online.target
+
+      [Service]
+      Type=simple
+      WorkingDirectory=/opt/akvorado/compose
+      ExecStartPre=/usr/bin/podman-compose pull
+      ExecStart=/usr/bin/podman-compose up
+      ExecStop=/usr/bin/podman-compose down
+      Restart=on-failure
+      RestartSec=10
+      TimeoutStartSec=180
+      User=root
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  # 1. Mount the dedicated flow data disk (second disk, /dev/sdb).
+  - [ bash, -lc, 'if [ -b /dev/sdb ] && ! vgs vg_flow >/dev/null 2>&1; then
+      pvcreate -ff -y /dev/sdb &&
+      vgcreate vg_flow /dev/sdb &&
+      lvcreate -l 100%FREE -n lv_flows vg_flow &&
+      mkfs.xfs /dev/vg_flow/lv_flows &&
+      mkdir -p /var/lib/akvorado/data &&
+      echo "/dev/vg_flow/lv_flows /var/lib/akvorado/data xfs defaults 0 0" >> /etc/fstab &&
+      mount -a &&
+      mkdir -p /var/lib/akvorado/data/clickhouse &&
+      chcon -R -t container_file_t /var/lib/akvorado/data; fi' ]
+
+  # 2. firewalld baseline.
+  - [ systemctl, enable, --now, firewalld ]
+  - [ bash, -lc, '/opt/akvorado/bin/firewalld-apply.sh "${EXPORTER_CIDRS}" "${NOC_MGMT_CIDRS}"' ]
+
+  # 3. SELinux booleans needed by rootless/root-containers using host bind mounts.
+  - [ setsebool, -P, container_manage_cgroup, "on" ]
+
+  # 4. Enable podman socket + the compose service.
+  - [ systemctl, enable, --now, podman.socket ]
+  - [ systemctl, enable, --now, akvorado.service ]
+
+  # 5. Zabbix agent2 self-monitoring enabled with the Akvorado platform template.
+  - [ systemctl, enable, --now, zabbix-agent2 ]

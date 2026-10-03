@@ -1,0 +1,26 @@
+{
+  "manifest_version": 2.0,
+  "id": "netops_flow_search",
+  "type": "widget",
+  "name": "Flow Search",
+  "namespace": "FlowSearch",
+  "version": "0.1.0",
+  "author": "NetOps",
+  "description": "Server-side Flow Search over the Akvorado ClickHouse read-only view. Browser never talks to ClickHouse directly. Bounded time, bounded rows, bounded memory.",
+  "widget": {
+    "name": "Flow Search",
+    "size": {"width": 72, "height": 24},
+    "js_class": "CWidgetFlowSearch",
+    "use_time_selector": false,
+    "refresh_rate": 0
+  },
+  "actions": {
+    "widget.netops_flow_search.view": {"class": "WidgetView"},
+    "flowsearch.query":  {"class": "Query",  "layout": "layout.json"},
+    "flowsearch.topn":   {"class": "TopN",   "layout": "layout.json"}
+  },
+  "assets": {
+    "css": ["flow-search.css"],
+    "js":  ["flow-search.js", "class.widget.js"]
+  }
+}
