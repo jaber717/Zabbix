@@ -1,23 +1,26 @@
 #!/usr/bin/env bash
 # flow-api-install.sh — install/start the Flow API gateway (nginx + PHP-FPM
-# + Akvorado console reverse proxy). Idempotent. Called by bin/stack-up.sh
-# AFTER the stack is up and flow-api secrets are in /etc/flow-api/*.
+# over FastCGI + Akvorado console reverse proxy). Idempotent. Called by
+# bin/stack-up.sh AFTER secrets are provisioned on disk with correct perms.
 set -euo pipefail
 
 : "${ZABBIX_SERVER_IP:?set ZABBIX_SERVER_IP}"
 
+# Packages installed by cloud-init; this is defensive-idempotent.
 dnf install -y nginx php-fpm php-cli php-json php-curl openssl httpd-tools
 
-install -d -m 0750 /etc/flow-api/tls /etc/flow-api/clients /var/log/nginx /var/www/flow-api
+install -d -m 0755 /var/www/flow-api
 install -m 0644 /opt/akvorado/flow-api/nginx.conf /etc/nginx/conf.d/flow-api.conf
-install -m 0644 /opt/akvorado/flow-api/api.php /var/www/flow-api/api.php
+install -m 0644 /opt/akvorado/flow-api/api.php    /var/www/flow-api/api.php
+chown nginx:nginx /var/www/flow-api/api.php
 
-# PHP-FPM pool on 127.0.0.1:9091.
+# PHP-FPM pool on 127.0.0.1:9091 (FastCGI, not HTTP).
 cat >/etc/php-fpm.d/flow-api.conf <<'EOF'
 [flow-api]
 user = nginx
 group = nginx
 listen = 127.0.0.1:9091
+listen.allowed_clients = 127.0.0.1
 pm = dynamic
 pm.max_children = 16
 pm.start_servers = 2
@@ -40,26 +43,18 @@ elif [ ! -s /etc/flow-api/tls/server.crt ]; then
     -out    /etc/flow-api/tls/server.crt
   chmod 600 /etc/flow-api/tls/server.key
 fi
+chown root:nginx /etc/flow-api/tls/server.key
+chmod 0640 /etc/flow-api/tls/server.key
 
-# firewalld: port 443 is open to the Zabbix server AND the NOC mgmt CIDRs
-# (the latter needed because operators reach the Akvorado console via the
-# same nginx under /akvorado/). The exporter zone and SSH stay untouched.
-firewall-cmd --permanent --new-zone=flow-api 2>/dev/null || true
-firewall-cmd --permanent --zone=flow-api --set-target=default
-firewall-cmd --permanent --zone=flow-api --add-port=443/tcp
-firewall-cmd --permanent --zone=flow-api --add-source="${ZABBIX_SERVER_IP}/32"
-if [ -n "${NOC_MGMT_CIDRS:-}" ]; then
-  IFS=',' read -r -a arr <<< "$NOC_MGMT_CIDRS"
-  for c in "${arr[@]}"; do
-    firewall-cmd --permanent --zone=flow-api --add-source="$c"
-  done
-fi
-firewall-cmd --reload
+# Sanity-check nginx config BEFORE restart. Fail hard on syntax error.
+nginx -t
 
 systemctl enable --now php-fpm
 systemctl restart nginx
 systemctl enable nginx
 
-# Smoke test (nginx self).
-curl -sk --connect-timeout 2 https://127.0.0.1/healthz | tee /var/log/flow-api-smoke.json
-echo
+# Smoke test (nginx self, FastCGI roundtrip).
+code=$(curl -sk --connect-timeout 2 -o /tmp/healthz.body -w '%{http_code}' https://127.0.0.1/healthz)
+echo "flow-api self-smoke https://127.0.0.1/healthz -> HTTP $code"
+cat /tmp/healthz.body; echo
+[ "$code" = 200 ] || { echo "FATAL /healthz did not return 200"; exit 1; }

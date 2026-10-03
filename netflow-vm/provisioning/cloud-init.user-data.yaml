@@ -1,12 +1,11 @@
 #cloud-config
-# cloud-init for netflow-01 running the OFFICIAL Akvorado v2026.10.0 stack.
-# Runtime: Docker Engine + Docker Compose plugin (upstream compose mounts
-# /var/run/docker.sock for Traefik's Docker provider — we match that).
-# SELinux stays Enforcing. firewalld stays active.
+# cloud-init for netflow-01. Does ONLY host preparation (no repo scripts, no
+# stack bring-up). The repo tree is rsynced in afterwards by
+# create-netflow-proxmox.sh and bin/stack-up.sh is invoked there.
 #
-# This file never embeds stack logic; it installs the canonical scripts from
-# netflow-vm/bin/ and runs bin/stack-up.sh, which is the single supported
-# bring-up path.
+# This file deliberately does not reference /opt/akvorado/* in runcmd —
+# cloud-init runs before the repo tree exists, so any such reference would
+# race-fail on first boot.
 
 hostname: ${NETFLOW_HOSTNAME}
 preserve_hostname: false
@@ -17,6 +16,7 @@ users:
     lock_passwd: true
     ssh_authorized_keys:
       - ${NETOPS_ADMIN_PUBKEY}
+      - ${BOOT_PUBKEY}
 disable_root: true
 ssh_pwauth: false
 
@@ -30,13 +30,16 @@ packages:
   - python3
   - rsync
   - zabbix-agent2
+  - qemu-guest-agent
+  - httpd-tools      # htpasswd, used later by bin/stack-up.sh
+  - nginx            # installed early so SELinux boolean has a target to allow
+  - php-fpm
+  - php-cli
+  - php-json
+  - php-curl
+  - openssl
 
 write_files:
-  # Codex ships netflow-vm/ as /opt/akvorado on the target host via
-  # provisioning/sync-tree.sh or by rsync from the controller. The vendored
-  # upstream, overlay, bin/, flow-api/, and sql/ all land at /opt/akvorado/.
-
-  # NetOps provisioning parameters surfaced to the orchestrator:
   - path: /etc/akvorado/netops.env
     permissions: '0640'
     owner: root:root
@@ -48,7 +51,7 @@ write_files:
       AKVORADO_VERSION=2026.10.0
 
 runcmd:
-  # 1. Dedicated flow data LV on /dev/sdb → /var/lib/akvorado/data (xfs, LVM).
+  # 1. Dedicated flow data LV on /dev/sdb → /var/lib/akvorado/data.
   - [ bash, -lc, 'if [ -b /dev/sdb ] && ! vgs vg_flow >/dev/null 2>&1; then
         pvcreate -ff -y /dev/sdb &&
         vgcreate vg_flow /dev/sdb &&
@@ -59,23 +62,19 @@ runcmd:
         mount -a &&
         chcon -R -t container_file_t /var/lib/akvorado/data; fi' ]
 
-  # 2. Docker Engine + Compose plugin from the official Docker repo (RHEL 9).
+  # 2. Docker Engine + Compose plugin.
   - [ dnf, config-manager, --add-repo, https://download.docker.com/linux/rhel/docker-ce.repo ]
   - [ dnf, install, -y, docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin ]
   - [ systemctl, enable, --now, docker ]
 
-  # 3. firewalld baseline, zones for exporters/mgmt/zabbix.
-  - [ systemctl, enable, --now, firewalld ]
-  - [ bash, -lc, '/opt/akvorado/provisioning/firewalld-apply.sh "${EXPORTER_CIDRS}" "${NOC_MGMT_CIDRS}" "${ZABBIX_SERVER_IP}"' ]
+  # 3. qemu-guest-agent for the Proxmox provisioning handshake.
+  - [ systemctl, enable, --now, qemu-guest-agent ]
 
-  # 4. SELinux booleans needed by containers + the flow-api nginx reverse proxy
-  #    to talk to local PHP-FPM.
+  # 4. firewalld baseline + SELinux booleans. The exporter / NOC / Zabbix
+  #    source CIDRs are applied later by the real firewalld-apply.sh once the
+  #    repo tree is on disk.
+  - [ systemctl, enable, --now, firewalld ]
   - [ setsebool, -P, container_manage_cgroup, "on" ]
   - [ setsebool, -P, httpd_can_network_connect, "on" ]
-
-  # 5. Single supported bring-up path. The orchestrator enforces order:
-  #    docker compose up (stack) → wait for Akvorado schema →
-  #    generate flow-api secrets → apply ClickHouse compat view/user →
-  #    install + start flow-api → validate console reachability.
-  - [ bash, -lc, 'cd /opt/akvorado && bin/stack-up.sh --from-cloud-init' ]
   - [ systemctl, enable, --now, zabbix-agent2 ]
+  - [ bash, -lc, 'echo "cloud-init-host-prep-done" > /var/log/netflow-cloud-init.done' ]

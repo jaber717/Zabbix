@@ -38,3 +38,7 @@ __pycache__/
 # Keep FlowSearch migrations/views despite the broad *.sql ignore above.
 !frontend/modules/FlowSearch/sql/
 !frontend/modules/FlowSearch/sql/*.sql
+
+# Ship the appliance-side ClickHouse migrations.
+!netflow-vm/sql/
+!netflow-vm/sql/*.sql

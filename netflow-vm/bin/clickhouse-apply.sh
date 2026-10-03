@@ -3,33 +3,24 @@
 # the read-only user used by the Flow API gateway.
 #
 # Preconditions:
-#   - The Akvorado stack is up and the outlet has created `akvorado.flows_*`.
-#   - /etc/flow-api/ch-pass exists (owner-only, 0600) with the flow_api_ro
-#     password. flow-api-install.sh creates this.
-#   - The ClickHouse container is reachable at akvorado-clickhouse:9000 inside
-#     the compose network.
+#   - Akvorado's outlet has already created `akvorado.flows`.
+#   - /etc/flow-api/ch-pass exists (mode 0640 root:nginx; see bin/stack-up.sh).
+#   - The ClickHouse container is reachable as `akvorado-clickhouse`.
 #
-# What it does:
-#   1. Verifies the Akvorado flows table exists; aborts clearly otherwise.
-#   2. Executes frontend/modules/FlowSearch/sql/views.sql with
-#      ${FLOW_API_RO_PASSWORD} substituted from /etc/flow-api/ch-pass.
-#   3. Confirms SELECT works as flow_api_ro on netops.flow_v1.
-#
-# Safe to rerun. Uses CREATE OR REPLACE / CREATE USER IF NOT EXISTS / GRANT.
+# Reads the canonical appliance SQL from /opt/akvorado/sql/views.sql. The
+# Zabbix module's copy at frontend/modules/FlowSearch/sql/views.sql is the
+# UI-side reference and must stay bit-identical; CI should fail on drift.
 set -euo pipefail
 
 CH_CONTAINER="${CH_CONTAINER:-akvorado-clickhouse}"
 PASS_FILE="${PASS_FILE:-/etc/flow-api/ch-pass}"
 SQL_SRC="${SQL_SRC:-/opt/akvorado/sql/views.sql}"
 
-[ -s "$PASS_FILE" ] || { echo "missing $PASS_FILE (owner-only 0600, holds flow_api_ro password)"; exit 2; }
+[ -s "$PASS_FILE" ] || { echo "missing $PASS_FILE (0640 root:nginx holds flow_api_ro password)"; exit 2; }
 [ -s "$SQL_SRC" ]   || { echo "missing $SQL_SRC";   exit 2; }
 PASS=$(cat "$PASS_FILE")
 
-exec_sql() {
-  # Pipe multi-statement SQL into the container's clickhouse-client.
-  docker exec -i "$CH_CONTAINER" clickhouse-client --multiquery
-}
+exec_sql() { docker exec -i "$CH_CONTAINER" clickhouse-client --multiquery; }
 
 echo "== check akvorado.flows exists =="
 echo "SELECT 1 FROM system.tables WHERE database='akvorado' AND name='flows' LIMIT 1" | exec_sql | grep -q '^1$' || {
@@ -37,7 +28,7 @@ echo "SELECT 1 FROM system.tables WHERE database='akvorado' AND name='flows' LIM
   exit 3
 }
 
-echo "== apply views.sql =="
+echo "== apply $SQL_SRC =="
 sed "s|\${FLOW_API_RO_PASSWORD}|${PASS}|" "$SQL_SRC" | exec_sql
 echo "== probe =="
 echo "SELECT name FROM system.databases WHERE name='netops' FORMAT TSV; SELECT 'netops.flow_v1 ok' FROM netops.flow_v1 LIMIT 1" | exec_sql
