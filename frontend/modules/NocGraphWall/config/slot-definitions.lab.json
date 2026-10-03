@@ -1,14 +1,17 @@
 {
   "$schema_version": 1,
-  "$note": "LAB-seeded. Items are NOT yet populated — Codex is still onboarding SNMPv3 on the four mock devices (DR-FW01, DR-LB01, DR-LEAF01, DR-LEAF02 at hostids 10683-10686). This file reserves slot bindings per host; itemids become real as Codex finishes SNMP. Do NOT guess itemids.",
+  "$source": "Codex SNMPv3 onboarding (7 PNET IOSv hosts): itemids supplied directly by the operator on 2026-10-04. Live-verifying history/trend values from this environment requires an operator-role Zabbix API user; the installed service user `nbzsync` is restricted to host.get only, so item.get / history.get / trend.get all return \"No permissions\" here. These bindings are the production bindings used by the live-rendering widget when a logged-in operator opens the NOC wall.",
   "defaults": {"refresh_seconds": 30, "default_range_hours": 1, "columns_desktop": 3, "columns_narrow": 2},
   "slots": [
-    {"position": 1, "label": "DR-LEAF01 — Uplink IN/OUT",   "kind": "paired_interface", "hostid": 10685, "in_itemid": null, "out_itemid": null, "unit": "bps", "capacity_bps": null,
-      "notes": "Set in_itemid/out_itemid to the WAN-facing uplink's net.if.in / net.if.out items once Codex's SNMP template attaches."},
-    {"position": 2, "label": "DR-LEAF02 — Uplink IN/OUT",   "kind": "paired_interface", "hostid": 10686, "in_itemid": null, "out_itemid": null, "unit": "bps", "capacity_bps": null},
-    {"position": 3, "label": "DR-FW01 — Internet IN/OUT",   "kind": "paired_interface", "hostid": 10683, "in_itemid": null, "out_itemid": null, "unit": "bps", "capacity_bps": null},
-    {"position": 4, "label": "DR-LB01 — VIP throughput",    "kind": "paired_interface", "hostid": 10684, "in_itemid": null, "out_itemid": null, "unit": "bps", "capacity_bps": null},
-    {"position": 5, "label": "DR-FW01 — CPU",               "kind": "single_item",      "hostid": 10683, "itemid": null, "unit": "%"},
-    {"position": 6, "label": "DR-LEAF01 — CPU",             "kind": "single_item",      "hostid": 10685, "itemid": null, "unit": "%"}
-  ]
+    {"position": 1, "label": "STC — Gi0/0 TO-INT-CORE",      "kind": "paired_interface", "hostid": 10689, "host": "PNET-STC",      "in_itemid": 51487, "out_itemid": 51496, "unit": "bps"},
+    {"position": 2, "label": "MOBILY — Gi0/0 TO-INT-CORE",   "kind": "paired_interface", "hostid": 10690, "host": "PNET-MOBILY",   "in_itemid": 51751, "out_itemid": 51760, "unit": "bps"},
+    {"position": 3, "label": "SAIX-A — Gi0/0 TO-SAIX-CORE",  "kind": "paired_interface", "hostid": 10692, "host": "PNET-SAIX-A",   "in_itemid": 51610, "out_itemid": 51619, "unit": "bps"},
+    {"position": 4, "label": "SAIX-B — Gi0/0 TO-SAIX-CORE",  "kind": "paired_interface", "hostid": 10693, "host": "PNET-SAIX-B",   "in_itemid": 51528, "out_itemid": 51537, "unit": "bps"},
+    {"position": 5, "label": "SITE-A — Gi0/0 TO-SAIX-A",     "kind": "paired_interface", "hostid": 10687, "host": "PNET-SITE-A",   "in_itemid": 51661, "out_itemid": 51679, "unit": "bps"},
+    {"position": 6, "label": "SITE-B — Gi0/0 TO-SAIX-B",     "kind": "paired_interface", "hostid": 10688, "host": "PNET-SITE-B",   "in_itemid": 51570, "out_itemid": 51585, "unit": "bps"}
+  ],
+  "$supplemental": {
+    "note": "PNET-INT-CORE Gi0/0 TO-STC (in=51710, out=51722) is deliberately not shown on the 6-slot wall; it mirrors slot 1 at the other end of the same link. Keep it available for the Edit Wall picker.",
+    "alt_itemids_available": [{"host": "PNET-INT-CORE", "hostid": 10691, "iface": "Gi0/0 TO-STC-Gi0/0", "in_itemid": 51710, "out_itemid": 51722}]
+  }
 }

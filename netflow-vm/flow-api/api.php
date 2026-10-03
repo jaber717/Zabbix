@@ -2,18 +2,22 @@
 /**
  * flow-api/api.php — bounded, read-only Flow query gateway.
  *
- * Deployed on netflow-01, fronted by nginx on 127.0.0.1 from PHP-FPM, exposed
- * on 0.0.0.0:443 by nginx with firewalld restricted to the Zabbix server IP.
- * See flow-api/README.md.
+ * Fronted by nginx on 0.0.0.0:443 (firewalld-restricted to Zabbix server IP),
+ * runs on PHP-FPM at 127.0.0.1:9091, speaks ClickHouse over 127.0.0.1:8123.
+ *
+ * SamplingRate semantics (per Akvorado schema): raw rows store SAMPLED Bytes
+ * and SamplingRate. The physical traffic estimate is
+ *   BytesEstimated = Bytes * if(SamplingRate > 0, SamplingRate, 1)
+ * The compat view `netops.flow_v1` exposes this as a column.
  */
 
-// Hard caps mirrored on this side so a malformed client cannot overshoot.
 const MAX_WINDOW_SECONDS = 7 * 86400;
 const PAGE_SIZE_MAX = 50;
 const CH_URL  = 'http://127.0.0.1:8123';
 const CH_USER = 'flow_api_ro';
 const CH_DB   = 'akvorado';
 const VIEW    = 'netops.flow_v1';
+const BPS1M   = 'netops.flow_bps_1m';
 
 respond_or_die();
 
@@ -22,7 +26,7 @@ function respond_or_die(): void {
     header('Cache-Control: no-store');
 
     $op = basename((string) ($_SERVER['PATH_INFO'] ?? $_SERVER['REQUEST_URI'] ?? ''));
-    if ($op === '') { http_response_code(404); echo '{"error":"not_found"}'; exit; }
+    if ($op === '') { http_response_code(404); echo '{"error":"not_found"}'; return; }
     if ($op === 'healthz') {
         $ch = @file_get_contents(CH_URL.'/ping');
         $ok = (trim((string) $ch) === 'Ok.');
@@ -30,54 +34,41 @@ function respond_or_die(): void {
         echo json_encode(['ok' => $ok]);
         return;
     }
-
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         http_response_code(405); echo '{"error":"method_not_allowed"}'; return;
     }
+    if (!authenticate()) { http_response_code(401); echo '{"error":"unauthorized"}'; return; }
 
-    if (!authenticate()) {
-        http_response_code(401); echo '{"error":"unauthorized"}'; return;
-    }
-
-    $raw = file_get_contents('php://input') ?: '';
-    try {
-        $req = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
-    } catch (\Throwable $e) {
-        http_response_code(400); echo json_encode(['error' => 'invalid_json']); return;
-    }
+    try { $req = json_decode(file_get_contents('php://input') ?: '', true, 32, JSON_THROW_ON_ERROR); }
+    catch (\Throwable $e) { http_response_code(400); echo json_encode(['error' => 'invalid_json']); return; }
 
     try {
         $filter = normalize_filter($req['filter'] ?? []);
     } catch (\InvalidArgumentException $e) {
-        http_response_code(400);
-        echo json_encode(['error' => 'bad_filter', 'detail' => $e->getMessage()]);
-        return;
+        http_response_code(400); echo json_encode(['error' => 'bad_filter', 'detail' => $e->getMessage()]); return;
     }
 
-    $ch_pass = file_exists('/etc/flow-api/ch-pass') ? trim((string) file_get_contents('/etc/flow-api/ch-pass')) : '';
+    $pass = file_exists('/etc/flow-api/ch-pass') ? trim((string) file_get_contents('/etc/flow-api/ch-pass')) : '';
 
     try {
         switch ($op) {
-            case 'search':
-                $cursor = (string) ($req['cursor'] ?? '');
-                $page_size = min(PAGE_SIZE_MAX, max(1, (int) ($req['page_size'] ?? PAGE_SIZE_MAX)));
-                echo json_encode(op_search($filter, $cursor, $page_size, $ch_pass));
+            case 'search':  echo json_encode(op_search($filter,
+                                 (string) ($req['cursor'] ?? ''),
+                                 min(PAGE_SIZE_MAX, max(1, (int) ($req['page_size'] ?? PAGE_SIZE_MAX))),
+                                 $pass));
                 break;
-            case 'summary':
-                echo json_encode(op_summary($filter, $ch_pass));
+            case 'summary': echo json_encode(op_summary($filter, $pass)); break;
+            case 'topn':    echo json_encode(op_topn($filter,
+                                 (string) ($req['facet'] ?? ''),
+                                 min(50, max(1, (int) ($req['limit'] ?? 10))),
+                                 $pass));
                 break;
-            case 'topn':
-                $facet = (string) ($req['facet'] ?? '');
-                $limit = min(50, max(1, (int) ($req['limit'] ?? 10)));
-                echo json_encode(op_topn($filter, $facet, $limit, $ch_pass));
-                break;
-            default:
-                http_response_code(404); echo '{"error":"unknown_op"}';
+            default: http_response_code(404); echo '{"error":"unknown_op"}';
         }
     } catch (\InvalidArgumentException $e) {
         http_response_code(400); echo json_encode(['error' => 'bad_request', 'detail' => $e->getMessage()]);
     } catch (\Throwable $e) {
-        http_response_code(502); echo json_encode(['error' => 'backend', 'detail' => 'query_failed']);
+        http_response_code(502); echo json_encode(['error' => 'backend']);
         error_log('[flow-api] '.$e->getMessage());
     }
 }
@@ -100,17 +91,15 @@ function normalize_filter(array $f): array {
     if ($from >= $to) throw new \InvalidArgumentException('Invalid time window');
 
     $out = ['from' => $from, 'to' => $to];
-    if (!empty($f['src_ip'])) {
-        if (!filter_var($f['src_ip'], FILTER_VALIDATE_IP)) throw new \InvalidArgumentException('src_ip');
-        $out['src_ip'] = $f['src_ip'];
-    }
-    if (!empty($f['dst_ip'])) {
-        if (!filter_var($f['dst_ip'], FILTER_VALIDATE_IP)) throw new \InvalidArgumentException('dst_ip');
-        $out['dst_ip'] = $f['dst_ip'];
-    }
-    foreach (['src_cidr' => 'src_cidr', 'dst_cidr' => 'dst_cidr'] as $k => $v) {
+    foreach (['src_ip', 'dst_ip', 'exporter'] as $k) {
         if (!empty($f[$k])) {
-            if (!valid_cidr($f[$k])) throw new \InvalidArgumentException($v);
+            if (!filter_var($f[$k], FILTER_VALIDATE_IP)) throw new \InvalidArgumentException($k);
+            $out[$k] = $f[$k];
+        }
+    }
+    foreach (['src_cidr', 'dst_cidr'] as $k) {
+        if (!empty($f[$k])) {
+            if (!valid_cidr($f[$k])) throw new \InvalidArgumentException($k);
             $out[$k] = $f[$k];
         }
     }
@@ -121,20 +110,15 @@ function normalize_filter(array $f): array {
             $out[$k] = $p;
         }
     }
-    if (!empty($f['protocol']) && !preg_match('/^[A-Za-z0-9]{1,8}$/', (string) $f['protocol'])) {
-        throw new \InvalidArgumentException('protocol');
-    } elseif (!empty($f['protocol'])) {
+    if (!empty($f['protocol'])) {
+        if (!preg_match('/^[A-Za-z0-9]{1,8}$/', (string) $f['protocol'])) throw new \InvalidArgumentException('protocol');
         $out['protocol'] = strtoupper((string) $f['protocol']);
     }
-    if (!empty($f['exporter'])) {
-        if (!filter_var($f['exporter'], FILTER_VALIDATE_IP)) throw new \InvalidArgumentException('exporter');
-        $out['exporter'] = $f['exporter'];
-    }
-    if (!empty($f['interface'])) {
-        if (strlen((string) $f['interface']) > 64 || !preg_match('/^[\w.\-\/:]+$/', (string) $f['interface'])) {
-            throw new \InvalidArgumentException('interface');
+    foreach (['interface', 'in_if', 'out_if'] as $k) {
+        if (!empty($f[$k])) {
+            if (strlen((string) $f[$k]) > 64 || !preg_match('/^[\w.\-\/:]+$/', (string) $f[$k])) throw new \InvalidArgumentException($k);
+            $out[$k] = $f[$k];
         }
-        $out['interface'] = $f['interface'];
     }
     return $out;
 }
@@ -146,18 +130,20 @@ function valid_cidr(string $cidr): bool {
     return $mask >= 0 && $mask <= 128;
 }
 
-function where_clause(array $f, string $cursor): array {
+function where(array $f, string $cursor): array {
     $cond = ['TimeReceived BETWEEN {from:DateTime} AND {to:DateTime}'];
     $p = ['from' => date('Y-m-d H:i:s', $f['from']), 'to' => date('Y-m-d H:i:s', $f['to'])];
-    if (!empty($f['src_ip']))  { $cond[] = 'SrcAddr = toIPv6({src_ip:String})';          $p['src_ip']  = $f['src_ip']; }
-    if (!empty($f['dst_ip']))  { $cond[] = 'DstAddr = toIPv6({dst_ip:String})';          $p['dst_ip']  = $f['dst_ip']; }
+    if (!empty($f['src_ip']))   { $cond[] = 'SrcAddr = toIPv6({src_ip:String})';          $p['src_ip']   = $f['src_ip']; }
+    if (!empty($f['dst_ip']))   { $cond[] = 'DstAddr = toIPv6({dst_ip:String})';          $p['dst_ip']   = $f['dst_ip']; }
     if (!empty($f['src_cidr'])) { $cond[] = 'isIPAddressInRange(toString(SrcAddr), {src_cidr:String})'; $p['src_cidr'] = $f['src_cidr']; }
     if (!empty($f['dst_cidr'])) { $cond[] = 'isIPAddressInRange(toString(DstAddr), {dst_cidr:String})'; $p['dst_cidr'] = $f['dst_cidr']; }
-    if (!empty($f['src_port'])) { $cond[] = 'SrcPort = {src_port:UInt16}';               $p['src_port'] = (int) $f['src_port']; }
-    if (!empty($f['dst_port'])) { $cond[] = 'DstPort = {dst_port:UInt16}';               $p['dst_port'] = (int) $f['dst_port']; }
-    if (!empty($f['protocol'])) { $cond[] = 'Proto = {protocol:String}';                 $p['protocol'] = $f['protocol']; }
+    if (!empty($f['src_port'])) { $cond[] = 'SrcPort = {src_port:UInt16}';                 $p['src_port'] = (int) $f['src_port']; }
+    if (!empty($f['dst_port'])) { $cond[] = 'DstPort = {dst_port:UInt16}';                 $p['dst_port'] = (int) $f['dst_port']; }
+    if (!empty($f['protocol'])) { $cond[] = 'Proto = {protocol:String}';                   $p['protocol'] = $f['protocol']; }
     if (!empty($f['exporter'])) { $cond[] = 'ExporterAddress = toIPv6({exporter:String})'; $p['exporter'] = $f['exporter']; }
-    if (!empty($f['interface'])) { $cond[] = '(InIfName = {iface:String} OR OutIfName = {iface:String})'; $p['iface'] = $f['interface']; }
+    if (!empty($f['interface'])){ $cond[] = '(InIfName = {iface:String} OR OutIfName = {iface:String})'; $p['iface'] = $f['interface']; }
+    if (!empty($f['in_if']))    { $cond[] = 'InIfName = {in_if:String}';   $p['in_if']  = $f['in_if']; }
+    if (!empty($f['out_if']))   { $cond[] = 'OutIfName = {out_if:String}'; $p['out_if'] = $f['out_if']; }
     if ($cursor !== '' && strpos($cursor, '|') !== false) {
         [$ct, $cf] = explode('|', $cursor, 2);
         $cond[] = '(TimeReceived < {cursor_time:DateTime} OR (TimeReceived = {cursor_time:DateTime} AND flow_id < {cursor_flow:UInt64}))';
@@ -192,8 +178,10 @@ function ch_query(string $sql, array $params, string $pass): array {
 }
 
 function op_search(array $f, string $cursor, int $page, string $pass): array {
-    [$w, $p] = where_clause($f, $cursor);
-    $sql = "SELECT TimeReceived, SrcAddr, DstAddr, SrcPort, DstPort, Proto, Bytes, Packets, ExporterAddress, InIfName, OutIfName, flow_id
+    [$w, $p] = where($f, $cursor);
+    $sql = "SELECT TimeReceived, SrcAddr, DstAddr, SrcPort, DstPort, Proto,
+                   Bytes, BytesEstimated, Packets, PacketsEstimated, SamplingRate,
+                   ExporterAddress, InIfName, OutIfName, flow_id
             FROM ".VIEW." WHERE $w
             ORDER BY TimeReceived DESC, flow_id DESC
             LIMIT ".($page + 1)." ".settings();
@@ -206,32 +194,66 @@ function op_search(array $f, string $cursor, int $page, string $pass): array {
 }
 
 function op_summary(array $f, string $pass): array {
-    [$w, $p] = where_clause($f, '');
-    $sql = "SELECT sum(Bytes) AS bytes, sum(Packets) AS packets, count() AS flows,
-                   sum(Bytes * if(SamplingRate > 0, SamplingRate, 1)) AS bytes_sampled
+    [$w, $p] = where($f, '');
+    // Totals: estimated physical bytes/packets (sampling-aware).
+    $sql = "SELECT sum(BytesEstimated)   AS bytes_estimated,
+                   sum(PacketsEstimated) AS packets_estimated,
+                   sum(Bytes)            AS bytes_sampled,
+                   sum(Packets)          AS packets_sampled,
+                   count()               AS flows,
+                   any(coalesce(SamplingRate, 1)) AS sampling_rate_hint
             FROM ".VIEW." WHERE $w ".settings();
     $r = ch_query($sql, $p, $pass)[0] ?? [];
-    // Peak bps over 1-minute buckets, not max row.
-    $peak_sql = "SELECT max(bps) AS peak_bps FROM (
-                   SELECT toStartOfMinute(TimeReceived) AS b, sum(Bytes) * 8 / 60 AS bps
-                   FROM ".VIEW." WHERE $w GROUP BY b
-                 ) ".settings();
-    $pr = ch_query($peak_sql, $p, $pass);
-    $r['peak_bps'] = $pr[0]['peak_bps'] ?? 0;
+
+    // Peak: bps over 1-minute buckets, SAMPLING-AWARE.
+    // Prefer the materialised flow_bps_1m view if the window is >= 1h and the
+    // filter is one the mv's grouping supports (exporter + in_if). Otherwise
+    // fall back to raw netops.flow_v1 bucketing.
+    $use_mv = ($f['to'] - $f['from'] >= 3600)
+        && (empty($f['src_ip']) && empty($f['dst_ip']) && empty($f['src_cidr']) && empty($f['dst_cidr'])
+            && empty($f['src_port']) && empty($f['dst_port']) && empty($f['protocol']));
+    if ($use_mv) {
+        $peak_sql = "SELECT max(bps) AS peak_bps FROM (
+                       SELECT bucket, sum(bytes_estimated) * 8 / 60 AS bps
+                       FROM ".BPS1M."
+                       WHERE bucket BETWEEN {from:DateTime} AND {to:DateTime}
+                       ".(!empty($f['exporter'])
+                            ? "AND exporter = toIPv6({exporter:String})" : '').
+                       (!empty($f['in_if'])
+                            ? " AND in_if = {in_if:String}" : '')."
+                       GROUP BY bucket
+                     ) ".settings();
+    } else {
+        $peak_sql = "SELECT max(bps) AS peak_bps FROM (
+                       SELECT toStartOfMinute(TimeReceived) AS b,
+                              sum(BytesEstimated) * 8 / 60 AS bps
+                       FROM ".VIEW." WHERE $w GROUP BY b
+                     ) ".settings();
+    }
+    $peak = ch_query($peak_sql, $p, $pass);
+    $r['peak_bps'] = $peak[0]['peak_bps'] ?? 0;
+    $r['peak_source'] = $use_mv ? 'flow_bps_1m' : 'flow_v1';
     return $r;
 }
 
 function op_topn(array $f, string $facet, int $limit, string $pass): array {
     $facets = [
-        'source' => 'SrcAddr', 'destination' => 'DstAddr',
+        'source' => 'SrcAddr',
+        'destination' => 'DstAddr',
         'conversation' => 'concat(toString(SrcAddr), \' → \', toString(DstAddr))',
-        'port' => 'DstPort', 'protocol' => 'Proto',
-        'exporter' => 'ExporterAddress', 'ingress' => 'InIfName',
+        'port' => 'DstPort',
+        'protocol' => 'Proto',
+        'exporter' => 'ExporterAddress',
+        'ingress' => 'InIfName',
+        'egress' => 'OutIfName',
     ];
     if (!isset($facets[$facet])) throw new \InvalidArgumentException('facet');
-    [$w, $p] = where_clause($f, '');
-    $sql = "SELECT {$facets[$facet]} AS key, sum(Bytes) AS bytes, sum(Packets) AS packets, count() AS flows
+    [$w, $p] = where($f, '');
+    $sql = "SELECT {$facets[$facet]} AS key,
+                   sum(BytesEstimated)   AS bytes_estimated,
+                   sum(PacketsEstimated) AS packets_estimated,
+                   count()               AS flows
             FROM ".VIEW." WHERE $w
-            GROUP BY key ORDER BY bytes DESC LIMIT {$limit} ".settings();
+            GROUP BY key ORDER BY bytes_estimated DESC LIMIT {$limit} ".settings();
     return ch_query($sql, $p, $pass);
 }

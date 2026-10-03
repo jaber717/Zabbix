@@ -34,3 +34,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
+
+# Keep FlowSearch migrations/views despite the broad *.sql ignore above.
+!frontend/modules/FlowSearch/sql/
+!frontend/modules/FlowSearch/sql/*.sql

@@ -1,0 +1,91 @@
+---
+# NetOps overlay for the official Akvorado v2026.10.0 compose.
+# Applied via: COMPOSE_FILE=upstream/akvorado-v2026.10.0/docker/docker-compose.yml:overlay/docker-compose.netops.yml
+#
+# Scope (ONLY):
+#   1. Rebind Traefik's PUBLIC entrypoint (8081) to loopback so the console is
+#      not reachable off-box; the console is exposed only via the Flow API host
+#      nginx that already lives in flow-api/, scoped by firewalld.
+#   2. Pin host paths for the flow data volume to /var/lib/akvorado/data so it
+#      lives on the dedicated LV (vg_flow/lv_flows), not under /var/lib/docker.
+#   3. Enforce log driver limits so journald doesn't fill the OS disk.
+#   4. Mount our zbx-flow-ro profile under users.d (read-only).
+#
+# Scope NOT:
+#   - No changes to the Akvorado services themselves (image/command/depends-on).
+#   - No changes to Kafka's listener config (upstream chose it; we trust the
+#     release).
+#   - No disabling of SELinux/firewalld (both stay Enforcing/active; see
+#     ../bin/firewalld-apply.sh).
+
+services:
+  traefik:
+    ports: !override
+      # Both ports loopback-only. flow-api/nginx is the only service exposed
+      # off-box, and it fronts the console via proxy_pass to 127.0.0.1:8081.
+      - 127.0.0.1:8080:8080/tcp
+      - 127.0.0.1:8081:8081/tcp
+    logging:
+      driver: journald
+      options:
+        tag: akvorado-traefik
+
+  akvorado-inlet:
+    # Firewalld already restricts 2055/4739/6343 UDP to exporter CIDRs on the
+    # host network namespace; the inlet still binds to 0.0.0.0 inside the
+    # container (as upstream does), which is correct.
+    logging:
+      driver: journald
+      options:
+        tag: akvorado-inlet
+
+  akvorado-outlet:
+    logging:
+      driver: journald
+      options:
+        tag: akvorado-outlet
+
+  akvorado-orchestrator:
+    logging:
+      driver: journald
+      options:
+        tag: akvorado-orchestrator
+
+  akvorado-console:
+    logging:
+      driver: journald
+      options:
+        tag: akvorado-console
+
+  kafka:
+    logging:
+      driver: journald
+      options:
+        tag: akvorado-kafka
+
+  clickhouse:
+    volumes:
+      # Our zbx-flow-ro profile. Users-config is layered on top of the upstream
+      # server.xml. `:ro,z` keeps SELinux happy with container_file_t relabel.
+      - ../overlay/clickhouse/users.d/zbx-flow-ro-profile.xml:/etc/clickhouse-server/users.d/zbx-flow-ro-profile.xml:ro,z
+    logging:
+      driver: journald
+      options:
+        tag: akvorado-clickhouse
+
+volumes:
+  # Pin the ClickHouse volume to a host path on the dedicated flow LV.
+  akvorado-clickhouse:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/akvorado/data/clickhouse
+  # Pin the Kafka data too — writes are small but KRaft metadata must survive
+  # OS reinstalls, so keep it off /var/lib/docker.
+  akvorado-kafka:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/akvorado/data/kafka
