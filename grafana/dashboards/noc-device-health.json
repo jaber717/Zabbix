@@ -22,7 +22,7 @@
       "datasource": {"type": "__expr__", "uid": "__expr__"},
       "gridPos": {"h": 3, "w": 4, "x": 0, "y": 0},
       "fieldConfig": {"defaults": {"unit": "none", "color": {"mode": "fixed", "fixedColor": "text"}}, "overrides": []},
-      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"]}, "textMode": "value", "colorMode": "none", "graphMode": "none", "justifyMode": "center"},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value", "colorMode": "none", "graphMode": "none", "justifyMode": "center"},
       "targets": [
         {"refId": "N", "datasource": {"type": "__expr__", "uid": "__expr__"}, "type": "math", "expression": "7"}
       ]
@@ -37,9 +37,11 @@
           "color": {"mode": "thresholds"},
           "thresholds": {"mode": "absolute", "steps": [{"color":"red","value":null},{"color":"orange","value":5},{"color":"green","value":7}]}
         },
-        "overrides": []
+        "overrides": [
+          {"matcher": {"id": "byFrameRefID", "options": "SUM"}, "properties": [{"id": "displayName", "value": "Healthy"}]}
+        ]
       },
-      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"]}, "textMode": "value", "colorMode": "background", "graphMode": "none", "justifyMode": "center"},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": "/^SUM$/"}, "textMode": "value", "colorMode": "background", "graphMode": "none", "justifyMode": "center"},
       "targets": [
         {"refId":"A","queryType":"3","itemids":"51228","resultFormat":"time_series","hide":true},
         {"refId":"B","queryType":"3","itemids":"51278","resultFormat":"time_series","hide":true},
@@ -48,13 +50,13 @@
         {"refId":"E","queryType":"3","itemids":"51128","resultFormat":"time_series","hide":true},
         {"refId":"F","queryType":"3","itemids":"51178","resultFormat":"time_series","hide":true},
         {"refId":"G","queryType":"3","itemids":"51328","resultFormat":"time_series","hide":true},
-        {"refId":"H","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$A","reducer":"last"},
-        {"refId":"I","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$B","reducer":"last"},
-        {"refId":"J","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$C","reducer":"last"},
-        {"refId":"K","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$D","reducer":"last"},
-        {"refId":"L","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$E","reducer":"last"},
-        {"refId":"M","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$F","reducer":"last"},
-        {"refId":"N","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$G","reducer":"last"},
+        {"refId":"H","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"A","reducer":"last","hide":true},
+        {"refId":"I","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"B","reducer":"last","hide":true},
+        {"refId":"J","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"C","reducer":"last","hide":true},
+        {"refId":"K","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"D","reducer":"last","hide":true},
+        {"refId":"L","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"E","reducer":"last","hide":true},
+        {"refId":"M","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"F","reducer":"last","hide":true},
+        {"refId":"N","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"G","reducer":"last","hide":true},
         {"refId":"SUM","datasource":{"type":"__expr__","uid":"__expr__"},"type":"math","expression":"$H + $I + $J + $K + $L + $M + $N"}
       ]
     },
@@ -68,9 +70,11 @@
           "color": {"mode": "thresholds"},
           "thresholds": {"mode": "absolute", "steps": [{"color":"green","value":null},{"color":"orange","value":1},{"color":"red","value":2}]}
         },
-        "overrides": []
+        "overrides": [
+          {"matcher": {"id": "byFrameRefID", "options": "DN"}, "properties": [{"id": "displayName", "value": "Unhealthy"}]}
+        ]
       },
-      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"]}, "textMode": "value", "colorMode": "background", "graphMode": "none", "justifyMode": "center"},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": "/^DN$/"}, "textMode": "value", "colorMode": "background", "graphMode": "none", "justifyMode": "center"},
       "targets": [
         {"refId":"A","queryType":"3","itemids":"51228","resultFormat":"time_series","hide":true},
         {"refId":"B","queryType":"3","itemids":"51278","resultFormat":"time_series","hide":true},
@@ -79,13 +83,13 @@
         {"refId":"E","queryType":"3","itemids":"51128","resultFormat":"time_series","hide":true},
         {"refId":"F","queryType":"3","itemids":"51178","resultFormat":"time_series","hide":true},
         {"refId":"G","queryType":"3","itemids":"51328","resultFormat":"time_series","hide":true},
-        {"refId":"H","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$A","reducer":"last"},
-        {"refId":"I","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$B","reducer":"last"},
-        {"refId":"J","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$C","reducer":"last"},
-        {"refId":"K","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$D","reducer":"last"},
-        {"refId":"L","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$E","reducer":"last"},
-        {"refId":"M","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$F","reducer":"last"},
-        {"refId":"N","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$G","reducer":"last"},
+        {"refId":"H","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"A","reducer":"last","hide":true},
+        {"refId":"I","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"B","reducer":"last","hide":true},
+        {"refId":"J","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"C","reducer":"last","hide":true},
+        {"refId":"K","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"D","reducer":"last","hide":true},
+        {"refId":"L","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"E","reducer":"last","hide":true},
+        {"refId":"M","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"F","reducer":"last","hide":true},
+        {"refId":"N","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"G","reducer":"last","hide":true},
         {"refId":"DN","datasource":{"type":"__expr__","uid":"__expr__"},"type":"math","expression":"7 - ($H + $I + $J + $K + $L + $M + $N)"}
       ]
     },
@@ -94,7 +98,7 @@
       "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
       "gridPos": {"h": 3, "w": 8, "x": 16, "y": 0},
       "fieldConfig": {"defaults": {"unit": "dateTimeFromNow", "color": {"mode": "fixed", "fixedColor": "text"}}, "overrides": []},
-      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": "/Time/"}, "textMode": "value", "colorMode": "none", "graphMode": "none", "justifyMode": "center"},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": "/[Tt]ime/"}, "textMode": "value", "colorMode": "none", "graphMode": "none", "justifyMode": "center"},
       "targets": [
         {"refId": "A", "queryType": "3", "itemids": "51228", "resultFormat": "time_series"}
       ]
@@ -106,28 +110,28 @@
       "fieldConfig": {
         "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
         "overrides": [
-          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [
+          {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [
             {"id": "displayName", "value": "PING"},
             {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}
           ]},
-          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [
+          {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [
             {"id": "displayName", "value": "SNMP"},
             {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK",  "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}
           ]},
-          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [
+          {"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [
             {"id": "displayName", "value": "MEM"},
             {"id": "unit", "value": "percent"},
             {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}
           ]},
-          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [
+          {"matcher": {"id": "byFrameRefID", "options": "D"}, "properties": [
             {"id": "displayName", "value": "CPU"},
             {"id": "unit", "value": "percent"},
             {"id": "noValue", "value": "—"},
-            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}
           ]}
         ]
       },
-      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "vertical"},
       "targets": [
         {"refId": "A", "queryType": "3", "itemids": "51228", "resultFormat": "time_series"},
         {"refId": "B", "queryType": "3", "itemids": "51250", "resultFormat": "time_series"},
@@ -142,13 +146,13 @@
       "fieldConfig": {
         "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
         "overrides": [
-          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
-          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
-          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
-          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
+          {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
+          {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
+          {"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
+          {"matcher": {"id": "byFrameRefID", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
         ]
       },
-      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "vertical"},
       "targets": [
         {"refId": "A", "queryType": "3", "itemids": "51278", "resultFormat": "time_series"},
         {"refId": "B", "queryType": "3", "itemids": "51300", "resultFormat": "time_series"},
@@ -163,13 +167,13 @@
       "fieldConfig": {
         "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
         "overrides": [
-          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
-          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
-          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
-          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
+          {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
+          {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
+          {"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
+          {"matcher": {"id": "byFrameRefID", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
         ]
       },
-      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "vertical"},
       "targets": [
         {"refId": "A", "queryType": "3", "itemids": "51378", "resultFormat": "time_series"},
         {"refId": "B", "queryType": "3", "itemids": "51400", "resultFormat": "time_series"},
@@ -184,13 +188,13 @@
       "fieldConfig": {
         "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
         "overrides": [
-          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
-          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
-          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
-          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
+          {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
+          {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
+          {"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
+          {"matcher": {"id": "byFrameRefID", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
         ]
       },
-      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "vertical"},
       "targets": [
         {"refId": "A", "queryType": "3", "itemids": "51428", "resultFormat": "time_series"},
         {"refId": "B", "queryType": "3", "itemids": "51450", "resultFormat": "time_series"},
@@ -205,13 +209,13 @@
       "fieldConfig": {
         "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
         "overrides": [
-          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
-          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
-          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
-          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
+          {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
+          {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
+          {"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
+          {"matcher": {"id": "byFrameRefID", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
         ]
       },
-      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "vertical"},
       "targets": [
         {"refId": "A", "queryType": "3", "itemids": "51128", "resultFormat": "time_series"},
         {"refId": "B", "queryType": "3", "itemids": "51141", "resultFormat": "time_series"},
@@ -226,13 +230,13 @@
       "fieldConfig": {
         "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
         "overrides": [
-          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
-          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
-          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
-          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
+          {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
+          {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
+          {"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
+          {"matcher": {"id": "byFrameRefID", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
         ]
       },
-      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "vertical"},
       "targets": [
         {"refId": "A", "queryType": "3", "itemids": "51178", "resultFormat": "time_series"},
         {"refId": "B", "queryType": "3", "itemids": "51191", "resultFormat": "time_series"},
@@ -247,13 +251,13 @@
       "fieldConfig": {
         "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
         "overrides": [
-          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
-          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
-          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
-          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
+          {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
+          {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
+          {"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
+          {"matcher": {"id": "byFrameRefID", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
         ]
       },
-      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "vertical"},
       "targets": [
         {"refId": "A", "queryType": "3", "itemids": "51328", "resultFormat": "time_series"},
         {"refId": "B", "queryType": "3", "itemids": "51350", "resultFormat": "time_series"},
@@ -265,16 +269,18 @@
     { "id": 30, "type": "stat", "title": "Attention",
       "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
       "gridPos": {"h": 5, "w": 3, "x": 21, "y": 3},
-      "description": "Lists any device whose ICMP = DOWN or SNMP = DOWN. Quiet when all healthy.",
+      "description": "Count of devices whose ICMP = DOWN. Shows 'All healthy' (green) when 0.",
       "fieldConfig": {
         "defaults": {
           "mappings": [{"type": "value", "options": {"0": {"text": "All healthy", "color": "green"}}}],
           "color": {"mode": "thresholds"},
           "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 2}]}
         },
-        "overrides": []
+        "overrides": [
+          {"matcher": {"id": "byFrameRefID", "options": "CNT"}, "properties": [{"id": "displayName", "value": "ICMP DOWN"}]}
+        ]
       },
-      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"]}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center"},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": "/^CNT$/"}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center"},
       "targets": [
         {"refId":"A","queryType":"3","itemids":"51228","resultFormat":"time_series","hide":true},
         {"refId":"B","queryType":"3","itemids":"51278","resultFormat":"time_series","hide":true},
@@ -283,13 +289,13 @@
         {"refId":"E","queryType":"3","itemids":"51128","resultFormat":"time_series","hide":true},
         {"refId":"F","queryType":"3","itemids":"51178","resultFormat":"time_series","hide":true},
         {"refId":"G","queryType":"3","itemids":"51328","resultFormat":"time_series","hide":true},
-        {"refId":"H","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$A","reducer":"last"},
-        {"refId":"I","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$B","reducer":"last"},
-        {"refId":"J","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$C","reducer":"last"},
-        {"refId":"K","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$D","reducer":"last"},
-        {"refId":"L","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$E","reducer":"last"},
-        {"refId":"M","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$F","reducer":"last"},
-        {"refId":"N","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$G","reducer":"last"},
+        {"refId":"H","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"A","reducer":"last","hide":true},
+        {"refId":"I","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"B","reducer":"last","hide":true},
+        {"refId":"J","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"C","reducer":"last","hide":true},
+        {"refId":"K","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"D","reducer":"last","hide":true},
+        {"refId":"L","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"E","reducer":"last","hide":true},
+        {"refId":"M","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"F","reducer":"last","hide":true},
+        {"refId":"N","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"G","reducer":"last","hide":true},
         {"refId":"CNT","datasource":{"type":"__expr__","uid":"__expr__"},"type":"math","expression":"7 - ($H + $I + $J + $K + $L + $M + $N)"}
       ]
     },
@@ -305,60 +311,58 @@
           "thresholds": {"mode": "absolute", "steps": [{"color": "transparent", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}
         },
         "overrides": [
-          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "STC"}]},
-          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "MOBILY"}]},
-          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "SAIX-A"}]},
-          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "SAIX-B"}]},
-          {"matcher": {"id": "byRefId", "options": "E"}, "properties": [{"id": "displayName", "value": "SITE-A"}]},
-          {"matcher": {"id": "byRefId", "options": "F"}, "properties": [{"id": "displayName", "value": "SITE-B"}]},
-          {"matcher": {"id": "byRefId", "options": "G"}, "properties": [{"id": "displayName", "value": "INT-CORE"}]}
+          {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "displayName", "value": "STC"}]},
+          {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [{"id": "displayName", "value": "MOBILY"}]},
+          {"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [{"id": "displayName", "value": "SAIX-A"}]},
+          {"matcher": {"id": "byFrameRefID", "options": "D"}, "properties": [{"id": "displayName", "value": "SAIX-B"}]},
+          {"matcher": {"id": "byFrameRefID", "options": "E"}, "properties": [{"id": "displayName", "value": "SITE-A"}]},
+          {"matcher": {"id": "byFrameRefID", "options": "F"}, "properties": [{"id": "displayName", "value": "SITE-B"}]},
+          {"matcher": {"id": "byFrameRefID", "options": "G"}, "properties": [{"id": "displayName", "value": "INT-CORE"}]}
         ]
       },
       "options": {"tooltip": {"mode": "multi", "sort": "none"}, "legend": {"displayMode": "table", "placement": "right", "calcs": ["last", "max"]}},
       "targets": [
-        {"refId": "A", "queryType": "3", "itemids": "51519", "resultFormat": "time_series"},
-        {"refId": "B", "queryType": "3", "itemids": "51512", "resultFormat": "time_series"},
-        {"refId": "C", "queryType": "3", "itemids": "51741", "resultFormat": "time_series"},
-        {"refId": "D", "queryType": "3", "itemids": "51639", "resultFormat": "time_series"},
-        {"refId": "E", "queryType": "3", "itemids": "51630", "resultFormat": "time_series"},
-        {"refId": "F", "queryType": "3", "itemids": "51548", "resultFormat": "time_series"},
-        {"refId": "G", "queryType": "3", "itemids": "51776", "resultFormat": "time_series"}
+        {"refId": "A", "queryType": "3", "itemids": "51519", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["STC"]}]},
+        {"refId": "B", "queryType": "3", "itemids": "51512", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["MOBILY"]}]},
+        {"refId": "C", "queryType": "3", "itemids": "51741", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["SAIX-A"]}]},
+        {"refId": "D", "queryType": "3", "itemids": "51639", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["SAIX-B"]}]},
+        {"refId": "E", "queryType": "3", "itemids": "51630", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["SITE-A"]}]},
+        {"refId": "F", "queryType": "3", "itemids": "51548", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["SITE-B"]}]},
+        {"refId": "G", "queryType": "3", "itemids": "51776", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["INT-CORE"]}]}
       ]
     },
 
-    { "id": 41, "type": "timeseries", "title": "CPU utilization — no history yet (dependent-item persistence pending)",
+    { "id": 41, "type": "timeseries", "title": "CPU utilization",
       "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
       "gridPos": {"h": 9, "w": 12, "x": 12, "y": 8},
-      "description": "The Zabbix `#1: CPU utilization` dependent items on each PNET router emit lastvalue via SNMP but do not currently persist history/trend rows — so this panel is intentionally empty rather than fabricating a line. The current CPU value is shown as a per-device number in the device card above. Panel will populate automatically once Zabbix accumulates history for these items.",
       "fieldConfig": {
         "defaults": {
           "unit": "percent", "min": 0, "max": 100,
           "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"},
           "color": {"mode": "palette-classic"},
-          "noValue": "No history yet",
           "thresholds": {"mode": "absolute", "steps": [{"color": "transparent", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}
         },
         "overrides": [
-          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "STC"}]},
-          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "MOBILY"}]},
-          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "SAIX-A"}]},
-          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "SAIX-B"}]},
-          {"matcher": {"id": "byRefId", "options": "E"}, "properties": [{"id": "displayName", "value": "SITE-A"}]},
-          {"matcher": {"id": "byRefId", "options": "F"}, "properties": [{"id": "displayName", "value": "SITE-B"}]},
-          {"matcher": {"id": "byRefId", "options": "G"}, "properties": [{"id": "displayName", "value": "INT-CORE"}]}
+          {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "displayName", "value": "STC"}]},
+          {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [{"id": "displayName", "value": "MOBILY"}]},
+          {"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [{"id": "displayName", "value": "SAIX-A"}]},
+          {"matcher": {"id": "byFrameRefID", "options": "D"}, "properties": [{"id": "displayName", "value": "SAIX-B"}]},
+          {"matcher": {"id": "byFrameRefID", "options": "E"}, "properties": [{"id": "displayName", "value": "SITE-A"}]},
+          {"matcher": {"id": "byFrameRefID", "options": "F"}, "properties": [{"id": "displayName", "value": "SITE-B"}]},
+          {"matcher": {"id": "byFrameRefID", "options": "G"}, "properties": [{"id": "displayName", "value": "INT-CORE"}]}
         ]
       },
       "options": {"tooltip": {"mode": "multi", "sort": "none"}, "legend": {"displayMode": "table", "placement": "right", "calcs": ["last", "max"]}},
       "targets": [
-        {"refId": "A", "queryType": "3", "itemids": "51506", "resultFormat": "time_series"},
-        {"refId": "B", "queryType": "3", "itemids": "51770", "resultFormat": "time_series"},
-        {"refId": "C", "queryType": "3", "itemids": "51637", "resultFormat": "time_series"},
-        {"refId": "D", "queryType": "3", "itemids": "51555", "resultFormat": "time_series"},
-        {"refId": "E", "queryType": "3", "itemids": "51636", "resultFormat": "time_series"},
-        {"refId": "F", "queryType": "3", "itemids": "51554", "resultFormat": "time_series"},
-        {"refId": "G", "queryType": "3", "itemids": "51735", "resultFormat": "time_series"}
+        {"refId": "A", "queryType": "3", "itemids": "51506", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["STC"]}]},
+        {"refId": "B", "queryType": "3", "itemids": "51770", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["MOBILY"]}]},
+        {"refId": "C", "queryType": "3", "itemids": "51637", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["SAIX-A"]}]},
+        {"refId": "D", "queryType": "3", "itemids": "51555", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["SAIX-B"]}]},
+        {"refId": "E", "queryType": "3", "itemids": "51636", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["SITE-A"]}]},
+        {"refId": "F", "queryType": "3", "itemids": "51554", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["SITE-B"]}]},
+        {"refId": "G", "queryType": "3", "itemids": "51735", "resultFormat": "time_series", "functions": [{"def": {"name": "setAlias"}, "params": ["INT-CORE"]}]}
       ]
     }
   ],
-  "description": "NOC Device Health — professional NOC layout. Row 1 compact header (Monitored / Healthy ICMP / Unhealthy / Last update). Row 2: one card per device (STC, MOBILY, SAIX-A, SAIX-B, SITE-A, SITE-B, INT-CORE) showing PING + SNMP + MEM (+ CPU where present), green when healthy, orange/red on degradation; plus an Attention tile that shows 'All healthy' when quiet. Row 3: side-by-side Memory and CPU timeseries with device-name legends. CPU timeseries intentionally shows no line until Zabbix accumulates persistent history for the `#1: CPU utilization` dependent items; the current CPU value is displayed per device in the card row and will fill the chart automatically once history populates. All itemids verified live via Grafana→Zabbix datasource resource proxy; no fabricated data."
+  "description": "NOC Device Health. Row 1: compact header (Monitored constant, Healthy = Σ ICMP(=1) via expressions, Unhealthy = 7-Healthy, Last update dateTimeFromNow of a representative series). Row 2: one 3-col 5-row card per device, each a vertical stat with 4 reduced targets (PING/SNMP/MEM/CPU) colored by state; devices PNET-STC/MOBILY/SAIX-A/SAIX-B/SITE-A/SITE-B/INT-CORE. Row 3: side-by-side Memory + CPU timeseries, legends renamed to device names via the Zabbix plugin's native setAlias function. All itemids live-validated via /api/ds/query. No fabricated data."
 }
