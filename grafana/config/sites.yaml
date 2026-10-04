@@ -1,0 +1,53 @@
+# Site inventory for Grafana dashboard generation.
+# This file is the SINGLE source of truth for which hosts/interfaces land on
+# the WAN Overview wall and Device Health, and what display order they take.
+# Dashboards are regenerated from this file by `grafana/discovery/build.py`
+# (or the API-driven equivalent in `grafana/bin/apply-grafana.sh --from-config`).
+#
+# NOTHING in this file is Lab-specific logic — only identifiers. On a prod
+# site, replace host names + interface_pattern + capacities and re-run the
+# build; no PHP/JSON needs to be edited by hand.
+
+grafana:
+  datasource_uid: zabbix-lab
+  folder_uid: noc
+
+noc_wan_overview:
+  layout:
+    columns: 3     # 24-grid: w=24/columns, h=10
+    rows: 2
+  # Slot order IS the on-screen order (left-to-right, top-to-bottom).
+  slots:
+    - { host: PNET-STC,     interface_pattern: 'Gi0/0',  label: 'STC — Gi0/0 → INT-CORE' }
+    - { host: PNET-MOBILY,  interface_pattern: 'Gi0/0',  label: 'MOBILY — Gi0/0 → INT-CORE' }
+    - { host: PNET-SAIX-A,  interface_pattern: 'Gi0/0',  label: 'SAIX-A — Gi0/0 → SAIX-CORE' }
+    - { host: PNET-SAIX-B,  interface_pattern: 'Gi0/0',  label: 'SAIX-B — Gi0/0 → SAIX-CORE' }
+    - { host: PNET-SITE-A,  interface_pattern: 'Gi0/0',  label: 'SITE-A — Gi0/0 → SAIX-A' }
+    - { host: PNET-SITE-B,  interface_pattern: 'Gi0/0',  label: 'SITE-B — Gi0/0 → SAIX-B' }
+
+noc_device_health:
+  hosts:
+    - PNET-STC
+    - PNET-MOBILY
+    - PNET-SAIX-A
+    - PNET-SAIX-B
+    - PNET-SITE-A
+    - PNET-SITE-B
+    - PNET-INT-CORE
+  metrics:
+    cpu:        { item_name: "#1: CPU utilization",         kind: timeseries, unit: percent, warn: 70, crit: 90 }
+    memory:     { item_name: "Processor: Memory utilization", kind: timeseries, unit: percent, warn: 70, crit: 90 }
+    icmp:       { item_name: "ICMP ping",                   kind: stat,        value_map: {0: {text: DOWN, color: red}, 1: {text: UP, color: green}} }
+    snmp:       { item_name: "SNMP agent availability",     kind: stat,        value_map: {0: {text: UNKNOWN, color: orange}, 1: {text: AVAILABLE, color: green}, 2: {text: UNAVAILABLE, color: red}} }
+
+# Vendor assumptions used by netflow-vm/bin/exporter-poc-*.sh. One block per
+# supported platform; the exporter POC script picks the matching one based
+# on the target's Zabbix template or an explicit `--vendor` arg.
+exporter_vendors:
+  cisco-iosv:
+    netflow_record: NETOPS-NFR-V9
+    netflow_exporter: NETOPS-NFE-NETFLOW01
+    netflow_monitor: NETOPS-NFM
+    sampler: NETOPS-SMP
+    config_mode: flexible-netflow-v9
+    interface_default: GigabitEthernet0/0
