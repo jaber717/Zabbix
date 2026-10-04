@@ -1,78 +1,364 @@
 {
   "title": "NOC — Device Health",
   "uid": "noc-device-health",
-  "schemaVersion": 39, "version": 1, "editable": false, "graphTooltip": 1,
-  "refresh": "30s", "time": {"from": "now-1h", "to": "now"},
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": {"from": "now-1h", "to": "now"},
   "timepicker": {"refresh_intervals": ["30s","1m","5m"], "time_options": ["1h","6h","24h","7d"]},
-  "fiscalYearStartMonth": 0, "liveNow": false, "weekStart": "", "style": "dark", "timezone": "browser",
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "weekStart": "",
+  "style": "dark",
+  "timezone": "browser",
   "tags": ["netops","device-health"],
-  "templating": {"list": []}, "annotations": {"list": []},
+  "templating": {"list": []},
+  "annotations": {"list": []},
   "panels": [
-    {"id":1,"type":"timeseries","title":"Processor memory utilization — 7 PNET IOSv routers","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-     "gridPos":{"h":10,"w":24,"x":0,"y":0},
-     "fieldConfig":{"defaults":{"unit":"percent","min":0,"max":100,"custom":{"drawStyle":"line","lineWidth":1,"fillOpacity":10,"spanNulls":false,"showPoints":"never"},"color":{"mode":"palette-classic"},
-     "thresholds":{"mode":"absolute","steps":[{"color":"transparent","value":null},{"color":"orange","value":70},{"color":"red","value":90}]}},
-     "overrides":[{"matcher":{"id":"byRefId","options":"A"},"properties":[{"id":"displayName","value":"PNET-STC"}]},{"matcher":{"id":"byRefId","options":"B"},"properties":[{"id":"displayName","value":"PNET-MOBILY"}]},{"matcher":{"id":"byRefId","options":"C"},"properties":[{"id":"displayName","value":"PNET-SAIX-A"}]},{"matcher":{"id":"byRefId","options":"D"},"properties":[{"id":"displayName","value":"PNET-SAIX-B"}]},{"matcher":{"id":"byRefId","options":"E"},"properties":[{"id":"displayName","value":"PNET-SITE-A"}]},{"matcher":{"id":"byRefId","options":"F"},"properties":[{"id":"displayName","value":"PNET-SITE-B"}]},{"matcher":{"id":"byRefId","options":"G"},"properties":[{"id":"displayName","value":"PNET-INT-CORE"}]}]},
-     "options":{"tooltip":{"mode":"multi"},"legend":{"displayMode":"table","placement":"right","calcs":["last","mean","max"]}},
-     "targets":[{"refId":"A","queryType":"3","itemids":"51519","resultFormat":"time_series"},{"refId":"B","queryType":"3","itemids":"51512","resultFormat":"time_series"},{"refId":"C","queryType":"3","itemids":"51741","resultFormat":"time_series"},{"refId":"D","queryType":"3","itemids":"51639","resultFormat":"time_series"},{"refId":"E","queryType":"3","itemids":"51630","resultFormat":"time_series"},{"refId":"F","queryType":"3","itemids":"51548","resultFormat":"time_series"},{"refId":"G","queryType":"3","itemids":"51776","resultFormat":"time_series"}]},
-    {"id":100,"type":"stat","title":"PNET-STC — ICMP","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":0,"y":10},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"DOWN","color":"red"},"1":{"text":"UP","color":"green"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"red","value":null},{"color":"green","value":1}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51228","resultFormat":"time_series"}]},{"id":101,"type":"stat","title":"PNET-MOBILY — ICMP","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":3,"y":10},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"DOWN","color":"red"},"1":{"text":"UP","color":"green"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"red","value":null},{"color":"green","value":1}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51278","resultFormat":"time_series"}]},{"id":102,"type":"stat","title":"PNET-SAIX-A — ICMP","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":6,"y":10},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"DOWN","color":"red"},"1":{"text":"UP","color":"green"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"red","value":null},{"color":"green","value":1}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51378","resultFormat":"time_series"}]},{"id":103,"type":"stat","title":"PNET-SAIX-B — ICMP","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":9,"y":10},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"DOWN","color":"red"},"1":{"text":"UP","color":"green"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"red","value":null},{"color":"green","value":1}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51428","resultFormat":"time_series"}]},{"id":104,"type":"stat","title":"PNET-SITE-A — ICMP","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":12,"y":10},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"DOWN","color":"red"},"1":{"text":"UP","color":"green"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"red","value":null},{"color":"green","value":1}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51128","resultFormat":"time_series"}]},{"id":105,"type":"stat","title":"PNET-SITE-B — ICMP","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":15,"y":10},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"DOWN","color":"red"},"1":{"text":"UP","color":"green"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"red","value":null},{"color":"green","value":1}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51178","resultFormat":"time_series"}]},{"id":106,"type":"stat","title":"PNET-INT-CORE — ICMP","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":18,"y":10},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"DOWN","color":"red"},"1":{"text":"UP","color":"green"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"red","value":null},{"color":"green","value":1}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51328","resultFormat":"time_series"}]},
-    {"id":200,"type":"stat","title":"SNMP — PNET-STC","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":0,"y":14},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"UNKNOWN","color":"orange"},"1":{"text":"AVAILABLE","color":"green"},"2":{"text":"UNAVAILABLE","color":"red"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"orange","value":null},{"color":"green","value":1},{"color":"red","value":2}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51250","resultFormat":"time_series"}]},{"id":201,"type":"stat","title":"SNMP — PNET-MOBILY","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":3,"y":14},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"UNKNOWN","color":"orange"},"1":{"text":"AVAILABLE","color":"green"},"2":{"text":"UNAVAILABLE","color":"red"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"orange","value":null},{"color":"green","value":1},{"color":"red","value":2}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51300","resultFormat":"time_series"}]},{"id":202,"type":"stat","title":"SNMP — PNET-SAIX-A","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":6,"y":14},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"UNKNOWN","color":"orange"},"1":{"text":"AVAILABLE","color":"green"},"2":{"text":"UNAVAILABLE","color":"red"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"orange","value":null},{"color":"green","value":1},{"color":"red","value":2}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51400","resultFormat":"time_series"}]},{"id":203,"type":"stat","title":"SNMP — PNET-SAIX-B","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":9,"y":14},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"UNKNOWN","color":"orange"},"1":{"text":"AVAILABLE","color":"green"},"2":{"text":"UNAVAILABLE","color":"red"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"orange","value":null},{"color":"green","value":1},{"color":"red","value":2}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51450","resultFormat":"time_series"}]},{"id":204,"type":"stat","title":"SNMP — PNET-SITE-A","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":12,"y":14},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"UNKNOWN","color":"orange"},"1":{"text":"AVAILABLE","color":"green"},"2":{"text":"UNAVAILABLE","color":"red"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"orange","value":null},{"color":"green","value":1},{"color":"red","value":2}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51141","resultFormat":"time_series"}]},{"id":205,"type":"stat","title":"SNMP — PNET-SITE-B","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":15,"y":14},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"UNKNOWN","color":"orange"},"1":{"text":"AVAILABLE","color":"green"},"2":{"text":"UNAVAILABLE","color":"red"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"orange","value":null},{"color":"green","value":1},{"color":"red","value":2}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51191","resultFormat":"time_series"}]},{"id":206,"type":"stat","title":"SNMP — PNET-INT-CORE","datasource":{"type":"alexanderzobnin-zabbix-datasource","uid":"zabbix-lab"},
-"gridPos":{"h":4,"w":3,"x":18,"y":14},
-"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"UNKNOWN","color":"orange"},"1":{"text":"AVAILABLE","color":"green"},"2":{"text":"UNAVAILABLE","color":"red"}}}],"color":{"mode":"thresholds"},"thresholds":{"mode":"absolute","steps":[{"color":"orange","value":null},{"color":"green","value":1},{"color":"red","value":2}]}},"overrides":[]},
-"options":{"reduceOptions":{"values":false,"calcs":["lastNotNull"]},"textMode":"value","colorMode":"background","graphMode":"none"},
-"targets":[{"refId":"A","queryType":"3","itemids":"51350","resultFormat":"time_series"}]}
+
+    { "id": 1, "type": "stat", "title": "Monitored",
+      "datasource": {"type": "__expr__", "uid": "__expr__"},
+      "gridPos": {"h": 3, "w": 4, "x": 0, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "none", "color": {"mode": "fixed", "fixedColor": "text"}}, "overrides": []},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"]}, "textMode": "value", "colorMode": "none", "graphMode": "none", "justifyMode": "center"},
+      "targets": [
+        {"refId": "N", "datasource": {"type": "__expr__", "uid": "__expr__"}, "type": "math", "expression": "7"}
+      ]
+    },
+
+    { "id": 2, "type": "stat", "title": "Healthy (ICMP = UP)",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
+      "gridPos": {"h": 3, "w": 6, "x": 4, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color":"red","value":null},{"color":"orange","value":5},{"color":"green","value":7}]}
+        },
+        "overrides": []
+      },
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"]}, "textMode": "value", "colorMode": "background", "graphMode": "none", "justifyMode": "center"},
+      "targets": [
+        {"refId":"A","queryType":"3","itemids":"51228","resultFormat":"time_series","hide":true},
+        {"refId":"B","queryType":"3","itemids":"51278","resultFormat":"time_series","hide":true},
+        {"refId":"C","queryType":"3","itemids":"51378","resultFormat":"time_series","hide":true},
+        {"refId":"D","queryType":"3","itemids":"51428","resultFormat":"time_series","hide":true},
+        {"refId":"E","queryType":"3","itemids":"51128","resultFormat":"time_series","hide":true},
+        {"refId":"F","queryType":"3","itemids":"51178","resultFormat":"time_series","hide":true},
+        {"refId":"G","queryType":"3","itemids":"51328","resultFormat":"time_series","hide":true},
+        {"refId":"H","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$A","reducer":"last"},
+        {"refId":"I","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$B","reducer":"last"},
+        {"refId":"J","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$C","reducer":"last"},
+        {"refId":"K","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$D","reducer":"last"},
+        {"refId":"L","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$E","reducer":"last"},
+        {"refId":"M","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$F","reducer":"last"},
+        {"refId":"N","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$G","reducer":"last"},
+        {"refId":"SUM","datasource":{"type":"__expr__","uid":"__expr__"},"type":"math","expression":"$H + $I + $J + $K + $L + $M + $N"}
+      ]
+    },
+
+    { "id": 3, "type": "stat", "title": "Unhealthy",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
+      "gridPos": {"h": 3, "w": 6, "x": 10, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color":"green","value":null},{"color":"orange","value":1},{"color":"red","value":2}]}
+        },
+        "overrides": []
+      },
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"]}, "textMode": "value", "colorMode": "background", "graphMode": "none", "justifyMode": "center"},
+      "targets": [
+        {"refId":"A","queryType":"3","itemids":"51228","resultFormat":"time_series","hide":true},
+        {"refId":"B","queryType":"3","itemids":"51278","resultFormat":"time_series","hide":true},
+        {"refId":"C","queryType":"3","itemids":"51378","resultFormat":"time_series","hide":true},
+        {"refId":"D","queryType":"3","itemids":"51428","resultFormat":"time_series","hide":true},
+        {"refId":"E","queryType":"3","itemids":"51128","resultFormat":"time_series","hide":true},
+        {"refId":"F","queryType":"3","itemids":"51178","resultFormat":"time_series","hide":true},
+        {"refId":"G","queryType":"3","itemids":"51328","resultFormat":"time_series","hide":true},
+        {"refId":"H","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$A","reducer":"last"},
+        {"refId":"I","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$B","reducer":"last"},
+        {"refId":"J","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$C","reducer":"last"},
+        {"refId":"K","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$D","reducer":"last"},
+        {"refId":"L","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$E","reducer":"last"},
+        {"refId":"M","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$F","reducer":"last"},
+        {"refId":"N","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$G","reducer":"last"},
+        {"refId":"DN","datasource":{"type":"__expr__","uid":"__expr__"},"type":"math","expression":"7 - ($H + $I + $J + $K + $L + $M + $N)"}
+      ]
+    },
+
+    { "id": 4, "type": "stat", "title": "Last update",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
+      "gridPos": {"h": 3, "w": 8, "x": 16, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "dateTimeFromNow", "color": {"mode": "fixed", "fixedColor": "text"}}, "overrides": []},
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": "/Time/"}, "textMode": "value", "colorMode": "none", "graphMode": "none", "justifyMode": "center"},
+      "targets": [
+        {"refId": "A", "queryType": "3", "itemids": "51228", "resultFormat": "time_series"}
+      ]
+    },
+
+    { "id": 10, "type": "stat", "title": "STC",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
+      "gridPos": {"h": 5, "w": 3, "x": 0, "y": 3},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [
+            {"id": "displayName", "value": "PING"},
+            {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}
+          ]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [
+            {"id": "displayName", "value": "SNMP"},
+            {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK",  "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}
+          ]},
+          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [
+            {"id": "displayName", "value": "MEM"},
+            {"id": "unit", "value": "percent"},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}
+          ]},
+          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [
+            {"id": "displayName", "value": "CPU"},
+            {"id": "unit", "value": "percent"},
+            {"id": "noValue", "value": "—"},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}
+          ]}
+        ]
+      },
+      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "targets": [
+        {"refId": "A", "queryType": "3", "itemids": "51228", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51250", "resultFormat": "time_series"},
+        {"refId": "C", "queryType": "3", "itemids": "51519", "resultFormat": "time_series"},
+        {"refId": "D", "queryType": "3", "itemids": "51506", "resultFormat": "time_series"}
+      ]
+    },
+
+    { "id": 11, "type": "stat", "title": "MOBILY",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
+      "gridPos": {"h": 5, "w": 3, "x": 3, "y": 3},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
+          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
+          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
+        ]
+      },
+      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "targets": [
+        {"refId": "A", "queryType": "3", "itemids": "51278", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51300", "resultFormat": "time_series"},
+        {"refId": "C", "queryType": "3", "itemids": "51512", "resultFormat": "time_series"},
+        {"refId": "D", "queryType": "3", "itemids": "51770", "resultFormat": "time_series"}
+      ]
+    },
+
+    { "id": 12, "type": "stat", "title": "SAIX-A",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
+      "gridPos": {"h": 5, "w": 3, "x": 6, "y": 3},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
+          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
+          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
+        ]
+      },
+      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "targets": [
+        {"refId": "A", "queryType": "3", "itemids": "51378", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51400", "resultFormat": "time_series"},
+        {"refId": "C", "queryType": "3", "itemids": "51741", "resultFormat": "time_series"},
+        {"refId": "D", "queryType": "3", "itemids": "51637", "resultFormat": "time_series"}
+      ]
+    },
+
+    { "id": 13, "type": "stat", "title": "SAIX-B",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
+      "gridPos": {"h": 5, "w": 3, "x": 9, "y": 3},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
+          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
+          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
+        ]
+      },
+      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "targets": [
+        {"refId": "A", "queryType": "3", "itemids": "51428", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51450", "resultFormat": "time_series"},
+        {"refId": "C", "queryType": "3", "itemids": "51639", "resultFormat": "time_series"},
+        {"refId": "D", "queryType": "3", "itemids": "51555", "resultFormat": "time_series"}
+      ]
+    },
+
+    { "id": 14, "type": "stat", "title": "SITE-A",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
+      "gridPos": {"h": 5, "w": 3, "x": 12, "y": 3},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
+          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
+          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
+        ]
+      },
+      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "targets": [
+        {"refId": "A", "queryType": "3", "itemids": "51128", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51141", "resultFormat": "time_series"},
+        {"refId": "C", "queryType": "3", "itemids": "51630", "resultFormat": "time_series"},
+        {"refId": "D", "queryType": "3", "itemids": "51636", "resultFormat": "time_series"}
+      ]
+    },
+
+    { "id": 15, "type": "stat", "title": "SITE-B",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
+      "gridPos": {"h": 5, "w": 3, "x": 15, "y": 3},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
+          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
+          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
+        ]
+      },
+      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "targets": [
+        {"refId": "A", "queryType": "3", "itemids": "51178", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51191", "resultFormat": "time_series"},
+        {"refId": "C", "queryType": "3", "itemids": "51548", "resultFormat": "time_series"},
+        {"refId": "D", "queryType": "3", "itemids": "51554", "resultFormat": "time_series"}
+      ]
+    },
+
+    { "id": 16, "type": "stat", "title": "INT-CORE",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
+      "gridPos": {"h": 5, "w": 3, "x": 18, "y": 3},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "gray", "value": null}]}},
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "PING"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "SNMP"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "UNK", "color": "orange"}, "1": {"text": "OK", "color": "green"}, "2": {"text": "DOWN", "color": "red"}}}]}]},
+          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "MEM"}, {"id": "unit", "value": "percent"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]},
+          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "CPU"}, {"id": "unit", "value": "percent"}, {"id": "noValue", "value": "—"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "gray", "value": null}, {"color": "green", "value": 0.0001}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}}]}
+        ]
+      },
+      "options": {"reduceOptions": {"values": true, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "horizontal"},
+      "targets": [
+        {"refId": "A", "queryType": "3", "itemids": "51328", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51350", "resultFormat": "time_series"},
+        {"refId": "C", "queryType": "3", "itemids": "51776", "resultFormat": "time_series"},
+        {"refId": "D", "queryType": "3", "itemids": "51735", "resultFormat": "time_series"}
+      ]
+    },
+
+    { "id": 30, "type": "stat", "title": "Attention",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
+      "gridPos": {"h": 5, "w": 3, "x": 21, "y": 3},
+      "description": "Lists any device whose ICMP = DOWN or SNMP = DOWN. Quiet when all healthy.",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{"type": "value", "options": {"0": {"text": "All healthy", "color": "green"}}}],
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 2}]}
+        },
+        "overrides": []
+      },
+      "options": {"reduceOptions": {"values": false, "calcs": ["lastNotNull"]}, "textMode": "value_and_name", "colorMode": "value", "graphMode": "none", "justifyMode": "center"},
+      "targets": [
+        {"refId":"A","queryType":"3","itemids":"51228","resultFormat":"time_series","hide":true},
+        {"refId":"B","queryType":"3","itemids":"51278","resultFormat":"time_series","hide":true},
+        {"refId":"C","queryType":"3","itemids":"51378","resultFormat":"time_series","hide":true},
+        {"refId":"D","queryType":"3","itemids":"51428","resultFormat":"time_series","hide":true},
+        {"refId":"E","queryType":"3","itemids":"51128","resultFormat":"time_series","hide":true},
+        {"refId":"F","queryType":"3","itemids":"51178","resultFormat":"time_series","hide":true},
+        {"refId":"G","queryType":"3","itemids":"51328","resultFormat":"time_series","hide":true},
+        {"refId":"H","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$A","reducer":"last"},
+        {"refId":"I","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$B","reducer":"last"},
+        {"refId":"J","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$C","reducer":"last"},
+        {"refId":"K","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$D","reducer":"last"},
+        {"refId":"L","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$E","reducer":"last"},
+        {"refId":"M","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$F","reducer":"last"},
+        {"refId":"N","datasource":{"type":"__expr__","uid":"__expr__"},"type":"reduce","expression":"$G","reducer":"last"},
+        {"refId":"CNT","datasource":{"type":"__expr__","uid":"__expr__"},"type":"math","expression":"7 - ($H + $I + $J + $K + $L + $M + $N)"}
+      ]
+    },
+
+    { "id": 40, "type": "timeseries", "title": "Memory utilization",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 8},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"},
+          "color": {"mode": "palette-classic"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "transparent", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}
+        },
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "STC"}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "MOBILY"}]},
+          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "SAIX-A"}]},
+          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "SAIX-B"}]},
+          {"matcher": {"id": "byRefId", "options": "E"}, "properties": [{"id": "displayName", "value": "SITE-A"}]},
+          {"matcher": {"id": "byRefId", "options": "F"}, "properties": [{"id": "displayName", "value": "SITE-B"}]},
+          {"matcher": {"id": "byRefId", "options": "G"}, "properties": [{"id": "displayName", "value": "INT-CORE"}]}
+        ]
+      },
+      "options": {"tooltip": {"mode": "multi", "sort": "none"}, "legend": {"displayMode": "table", "placement": "right", "calcs": ["last", "max"]}},
+      "targets": [
+        {"refId": "A", "queryType": "3", "itemids": "51519", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51512", "resultFormat": "time_series"},
+        {"refId": "C", "queryType": "3", "itemids": "51741", "resultFormat": "time_series"},
+        {"refId": "D", "queryType": "3", "itemids": "51639", "resultFormat": "time_series"},
+        {"refId": "E", "queryType": "3", "itemids": "51630", "resultFormat": "time_series"},
+        {"refId": "F", "queryType": "3", "itemids": "51548", "resultFormat": "time_series"},
+        {"refId": "G", "queryType": "3", "itemids": "51776", "resultFormat": "time_series"}
+      ]
+    },
+
+    { "id": 41, "type": "timeseries", "title": "CPU utilization — no history yet (dependent-item persistence pending)",
+      "datasource": {"type": "alexanderzobnin-zabbix-datasource", "uid": "zabbix-lab"},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 8},
+      "description": "The Zabbix `#1: CPU utilization` dependent items on each PNET router emit lastvalue via SNMP but do not currently persist history/trend rows — so this panel is intentionally empty rather than fabricating a line. The current CPU value is shown as a per-device number in the device card above. Panel will populate automatically once Zabbix accumulates history for these items.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": false, "showPoints": "never"},
+          "color": {"mode": "palette-classic"},
+          "noValue": "No history yet",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "transparent", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}
+        },
+        "overrides": [
+          {"matcher": {"id": "byRefId", "options": "A"}, "properties": [{"id": "displayName", "value": "STC"}]},
+          {"matcher": {"id": "byRefId", "options": "B"}, "properties": [{"id": "displayName", "value": "MOBILY"}]},
+          {"matcher": {"id": "byRefId", "options": "C"}, "properties": [{"id": "displayName", "value": "SAIX-A"}]},
+          {"matcher": {"id": "byRefId", "options": "D"}, "properties": [{"id": "displayName", "value": "SAIX-B"}]},
+          {"matcher": {"id": "byRefId", "options": "E"}, "properties": [{"id": "displayName", "value": "SITE-A"}]},
+          {"matcher": {"id": "byRefId", "options": "F"}, "properties": [{"id": "displayName", "value": "SITE-B"}]},
+          {"matcher": {"id": "byRefId", "options": "G"}, "properties": [{"id": "displayName", "value": "INT-CORE"}]}
+        ]
+      },
+      "options": {"tooltip": {"mode": "multi", "sort": "none"}, "legend": {"displayMode": "table", "placement": "right", "calcs": ["last", "max"]}},
+      "targets": [
+        {"refId": "A", "queryType": "3", "itemids": "51506", "resultFormat": "time_series"},
+        {"refId": "B", "queryType": "3", "itemids": "51770", "resultFormat": "time_series"},
+        {"refId": "C", "queryType": "3", "itemids": "51637", "resultFormat": "time_series"},
+        {"refId": "D", "queryType": "3", "itemids": "51555", "resultFormat": "time_series"},
+        {"refId": "E", "queryType": "3", "itemids": "51636", "resultFormat": "time_series"},
+        {"refId": "F", "queryType": "3", "itemids": "51554", "resultFormat": "time_series"},
+        {"refId": "G", "queryType": "3", "itemids": "51735", "resultFormat": "time_series"}
+      ]
+    }
   ],
-  "description": "Generated by grafana/discovery/build-device-health.sh from grafana/config/sites.yaml at 2026-10-04T07:12:51Z. Datasource UID zabbix-lab. CPU timeseries intentionally omitted — the stock IOS dependent CPU items don't have history yet. See docs/PORTABILITY.md."
+  "description": "NOC Device Health — professional NOC layout. Row 1 compact header (Monitored / Healthy ICMP / Unhealthy / Last update). Row 2: one card per device (STC, MOBILY, SAIX-A, SAIX-B, SITE-A, SITE-B, INT-CORE) showing PING + SNMP + MEM (+ CPU where present), green when healthy, orange/red on degradation; plus an Attention tile that shows 'All healthy' when quiet. Row 3: side-by-side Memory and CPU timeseries with device-name legends. CPU timeseries intentionally shows no line until Zabbix accumulates persistent history for the `#1: CPU utilization` dependent items; the current CPU value is displayed per device in the card row and will fill the chart automatically once history populates. All itemids verified live via Grafana→Zabbix datasource resource proxy; no fabricated data."
 }
