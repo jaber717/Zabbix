@@ -52,8 +52,9 @@ def main():
     tp = planner.get_template(c)
     check("template exists and is ours", bool(tp) and tpl.MARKER in tp["description"])
     if tp:
-        diff = planner.diff_fingerprint(tpl.fingerprint_desired_numeric(tpl.build()),
-                                        planner.live_fingerprint(c, tp["templateid"]))
+        live_fp = planner.live_fingerprint(c, tp["templateid"])
+        diff = (["template content unreadable with this account"] if live_fp is None else
+                planner.diff_fingerprint(tpl.fingerprint_doc(tpl.build()), live_fp))
         check("template content equals repository", not diff, "; ".join(diff))
     hosts = planner.get_hosts(c, list(desired.hosts))
     for h, hc in sorted(desired.hosts.items()):

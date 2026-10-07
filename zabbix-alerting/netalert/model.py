@@ -86,6 +86,7 @@ ACTION_SUBJECT = "[{EVENT.SEVERITY}] {EVENT.NAME}"
 ACTION_MESSAGE = (
     "Device:     {HOST.NAME} ({HOST.IP})\r\n"
     "Site:       {EVENT.TAGS.site}\r\n"
+    "Link ID:    {EVENT.TAGS.link_id}\r\n"
     "Interface:  {EVENT.TAGS.if_name}\r\n"
     "Description:{EVENT.TAGS.if_descr}\r\n"
     "Role:       {EVENT.TAGS.if_role}\r\n"

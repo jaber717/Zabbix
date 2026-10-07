@@ -138,15 +138,3 @@ class ImportIntoModel(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-class FingerprintTolerance(unittest.TestCase):
-    def test_whitespace_reformatting_is_not_drift(self):
-        doc = tpl.build()
-        want = tpl.fingerprint_desired_numeric(doc)
-        rows = [{"description": n, "expression": e.replace(" and ", "  and "), "recovery_expression": r.replace("*", " * "),
-                 "priority": str(p)} for n, e, r, p in want["triggers"]]
-        live = tpl.fingerprint_live(
-            [{"key_": k, "snmp_oid": o, "delay": d} for k, o, d in want["items"]], rows,
-            [{"macro": m, "value": v} for m, v in want["macros"]])
-        self.assertEqual(live, want)

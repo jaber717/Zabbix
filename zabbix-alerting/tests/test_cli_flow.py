@@ -329,7 +329,8 @@ class AlertAction(unittest.TestCase):
             msg = a["operations"][0]["opmessage"]["message"]
             for needle in ("{HOST.NAME}", "{EVENT.TAGS.if_name}", "{EVENT.TAGS.if_descr}",
                            "{EVENT.TAGS.if_role}", "{EVENT.TAGS.site}", "{EVENT.SEVERITY}",
-                           "{EVENT.TAGS.direction}", "{EVENT.TAGS.threshold}", "{EVENT.OPDATA}"):
+                           "{EVENT.TAGS.link_id}", "{EVENT.TAGS.direction}",
+                           "{EVENT.TAGS.threshold}", "{EVENT.OPDATA}"):
                 self.assertIn(needle, msg)
             self.assertIn("No changes required.", w.run("--dry-run")[1])
             a["status"] = "1"                                  # someone disabled it by hand
@@ -349,6 +350,24 @@ class AlertAction(unittest.TestCase):
             a = list(w.mock.actions.values())[0]
             self.assertEqual(a["operations"][0]["opmessage"]["mediatypeid"], mt)
             self.assertEqual(len(w.mock.mediatypes), 1)
+        finally:
+            w.close()
+
+    def test_named_media_is_exclusive_for_problem_and_recovery(self):
+        w = World(lab_extra=self.EXTRA + "  media_type: Telegram\n")
+        try:
+            w.mock.add_usergroup("Network Operations")
+            telegram = w.mock.add_mediatype("Telegram")
+            w.mock.add_mediatype("Email")
+            self.assertEqual(w.run()[0], 0)
+            action = list(w.mock.actions.values())[0]
+            self.assertEqual(action["operations"][0]["opmessage"]["mediatypeid"], telegram)
+            self.assertEqual(action["recovery_operations"][0]["opmessage"]["mediatypeid"], telegram)
+            self.assertEqual(action["operations"][0]["esc_step_from"], 1)
+            self.assertEqual(action["operations"][0]["esc_step_to"], 1)
+            self.assertEqual(action["operations"][0]["esc_period"], "0")
+            self.assertEqual(action["filter"]["conditions"], [{
+                "conditiontype": 25, "operator": 0, "value": tpl.TAG_ALERT}])
         finally:
             w.close()
 

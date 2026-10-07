@@ -4,8 +4,11 @@ Reading only. Nothing in here can write: the plan is data (Change objects) that
 apply.py executes through the same ZabbixClient.
 """
 import difflib
+import json
+import re
 
 from . import model
+from .zbx import ZabbixError
 from . import template as tpl
 from .envsafety import IDENTITY_MACRO, IDENTITY_MARKER
 
@@ -80,14 +83,65 @@ def get_template(client):
     return rows[0] if rows else None
 
 
+FUNC_REF = re.compile(r"\{(\d+)\}")
+
+
+def resolve_function_ids(text, functions, key_by_itemid, template_name):
+    """Turn Zabbix's internal `{<functionid>}` references back into `func(/template/key,params)`.
+
+    `functions` is triggerprototype.get selectFunctions output. Raises KeyError/ValueError when the
+    server's shape is not understood, so the caller can degrade honestly instead of guessing.
+    """
+    by_id = dict((f["functionid"], f) for f in functions)
+
+    def sub(m):
+        f = by_id[m.group(1)]
+        params = f.get("parameter", "$")
+        ref = "/%s/%s" % (template_name, key_by_itemid[f["itemid"]])
+        if params.startswith("/"):
+            arg = params
+        elif params == "$" or params == "":
+            arg = ref
+        elif params.startswith("$,"):
+            arg = ref + params[1:]
+        else:
+            raise ValueError("unrecognised function parameter %r" % params)
+        return "%s(%s)" % (f["function"], arg)
+    return FUNC_REF.sub(sub, text)
+
+
 def live_fingerprint(client, templateid):
-    items = client.call("itemprototype.get", {"output": ["key_", "snmp_oid", "delay"],
-                                               "hostids": [templateid]})
-    trigs = client.call("triggerprototype.get", {
-        "output": ["description", "expression", "recovery_expression", "priority"],
-        "hostids": [templateid]})
-    macros = client.call("usermacro.get", {"output": ["macro", "value"], "hostids": [templateid]})
-    return tpl.fingerprint_live(items, trigs, macros)
+    """Semantic fingerprint of the live template, or None when this account cannot read enough.
+
+    1. configuration.export: authoritative text, no internal ids (preferred).
+    2. triggerprototype.get + selectFunctions: internal `{id}` references are resolved back to
+       function calls. Raw API expressions are never compared with import syntax.
+    """
+    try:
+        exported = client.call("configuration.export", {"format": "json", "options": {"templates": [templateid]}})
+        doc = json.loads(exported)
+        names = [t["template"] for t in doc["zabbix_export"]["templates"]]
+        doc["zabbix_export"]["templates"] = [t for t in doc["zabbix_export"]["templates"]
+                                             if t["template"] == tpl.TEMPLATE_NAME]
+        if tpl.TEMPLATE_NAME in names:
+            return tpl.fingerprint_doc(doc)
+    except ZabbixError:
+        pass
+    try:
+        items = client.call("itemprototype.get", {"output": ["itemid", "key_", "snmp_oid", "delay", "type"],
+                                                   "hostids": [templateid]})
+        key_by_id = dict((i["itemid"], i["key_"]) for i in items)
+        rows = client.call("triggerprototype.get", {
+            "output": ["description", "expression", "recovery_expression", "priority"],
+            "hostids": [templateid], "selectFunctions": "extend"})
+        for r in rows:
+            r["expression"] = resolve_function_ids(r["expression"], r["functions"], key_by_id, tpl.TEMPLATE_NAME)
+            r["recovery_expression"] = resolve_function_ids(r.get("recovery_expression", ""), r["functions"],
+                                                            key_by_id, tpl.TEMPLATE_NAME)
+        macros = client.call("usermacro.get", {"output": ["macro", "value"], "hostids": [templateid]})
+        return tpl.fingerprint_from_api(items, rows, macros)
+    except (ZabbixError, KeyError, ValueError):
+        return None
 
 
 def diff_fingerprint(want, have):
@@ -95,7 +149,8 @@ def diff_fingerprint(want, have):
     for part in ("items", "triggers", "macros"):
         w, h = set(map(tuple, want[part])), set(map(tuple, have[part]))
         if w != h:
-            out.append("%s: %d missing, %d unexpected" % (part, len(w - h), len(h - w)))
+            names = sorted(set(x[0] for x in (w ^ h)))[:2]
+            out.append("%s: %d missing, %d unexpected (e.g. %s)" % (part, len(w - h), len(h - w), ", ".join(n[:60] for n in names)))
     return out
 
 
@@ -227,7 +282,13 @@ def build_plan(client, env, desired, identity_state="ok", allow_init=False):
         tplid = tp["templateid"]
     else:
         tplid = tp["templateid"]
-        problems = diff_fingerprint(tpl.fingerprint_desired_numeric(want_doc), live_fingerprint(client, tplid))
+        live_fp = live_fingerprint(client, tplid)
+        if live_fp is None:
+            problems = []
+            plan.notes.append("template content could not be read with this account (no configuration.export / "
+                              "trigger prototype access): only the template version hash was compared")
+        else:
+            problems = diff_fingerprint(tpl.fingerprint_doc(want_doc), live_fp)
         hash_now = "hash=" + tpl.content_hash()
         if hash_now not in tp["description"]:
             problems.append("template version differs from this repository")

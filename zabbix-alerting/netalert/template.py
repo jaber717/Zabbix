@@ -306,37 +306,45 @@ IMPORT_RULES = {
 }
 
 
-def fingerprint_items(doc):
-    """Comparable structure derived from the import document (or from live API reads)."""
-    tpl = doc["zabbix_export"]["templates"][0]
-    rule = tpl["discovery_rules"][0]
-    # dependent items have no delay in the export; the API reports them as "0"
-    items = sorted((i["key"], i.get("snmp_oid", ""), i.get("delay", "0")) for i in rule["item_prototypes"])
-    trigs = sorted((t["name"], _norm(t["expression"]), _norm(t.get("recovery_expression", "")), t["priority"])
-                   for t in rule["trigger_prototypes"])
-    return {"items": items, "triggers": trigs, "macros": sorted(
-        (m["macro"], m["value"]) for m in tpl["macros"])}
-
-
-PRIORITY_NUM = {"INFO": 1, "WARNING": 2, "AVERAGE": 3, "HIGH": 4, "DISASTER": 5}
-
-
-def fingerprint_live(items, trigger_prototypes_, macros):
-    """Same structure from item.get / triggerprototype.get / usermacro.get output."""
-    return {
-        "items": sorted((i["key_"], i.get("snmp_oid", ""), i.get("delay", "")) for i in items),
-        "triggers": sorted((t["description"], _norm(t["expression"]), _norm(t.get("recovery_expression", "")),
-                            int(t["priority"])) for t in trigger_prototypes_),
-        "macros": sorted((m["macro"], m["value"]) for m in macros),
-    }
-
-
-def fingerprint_desired_numeric(doc):
-    fp = copy.deepcopy(fingerprint_items(doc))
-    fp["triggers"] = sorted((n, e, r, PRIORITY_NUM[p]) for n, e, r, p in fp["triggers"])
-    return fp
-
-
 def _norm(expr):
     """Expression text with all whitespace removed, so server-side reformatting is not 'drift'."""
     return re.sub(r"\s+", "", expr or "")
+
+
+def fingerprint_doc(doc):
+    """Comparable semantic content of a template in `configuration.import/export` JSON shape.
+
+    Used for BOTH sides (the document we generate and the document Zabbix exports back), so defaults
+    that the export omits are applied identically: no internal function ids, no uuids, no ordering.
+    """
+    t = doc["zabbix_export"]["templates"][0]
+    items, trigs = [], []
+    for rule in t.get("discovery_rules", []):
+        for i in rule.get("item_prototypes", []):
+            delay = "0" if i.get("type") == "DEPENDENT" else i.get("delay", "1m")
+            items.append((i["key"], i.get("snmp_oid", ""), delay))
+        for g in rule.get("trigger_prototypes", []):
+            trigs.append((g["name"], _norm(g["expression"]), _norm(g.get("recovery_expression", "")),
+                          g.get("priority", "NOT_CLASSIFIED")))
+    macros = [(m["macro"], m.get("value", "")) for m in t.get("macros", [])]
+    return {"items": sorted(items), "triggers": sorted(trigs), "macros": sorted(macros)}
+
+
+# kept for callers that still use the old names
+fingerprint_desired_numeric = fingerprint_doc
+fingerprint_items = fingerprint_doc
+
+
+PRIORITY_NAME = {"0": "NOT_CLASSIFIED", "1": "INFO", "2": "WARNING", "3": "AVERAGE", "4": "HIGH", "5": "DISASTER"}
+
+
+def fingerprint_from_api(items, trigger_rows, macros):
+    """Same structure from itemprototype.get / triggerprototype.get (expressions ALREADY resolved to
+    semantic text — internal function ids must have been expanded by the caller) / usermacro.get."""
+    return {
+        "items": sorted((i["key_"], i.get("snmp_oid", ""),
+                         "0" if str(i.get("type")) == "18" else i.get("delay", "")) for i in items),
+        "triggers": sorted((t["description"], _norm(t["expression"]), _norm(t.get("recovery_expression", "")),
+                            PRIORITY_NAME[str(t["priority"])]) for t in trigger_rows),
+        "macros": sorted((m["macro"], m.get("value", "")) for m in macros),
+    }

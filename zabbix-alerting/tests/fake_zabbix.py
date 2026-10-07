@@ -15,6 +15,7 @@ run is done.
 import copy
 import json
 import re
+import re
 
 MACRO_RE = re.compile(r'^\{\$[A-Z0-9_.]+(?::.+)?\}$')
 UUID_RE = re.compile(r'^[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}$')
@@ -236,10 +237,23 @@ class MockZabbix(object):
         return [self._out(i, p.get("output")) for i in self.itemprotos.values()
                 if not p.get("hostids") or i["hostid"] in p["hostids"]]
 
-    def m_triggerprototype_get(self, p):
-        return [self._out(i, p.get("output")) for i in self.trigprotos.values()
-                if not p.get("hostids") or i["hostid"] in p["hostids"]]
+    deny_triggerprototype = False
 
+    def m_triggerprototype_get(self, p):
+        if self.deny_triggerprototype:
+            raise invalid("No permissions to call \"triggerprototype.get\".")
+        rows = []
+        for t in self.trigprotos.values():
+            if p.get("hostids") and t["hostid"] not in p["hostids"]:
+                continue
+            row = dict((k, v) for k, v in t.items() if not k.startswith("_") and k != "functions")
+            if p.get("expandExpression"):
+                row["expression"], row["recovery_expression"] = t["_expr"], t["_rec"]
+            r = self._out(row, p.get("output"))
+            if p.get("selectFunctions"):
+                r["functions"] = copy.deepcopy(t["functions"])
+            rows.append(r)
+        return rows
     def m_discoveryrule_get(self, p):
         flt = (p.get("filter") or {}).get("key_")
         return [self._out(r, p.get("output")) for r in self.rules.values()
@@ -559,20 +573,81 @@ class MockZabbix(object):
                     if store is self.itemprotos:
                         store[oid] = {"itemid": oid, "hostid": tid, "ruleid": rid, "key_": o["key"],
                                       "name": o["name"], "snmp_oid": o.get("snmp_oid", ""),
-                                      "delay": o.get("delay", "0"), "uuid": o["uuid"]}
+                                      "delay": o.get("delay", "0"), "uuid": o["uuid"],
+                                      "type": "18" if o["type"] == "DEPENDENT" else "20",
+                                      "_type": o["type"], "_value_type": o["value_type"]}
                     else:
+                        funcs = []
+                        internal = self._internalise(o["expression"], tid, funcs)
+                        rec_internal = self._internalise(o.get("recovery_expression", ""), tid, funcs)
                         store[oid] = {"triggerid": oid, "hostid": tid, "ruleid": rid, "uuid": o["uuid"],
-                                      "description": o["name"], "expression": o["expression"],
-                                      "recovery_expression": o.get("recovery_expression", ""),
+                                      "description": o["name"], "expression": internal,
+                                      "recovery_expression": rec_internal, "functions": funcs,
+                                      "_expr": o["expression"], "_rec": o.get("recovery_expression", ""),
+                                      "_priority": o["priority"],
                                       "priority": str(PRIORITIES[o["priority"]]), "key_": o["uuid"]}
 
+    FUNC_CALL = re.compile(r"(last|changecount)\(([^()]*)\)")
+
+    def _internalise(self, text, tid, funcs):
+        """Real Zabbix stores/returns trigger expressions with `{<functionid>}` instead of function calls."""
+        def sub(m):
+            args = m.group(2).split(",", 1)
+            key = args[0].split("/", 2)[2]
+            itemid = next(i for i, x in self.itemprotos.items() if x["hostid"] == tid and x["key_"] == key)
+            fid = self.nid()
+            funcs.append({"functionid": fid, "itemid": itemid, "function": m.group(1),
+                          "parameter": "$" + ("," + args[1] if len(args) > 1 else "")})
+            return "{%s}" % fid
+        return self.FUNC_CALL.sub(sub, text)
+
+    deny_export = False
+    TYPE_NAMES = {"FLOAT": "FLOAT", "UNSIGNED": None}
+
     def m_configuration_export(self, p):
+        if self.deny_export:
+            raise invalid("No permissions to call \"configuration.export\".")
         ids = (p.get("options") or {}).get("templates") or []
         for i in ids:
             if i not in self.templates:
                 raise invalid("No permissions to referred object or it does not exist!")
-        return json.dumps({"zabbix_export": {"version": "7.0", "templates": [
-            {"template": self.templates[i]["host"], "description": self.templates[i]["description"]} for i in ids]}})
+        out = []
+        for tid in ids:
+            tp = self.templates[tid]
+            rules = []
+            for rid, r in self.rules.items():
+                if r["hostid"] != tid:
+                    continue
+                items = []
+                for x in self.itemprotos.values():
+                    if x["ruleid"] != rid:
+                        continue
+                    it = {"uuid": x["uuid"], "name": x["name"], "type": x["_type"], "key": x["key_"]}
+                    if x["_type"] != "DEPENDENT":
+                        it["snmp_oid"], it["delay"] = x["snmp_oid"], x["delay"]
+                    items.append(it)
+                trigs = []
+                for g in self.trigprotos.values():
+                    if g["ruleid"] != rid:
+                        continue
+                    tg = {"uuid": g["uuid"], "name": g["description"], "expression": g["_expr"]}
+                    if g["_rec"]:
+                        tg["recovery_mode"], tg["recovery_expression"] = "RECOVERY_EXPRESSION", g["_rec"]
+                    if g["_priority"] != "NOT_CLASSIFIED":
+                        tg["priority"] = g["_priority"]
+                    trigs.append(tg)
+                rules.append({"uuid": r.get("uuid", rid), "name": r["name"], "key": r["key_"],
+                              "item_prototypes": items, "trigger_prototypes": trigs})
+            macros = []
+            for m in self.macros.values():
+                if m["hostid"] == tid:
+                    row = {"macro": m["macro"]}
+                    if m["value"] != "":
+                        row["value"] = m["value"]             # the export omits empty values
+                    macros.append(row)
+            out.append({"uuid": tid, "template": tp["host"], "name": tp["host"],
+                        "description": tp["description"], "discovery_rules": rules, "macros": macros})
+        return json.dumps({"zabbix_export": {"version": "7.0", "templates": out}})
 
     # ---------------------------------------------------------------- actions
     def m_action_get(self, p):
