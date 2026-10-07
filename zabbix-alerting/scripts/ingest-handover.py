@@ -62,7 +62,7 @@ def main():
     extras = None
     if handover.is_codex_format(raw):
         n_in = sum(len(h["interfaces"]) for h in raw["hosts"].values())
-        data, extras = handover.from_codex(raw, dedupe=False)
+        data, extras = handover.from_codex(raw)
     else:
         data = handover.normalize(raw)
         n_in = sum(len(h["interfaces"]) for h in data["hosts"].values())

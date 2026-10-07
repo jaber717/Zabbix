@@ -36,7 +36,7 @@ hosts:
 ```
 
 * **Add an interface**: add a block under its host, run the three commands.
-* **Link correlation**: give both ends of a link the same `link_id` (event tag). Both ends alert and notify; `notify: false` exists but is not used in Phase 1 (a missed alert is worse than a duplicate).
+* **Link correlation**: give both ends of a link the same `link_id` (event tag). Both ends alert and notify; there is no setting to silence an interface (`notify` is rejected by `--check`).
 * **Remove an interface (or a whole host)**: delete the block. Its alerts and the macros the tool made disappear; the interface itself is still monitored by the stock templates.
 * **Change a threshold**: edit the number. `--dry-run` shows `live '80' -> git '70'`.
 * A full example is in `examples/interfaces.sample.yaml`; `schemas/interfaces.schema.json` gives editor completion.

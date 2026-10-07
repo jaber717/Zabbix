@@ -52,23 +52,21 @@ class ShippedPolicy(unittest.TestCase):
                 self.assertIn(c["severity"], ("disaster", "high"))
                 self.assertEqual(c["expected_speed"], None)        # no nominal speed is invented
 
-    def test_both_ends_of_every_link_notify_with_identical_link_id(self):
+    def test_both_ends_of_every_link_share_link_id(self):
         ends = {}
         for h, hc in self.d.hosts.items():
             for n, c in hc["interfaces"].items():
                 self.assertTrue(c["link_id"], "%s %s" % (h, n))
-                self.assertTrue(c["notify"], "%s %s" % (h, n))
                 ends.setdefault(c["link_id"], []).append((h, n))
         self.assertEqual(len(ends), 11)
         for lid, members in ends.items():
             self.assertEqual(len(members), 1 if ("palo" in lid or "saix-core" in lid) else 2, lid)
 
-    def test_every_notifying_end_produces_event_tags_the_action_accepts(self):
-        # per interface: macros say NOTIFY=yes and carry LINKID, so the action filter never skips either end
+    def test_link_id_macro_on_every_interface_and_no_notify_macro(self):
         for h, hc in self.d.hosts.items():
             m = model.host_macros(hc)
+            self.assertFalse([k for k in m if "NOTIFY" in k], h)
             for n, c in hc["interfaces"].items():
-                self.assertEqual(m['{$NETOPS.NOTIFY:"%s"}' % n], "yes")
                 self.assertEqual(m['{$NETOPS.LINKID:"%s"}' % n], c["link_id"])
 
     def test_stock_suppression_default_is_false(self):
@@ -110,28 +108,39 @@ class ShippedPolicy(unittest.TestCase):
             self.assertEqual(m['{$NETOPS.SEV:"Gi0/3"}'], "4")
             self.assertEqual(m['{$IFCONTROL:"Gi0/0"}'], "0")           # stock duplicate suppressed
             self.assertNotIn('{$IFCONTROL:"Gi0/5"}', m)                # unselected interface untouched
-            self.assertIn(m['{$NETOPS.NOTIFY:"Gi0/0"}'], ("yes", "no"))
         finally:
             w.close()
 
 
 class FirstDownAndNotify(unittest.TestCase):
-    def test_notify_and_link_id_become_macros_and_tags(self):
-        c = {"hosts": {"R": {"interfaces": {"A": {"description": "a", "link_id": "x--y", "notify": False}}}}}
+    def test_link_id_becomes_macro_and_tag(self):
+        c = {"hosts": {"R": {"interfaces": {"A": {"description": "a", "link_id": "x--y"}}}}}
         d = config.parse(c)
         self.assertEqual(d.problems, [])
         m = model.host_macros(d.hosts["R"])
-        self.assertEqual((m['{$NETOPS.NOTIFY:"A"}'], m['{$NETOPS.LINKID:"A"}']), ("no", "x--y"))
+        self.assertEqual(m['{$NETOPS.LINKID:"A"}'], "x--y")
         tags = dict((t["tag"], t["value"]) for t in tpl.trigger_prototypes()[0]["tags"])
         self.assertIn("link_id", tags)
-        self.assertIn("notify", tags)
+        self.assertNotIn("notify", tags)
 
-    def test_action_skips_notify_no_events(self):
+    def test_notify_is_rejected_with_a_clear_error(self):
+        for where in ("interface", "defaults"):
+            for val in ("false", "true"):
+                if where == "interface":
+                    c = {"hosts": {"R": {"interfaces": {"A": {"description": "a", "notify": val == "true"}}}}}
+                else:
+                    c = {"defaults": {"notify": val == "true"},
+                         "hosts": {"R": {"interfaces": {"A": {"description": "a"}}}}}
+                msgs = [p.message for p in config.parse(c).problems]
+                self.assertIn("notify=false is not supported by the Phase-1 P2P policy. "
+                              "All selected interfaces must notify.", msgs, (where, val))
+
+    def test_no_notify_anywhere_in_template_or_action(self):
+        import json
+        self.assertNotIn("notify", json.dumps(tpl.build()).lower().replace("notifications", ""))
         spec = model.desired_action({"alert_action": {"name": "NETOPS-IaC x", "usergroups": ["g"]}})
-        p = planner.action_params(spec, ["1"], 0)
-        conds = [(c["conditiontype"], c["operator"], c["value"], c.get("value2")) for c in p["filter"]["conditions"]]
-        self.assertIn((25, 0, tpl.TAG_ALERT, None), conds)
-        self.assertIn((26, 1, "no", "notify"), conds)
+        conds = planner.action_params(spec, ["1"], 0)["filter"]["conditions"]
+        self.assertEqual([c["conditiontype"] for c in conds], [25])
 
     def test_first_down_alert_then_flapping_keeps_one_open_problem(self):
         macros = macros_for({"hosts": {"RTR-01": {"interfaces": {"Gi0/0": {
@@ -187,7 +196,8 @@ class CodexImporter(unittest.TestCase):
         e1 = policy["hosts"]["RTR-01"]["interfaces"]["Gi0/0"]
         e2 = policy["hosts"]["RTR-02"]["interfaces"]["Gi0/0"]
         self.assertNotIn("expected_speed", e1)                       # nominal speeds are not copied
-        self.assertEqual((e1.get("notify", True), e2.get("notify", True)), (True, True))
+        self.assertNotIn("notify", e1)
+        self.assertNotIn("notify", e2)
         self.assertEqual((e1["link_id"], e2["link_id"]), ("a--b", "a--b"))
         self.assertEqual(len(extras), 2)
 
@@ -241,12 +251,10 @@ class NoMissedAlertFailureMode(unittest.TestCase):
                 for host in __import__("re").findall(r"/([^/(),]+)/", expr):
                     self.assertEqual(host, tpl.TEMPLATE_NAME)
 
-    def test_action_filter_cannot_skip_a_notifying_end(self):
+    def test_action_filter_cannot_skip_any_end(self):
         spec = model.desired_action({"alert_action": {"name": "NETOPS-IaC x", "usergroups": ["g"]}})
         conds = planner.action_params(spec, ["1"], 0)["filter"]["conditions"]
-        # only the alert tag and "notify != no" are filtered on: never link_id, never the peer
-        self.assertEqual(sorted(c["conditiontype"] for c in conds), [25, 26])
-        self.assertTrue(all(c["conditiontype"] == 25 or c["value2"] == "notify" for c in conds))
+        self.assertEqual([c["conditiontype"] for c in conds], [25])     # alert tag only: never link_id or the peer
 
     def test_peer_alerts_alone_when_the_other_end_is_unreachable(self):
         d = load_policy()
@@ -254,13 +262,11 @@ class NoMissedAlertFailureMode(unittest.TestCase):
         stc = d.hosts["PNET-STC"]["interfaces"]["Gi0/0"]
         core = d.hosts["PNET-INT-CORE"]["interfaces"]["Gi0/0"]
         self.assertEqual(stc["link_id"], core["link_id"])
-        self.assertTrue(stc["notify"] and core["notify"])
         m = model.host_macros(d.hosts["PNET-STC"])
         s = InterfaceSim(m, "Gi0/0")
         s.sample(10, oper=1)
         s.sample(10, oper=2)                      # the peer (INT-CORE) is silent/unreachable
         self.assertTrue(s.problem("link_down"))
-        self.assertEqual(m['{$NETOPS.NOTIFY:"Gi0/0"}'], "yes")
         self.assertEqual(m['{$NETOPS.LINKID:"Gi0/0"}'], "int-core--stc")
 
     def test_both_ends_emit_same_link_id_tag(self):

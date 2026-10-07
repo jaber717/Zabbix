@@ -13,7 +13,7 @@ SPEED_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*([KMGT]?)(?:bps)?$", re.IGNORECASE)
 SPEED_MULT = {"": 1, "K": 10 ** 3, "M": 10 ** 6, "G": 10 ** 9, "T": 10 ** 12}
 
 IFACE_KEYS = {"description", "role", "severity", "link_alert", "utilization",
-              "errors", "discards", "flapping", "expected_speed", "link_id", "notify"}
+              "errors", "discards", "flapping", "expected_speed", "link_id"}
 SECTION_KEYS = {
     "utilization": {"enabled", "threshold", "recovery", "poll_interval"},
     "errors": {"enabled", "rate", "recovery"},
@@ -28,7 +28,6 @@ BUILTIN_DEFAULTS = {
     "severity": DEFAULT_SEVERITY,
     "role": "",
     "link_alert": True,
-    "notify": True,
     "expected_speed": None,
     "utilization": {"enabled": False, "threshold": 70, "recovery": 65, "poll_interval": "10s"},
     "errors": {"enabled": True, "rate": 1, "recovery": None},
@@ -126,6 +125,15 @@ def _num(value, name, lo, hi, problems, host, iface):
     return value
 
 
+NOTIFY_MSG = ("notify=false is not supported by the Phase-1 P2P policy. "
+              "All selected interfaces must notify.")
+
+
+def _reject_notify(obj, host, iface, problems):
+    if "notify" in obj:
+        problems.append(Problem(host, iface, NOTIFY_MSG))
+
+
 def normalize_interface(defaults, raw, host, name, problems):
     """Return the fully resolved settings dict for one interface (or None)."""
     if raw is None:
@@ -134,6 +142,7 @@ def normalize_interface(defaults, raw, host, name, problems):
         problems.append(Problem(host, name, "interface entry must be a mapping"))
         return None
     _check_keys(raw, IFACE_KEYS, "interface", problems, host, name)
+    _reject_notify(raw, host, name, problems)
     for sect, keys in SECTION_KEYS.items():
         if sect in raw:
             if not isinstance(raw[sect], dict):
@@ -156,9 +165,6 @@ def normalize_interface(defaults, raw, host, name, problems):
         problems.append(Problem(host, name, "link_alert must be true or false"))
     out["link_alert"] = bool(cfg.get("link_alert"))
 
-    if not isinstance(cfg.get("notify"), bool):
-        problems.append(Problem(host, name, "notify must be true or false"))
-    out["notify"] = bool(cfg.get("notify"))
     lid = raw.get("link_id", "")
     if lid is not None and (not isinstance(lid, (str, int)) or '"' in str(lid) or "\\" in str(lid)):
         problems.append(Problem(host, name, "link_id must be a plain string"))
@@ -226,6 +232,7 @@ def parse(data):
     if not isinstance(raw_defaults, dict):
         raise ConfigError("'defaults' must be a mapping")
     _check_keys(raw_defaults, DEFAULTS_KEYS, "defaults", problems)
+    _reject_notify(raw_defaults, None, None, problems)
     for sect, keys in SECTION_KEYS.items():
         if isinstance(raw_defaults.get(sect), dict):
             _check_keys(raw_defaults[sect], keys, "defaults.%s" % sect, problems)

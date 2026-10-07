@@ -49,7 +49,7 @@ def host_macros(hostcfg, suppress_stock=False):
             ("DESCR", c["description"]), ("ROLE", c["role"]),
             ("SEV", str(SEVERITIES[c["severity"]])),
             ("LINK", "1" if c["link_alert"] else "0"),
-            ("NOTIFY", "yes" if c["notify"] else "no"), ("LINKID", c["link_id"]),
+            ("LINKID", c["link_id"]),
             ("POLL", str(u["poll_interval"])),
             ("UTIL.ON", "1" if u["enabled"] else "0"),
             ("UTIL.MAX", num(u["threshold"])), ("UTIL.RECOVER", num(u["recovery"])),

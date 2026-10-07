@@ -103,12 +103,12 @@ def is_codex_format(data):
     return False
 
 
-def from_codex(data, dedupe=False):
+def from_codex(data):
     """(policy, extras). Policy uses our schema; extras are the identifiers to cross-check live.
 
     Nothing is invented: speeds are NOT copied (nominal values were never read live), so capacity
-    comes from ifHighSpeed. With dedupe, only one end of each link_id notifies (the other still
-    raises tagged problems), as the handover asks for a deliberate event-owning end.
+    comes from ifHighSpeed. Every end keeps its own notification
+    and shares link_id with its peer.
     """
     sel = data.get("selection_rules") or {}
     policy = {"hosts": {}}
@@ -135,15 +135,6 @@ def from_codex(data, dedupe=False):
             extras[(host, str(ifname))] = {"hostid": str(h.get("zabbix_hostid", "")),
                                            "itemid": str(i.get("zabbix_status_itemid", "")),
                                            "index": str(i.get("snmp_index", "")), "ifname": str(ifname)}
-    if dedupe:
-        ends = {}
-        for host, ph in policy["hosts"].items():
-            for ifname, e in ph["interfaces"].items():
-                if e["link_id"]:
-                    ends.setdefault(e["link_id"], []).append((host, ifname))
-        for lid, members in ends.items():
-            for host, ifname in sorted(members)[1:]:
-                policy["hosts"][host]["interfaces"][ifname]["notify"] = False
     return policy, extras
 
 

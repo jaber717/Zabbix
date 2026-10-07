@@ -117,8 +117,7 @@ def action_params(spec, groupids, mediatypeid):
         "name": spec["name"], "eventsource": 0, "status": 0 if spec["enabled"] else 1,
         "esc_period": "1h",
         "filter": {"evaltype": 0, "conditions": [
-            {"conditiontype": 25, "operator": 0, "value": tpl.TAG_ALERT},
-            {"conditiontype": 26, "operator": 1, "value": "no", "value2": "notify"}]},
+            {"conditiontype": 25, "operator": 0, "value": tpl.TAG_ALERT}]},
         "operations": [{
             "operationtype": 0, "esc_period": "0", "esc_step_from": 1, "esc_step_to": 1, "evaltype": 0,
             "opmessage": {"default_msg": 0, "subject": spec["subject"], "message": spec["message"],
