@@ -1,4 +1,5 @@
 """Template drift detection against Zabbix-shaped responses (internal `{functionid}` expressions)."""
+import copy
 import re
 import unittest
 
@@ -131,6 +132,24 @@ class Whitespace(unittest.TestCase):
                                         [{"macro": m, "value": v} for m, v in want["macros"]])
         live["items"] = want["items"]            # dependent-item delay is exercised in the model tests
         self.assertEqual(live, want)
+
+
+class ExportShapes(unittest.TestCase):
+    def test_item_nested_trigger_prototypes_equal_rule_level_import_shape(self):
+        desired_doc = tpl.build()
+        exported_doc = copy.deepcopy(desired_doc)
+        desired_rule = desired_doc["zabbix_export"]["templates"][0]["discovery_rules"][0]
+        exported_rule = exported_doc["zabbix_export"]["templates"][0]["discovery_rules"][0]
+        nested = [g for g in exported_rule["trigger_prototypes"]
+                  if g["name"].endswith("Interface DOWN") or g["name"].endswith("Interface FLAPPING")]
+        exported_rule["trigger_prototypes"] = [g for g in exported_rule["trigger_prototypes"]
+                                                if g not in nested]
+        oper = next(i for i in exported_rule["item_prototypes"] if i["key"] == tpl.K_OPER)
+        oper["trigger_prototypes"] = nested
+        # Zabbix may also repeat a multi-item trigger beneath more than one referenced item.
+        traffic = next(g for g in exported_rule["trigger_prototypes"] if "RX utilization" in g["name"])
+        oper["trigger_prototypes"].append(copy.deepcopy(traffic))
+        self.assertEqual(tpl.fingerprint_doc(exported_doc), tpl.fingerprint_doc(desired_doc))
 
 
 if __name__ == "__main__":

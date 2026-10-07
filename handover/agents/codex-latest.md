@@ -130,8 +130,36 @@ and all 28 live triggers unexpected after every successful import.
   and explicit Telegram media type. Offline regression suite: 151/151 PASS. A disabled live action (ID 7) was
   created through the API and its exact filter, recipients, Telegram-only problem/recovery media, immediate
   problem step, and message fields were verified. It remains disabled pending the security gate below.
-- Security gate: the operator must explicitly confirm that the previously exposed Telegram bot token was
-  rotated and that the replacement token passed a media-type test. Token contents must never enter Git/chat.
-  Do not enable the action or run Link Down/utilization delivery tests before this confirmation.
-- Separate pre-existing issue: the current live dry-run with commit 423e9de reports one template change with
-  `triggers: 8 missing, 0 unexpected`. This was deliberately not applied as part of notification setup.
+- Security gate was subsequently resolved by the operator's explicit temporary-LAB exception recorded below.
+- The initial live dry-run reported `triggers: 8 missing, 0 unexpected`; the export-shape cause and correction
+  are recorded below. No unnecessary template re-import was performed.
+
+## 2026-10-08 - Telegram LAB delivery COMPLETE
+
+The operator explicitly approved retaining the existing bot token/Chat ID for this temporary LAB and confirmed
+the existing media-type test was received. No token value was read into evidence, printed, or committed.
+
+- Live action ID 7 is enabled. Its sole condition is event tag `netops_alert`; problem and recovery operations
+  both explicitly select existing Telegram media type ID 65 and existing group ID 7. Admin's Telegram media is
+  active for severities 0-5, 24x7. No media type or destination was duplicated.
+- Link Down: SAIX-B Gi0/0, problem event 10923, Telegram alert 1: Sent, zero retries, empty error. The event carries
+  Telegram's returned message-ID tag. Payload checks passed for link ID, interface, and severity.
+- Link recovery: recovery event 10926, Telegram alert 2: Sent, zero retries, empty error; subject is `[RESOLVED]`
+  and the payload retains link ID/interface plus the resolved timestamp.
+- Utilization: temporary SAIX-A Gi0/0 threshold 0.05% / recovery 0.02%; RX event 10929 / alert 3 and TX event
+  10930 / alert 4 were Sent through Telegram with zero retries/errors. Both include direction, 0.05% threshold,
+  operational data, link ID, interface, and severity. RX/TX recovery alerts 5/6 were also Sent successfully.
+- Filtering: all six alerts owned by action 7 use Telegram, target Admin, have status Sent, and map to events with
+  `netops_alert`. No action-7 alert lacks the managed tag; stock triggers therefore did not enter this action.
+- Restored state: SAIX-A and SAIX-B Gi0/0 are up/up; 18/18 managed operational-status items are up and supported;
+  all 18 problem thresholds are 70% and all 18 recovery thresholds are 65%; active managed problems = 0.
+- Live framework validation: `--check` 18/18 PASS; object verifier PASS for every host; final `--dry-run` says
+  `No changes required.`
+
+Two live-shape corrections are included on the Codex branch for Claude review:
+
+1. Recovery `notify all involved` cannot carry `mediatypeid` in Zabbix 7.0.30. Use recovery `send message` with
+   the same explicit group and Telegram media type.
+2. `configuration.export` relocates eight single-item Link Down/Flapping trigger prototypes beneath the
+   operational-status item prototype and repeats multi-item triggers beneath referenced items. Fingerprinting now
+   reads both rule-level and item-nested triggers and deduplicates them. Regression suite: 152/152 PASS.

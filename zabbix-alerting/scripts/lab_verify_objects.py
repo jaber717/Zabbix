@@ -64,7 +64,8 @@ def main():
             continue
         check("%s has template linked" % h, any(t["host"] == tpl.TEMPLATE_NAME for t in live["parentTemplates"]))
         want = model.host_macros(hc, bool(env.get("suppress_stock")))
-        have = dict((m["macro"], m["value"]) for m in live["macros"])
+        # Zabbix omits `value` for an empty macro in some API/export shapes.
+        have = dict((m["macro"], m.get("value", "")) for m in live["macros"])
         missing = [m for m, v in want.items() if have.get(m) != v]
         check("%s macros equal YAML" % h, not missing, ", ".join(missing[:3]))
         names = set(hc["interfaces"])

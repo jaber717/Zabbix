@@ -323,11 +323,17 @@ def fingerprint_doc(doc):
         for i in rule.get("item_prototypes", []):
             delay = "0" if i.get("type") == "DEPENDENT" else i.get("delay", "1m")
             items.append((i["key"], i.get("snmp_oid", ""), delay))
-        for g in rule.get("trigger_prototypes", []):
+        # Zabbix export may repeat multi-item triggers under each referenced item and relocates
+        # single-item triggers entirely under that item prototype. Import documents commonly keep
+        # all trigger prototypes at discovery-rule level. Treat both valid shapes identically.
+        exported_triggers = list(rule.get("trigger_prototypes", []))
+        for i in rule.get("item_prototypes", []):
+            exported_triggers.extend(i.get("trigger_prototypes", []))
+        for g in exported_triggers:
             trigs.append((g["name"], _norm(g["expression"]), _norm(g.get("recovery_expression", "")),
                           g.get("priority", "NOT_CLASSIFIED")))
     macros = [(m["macro"], m.get("value", "")) for m in t.get("macros", [])]
-    return {"items": sorted(items), "triggers": sorted(trigs), "macros": sorted(macros)}
+    return {"items": sorted(items), "triggers": sorted(set(trigs)), "macros": sorted(macros)}
 
 
 # kept for callers that still use the old names
