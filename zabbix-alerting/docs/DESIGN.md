@@ -75,9 +75,11 @@ Every entry is cross-checked live (host id, enabled, SNMP interface, interface n
   every 10 s; `ifHighSpeed.N` and error/discard counters every 60 s). No table walk is scheduled; the only walk is the
   5-minute discovery of `ifName`. 18 interfaces = 54 fast items + 108 slow items (incl. 18 dependent capacity items),
   ≈ **7.2 new values/s** (≈ 6.9 SNMP GETs/s) on top of the stock 1-minute walk, which is untouched.
-* **Duplicate incidents**: the stock Cisco IOS link/utilization/error triggers are active, so LAB uses `suppress_stock: true`
-  (`{$IFCONTROL:"<if>"}=0` on the 18 selected interfaces only). Each physical link has a `link_id`; one end notifies,
-  the other raises tagged problems that the action skips (`notify: false`). Trade-off: if the notifying router is the
+* **Duplicate incidents**: accepted for Phase 1. Both ends of a link detect and notify, and both carry the same
+  `link_id` tag, because a missed alert is worse than a duplicate: no cross-host suppression exists, so an unreachable
+  endpoint can never silence its peer. Proper correlation can come later only if it cannot create a missed-alert mode.
+* **Stock alerts**: `suppress_stock` defaults to **false** (LAB and PRODUCTION). It is unverified that the stock Cisco IOS
+  trigger prototypes are gated by `{$IFCONTROL}`, so no stock trigger is touched until they can be inspected.
   one that is unreachable, the peer's problem is visible in Zabbix but not mailed — the stock SNMP-unavailable alerts cover that.
 * **Traps**: not enabled. A later `linkDown/linkUp` trap item can set the same status the triggers read, with this polling as fallback.
 * **Blocked**: all seven routers currently fail SNMPv3 authentication, so no fresh value can be validated

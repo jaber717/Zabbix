@@ -103,7 +103,7 @@ def is_codex_format(data):
     return False
 
 
-def from_codex(data, dedupe=True):
+def from_codex(data, dedupe=False):
     """(policy, extras). Policy uses our schema; extras are the identifiers to cross-check live.
 
     Nothing is invented: speeds are NOT copied (nominal values were never read live), so capacity

@@ -1,7 +1,7 @@
 # LAB environment. URL and token come from the environment variables named below (see .env.example).
 environment: lab
 auto_init_identity: true        # LAB may claim itself on first apply; production never does
-suppress_stock: true            # the stock Cisco IOS interface alerts are active: switch them off for SELECTED interfaces only (no duplicate incidents)
+suppress_stock: false           # stays false until the stock trigger prototypes can be inspected (unverified that {$IFCONTROL} gates them)
 zabbix:
   url_env: ZABBIX_URL_LAB
   token_env: ZABBIX_TOKEN_LAB
