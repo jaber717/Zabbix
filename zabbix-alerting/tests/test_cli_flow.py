@@ -363,6 +363,9 @@ class AlertAction(unittest.TestCase):
             action = list(w.mock.actions.values())[0]
             self.assertEqual(action["operations"][0]["opmessage"]["mediatypeid"], telegram)
             self.assertEqual(action["recovery_operations"][0]["opmessage"]["mediatypeid"], telegram)
+            self.assertEqual(action["recovery_operations"][0]["operationtype"], 0)
+            self.assertEqual(action["recovery_operations"][0]["opmessage_grp"],
+                             action["operations"][0]["opmessage_grp"])
             self.assertEqual(action["operations"][0]["esc_step_from"], 1)
             self.assertEqual(action["operations"][0]["esc_step_to"], 1)
             self.assertEqual(action["operations"][0]["esc_period"], "0")

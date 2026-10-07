@@ -689,6 +689,15 @@ class MockZabbix(object):
         for o in a.get("recovery_operations", []):
             if int(o["operationtype"]) not in (0, 1, 11):
                 raise invalid("Invalid parameter \"/recovery_operations\": unexpected operation type.")
+            if int(o["operationtype"]) == 0:
+                if not o.get("opmessage") or not (o.get("opmessage_grp") or o.get("opmessage_usr")):
+                    raise invalid("Invalid parameter \"/recovery_operations\": no recipients for message operation.")
+                for g in o.get("opmessage_grp", []):
+                    if g["usrgrpid"] not in self.usergroups:
+                        raise invalid("No permissions to referred object or it does not exist!")
+                mt = str(o["opmessage"].get("mediatypeid", "0"))
+                if mt != "0" and mt not in self.mediatypes:
+                    raise invalid("No permissions to referred object or it does not exist!")
 
     def m_action_create(self, p):
         if any(a["name"] == p["name"] for a in self.actions.values()):

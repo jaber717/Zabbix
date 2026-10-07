@@ -179,9 +179,10 @@ def action_params(spec, groupids, mediatypeid):
                           "mediatypeid": mt},
             "opmessage_grp": [{"usrgrpid": g} for g in groupids]}],
         "recovery_operations": [{
-            "operationtype": 11,
+            "operationtype": 0,
             "opmessage": {"default_msg": 0, "subject": spec["r_subject"], "message": spec["r_message"],
-                          "mediatypeid": mt}}],
+                          "mediatypeid": mt},
+            "opmessage_grp": [{"usrgrpid": g} for g in groupids]}],
     }
 
 
@@ -190,11 +191,13 @@ def action_signature(a):
     ops = a.get("operations") or []
     rops = a.get("recovery_operations") or []
     groups = sorted(str(g["usrgrpid"]) for o in ops for g in (o.get("opmessage_grp") or []))
+    r_groups = sorted(str(g["usrgrpid"]) for o in rops for g in (o.get("opmessage_grp") or []))
     om = (ops[0].get("opmessage") or {}) if ops else {}
     rm = (rops[0].get("opmessage") or {}) if rops else {}
     conds = sorted((str(c["conditiontype"]), str(c["operator"]), c["value"], c.get("value2", ""))
                    for c in (a.get("filter") or {}).get("conditions", []))
-    return {"status": str(a["status"]), "groups": groups, "mediatype": str(om.get("mediatypeid", "")),
+    return {"status": str(a["status"]), "groups": groups, "r_groups": r_groups,
+            "mediatype": str(om.get("mediatypeid", "")),
             "subject": om.get("subject", ""), "message": om.get("message", ""),
             "r_subject": rm.get("subject", ""), "r_message": rm.get("message", ""), "conds": conds}
 
