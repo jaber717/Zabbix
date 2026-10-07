@@ -1,0 +1,18 @@
+# PRODUCTION environment. Fails closed until zabbix.url_regex is set to your real production URL.
+environment: production
+production: true
+auto_init_identity: false       # claim the server once, deliberately:  ./apply.sh --env production --init-identity --confirm production
+suppress_stock: false
+zabbix:
+  url_env: ZABBIX_URL_PRODUCTION
+  token_env: ZABBIX_TOKEN_PRODUCTION
+  verify_tls: true
+  api_version: "7.0"
+  url_regex: '^CHANGE-ME-TO-YOUR-PRODUCTION-URL-REGEX$'
+  forbid_url_regex: '(lab|test|dev)'
+
+# alert_action:
+#   name: "NETOPS-IaC Interface Alerts"
+#   enabled: true
+#   usergroups: ["Network Operations"]
+#   media_type: null

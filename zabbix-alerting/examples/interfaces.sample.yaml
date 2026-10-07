@@ -1,0 +1,26 @@
+# A fuller example showing per-interface overrides. Copy pieces into config/interfaces.yaml.
+defaults:
+  severity: high
+  utilization: { enabled: false, threshold: 70, recovery: 65, poll_interval: 10s }
+
+hosts:
+  RTR-01:
+    site: HQ
+    interfaces:
+      HundredGigE0/0/0/0:
+        description: STC Internet
+        role: ISP
+        severity: disaster
+        expected_speed: 100G          # also alerts if the link renegotiates below this
+        utilization: { enabled: true, threshold: 70, recovery: 65 }
+      TenGigE0/0/0/3:
+        description: LAG member to RTR-02
+        role: CORE
+        severity: high
+        errors: { enabled: true, rate: 5, recovery: 1 }
+        flapping: { enabled: true, transitions: 4, window: 15m }
+      Gi0/0/0/9:
+        description: Management uplink
+        role: MGMT
+        severity: warning
+        utilization: { poll_interval: 60s }

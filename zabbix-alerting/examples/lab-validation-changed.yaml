@@ -1,0 +1,10 @@
+# Same as lab-validation.yaml with a different threshold; used by scripts/lab-write-test.sh.
+hosts:
+  PNET-STC:
+    site: LAB
+    interfaces:
+      Gi0/0:
+        description: validation link
+        role: TEST
+        severity: warning
+        utilization: { enabled: true, threshold: 75, recovery: 70 }

@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "interfaces.yaml",
+  "description": "Editor help only (VS Code YAML extension). The authoritative validation is ./apply.sh --check.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "defaults": { "$ref": "#/definitions/settings" },
+    "hosts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["interfaces"],
+        "properties": {
+          "site": { "type": "string" },
+          "interfaces": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": { "$ref": "#/definitions/interface" }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "severity": { "enum": ["warning", "average", "high", "disaster"] },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": "string" },
+        "role": { "type": "string" },
+        "severity": { "$ref": "#/definitions/severity" },
+        "link_alert": { "type": "boolean" },
+        "expected_speed": { "type": ["string", "integer", "null"], "pattern": "^[0-9.]+ ?[KMGT]?(bps)?$" },
+        "utilization": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "threshold": { "type": "number", "exclusiveMinimum": 0, "maximum": 100 },
+            "recovery": { "type": "number", "exclusiveMinimum": 0, "maximum": 100 },
+            "poll_interval": { "type": "string", "pattern": "^[0-9]+[smh]$" }
+          }
+        },
+        "errors": { "$ref": "#/definitions/rate" },
+        "discards": { "$ref": "#/definitions/rate" },
+        "flapping": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "transitions": { "type": "integer", "minimum": 1 },
+            "window": { "type": "string", "pattern": "^[0-9]+[smh]$" }
+          }
+        }
+      }
+    },
+    "rate": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "rate": { "type": "number", "exclusiveMinimum": 0 },
+        "recovery": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "interface": {
+      "allOf": [
+        { "$ref": "#/definitions/settings" },
+        { "type": "object", "required": ["description"] }
+      ]
+    }
+  }
+}

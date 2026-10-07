@@ -1,0 +1,2 @@
+# Removes everything this tool manages from the hosts (the generated template itself stays).
+hosts: {}

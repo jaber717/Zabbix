@@ -1,0 +1,18 @@
+# LAB environment. URL and token come from the environment variables named below (see .env.example).
+environment: lab
+auto_init_identity: true        # LAB may claim itself on first apply; production never does
+suppress_stock: false           # true = switch the stock "Interface" alerts off for selected interfaces
+zabbix:
+  url_env: ZABBIX_URL_LAB
+  token_env: ZABBIX_TOKEN_LAB
+  verify_tls: true
+  api_version: "7.0"            # server must report 7.0.x
+  # optional extra guards (regular expressions): url_regex, forbid_url_regex
+
+# E-mail/notification action. Remove the comment marks and name an existing Zabbix user group.
+# The media type is NOT modified; leave media_type empty to use all of the group's configured media.
+# alert_action:
+#   name: "NETOPS-IaC Interface Alerts"   # must start with NETOPS-IaC
+#   enabled: true
+#   usergroups: ["Network Operations"]
+#   media_type: null

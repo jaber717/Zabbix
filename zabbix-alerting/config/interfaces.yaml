@@ -1,0 +1,46 @@
+# Interfaces that must generate alerts. This is the ONLY file you edit.
+#   ./apply.sh --check      validate
+#   ./apply.sh --dry-run    preview
+#   ./apply.sh              apply
+#
+# Interfaces not listed here stay monitored by the stock Zabbix templates and never alert from this file.
+#
+# >>> LAB STARTER POLICY. The production P2P list is not defined yet: it arrives in
+# >>> handover/p2p-interfaces.yaml and must be verified against Zabbix before it replaces this.
+
+defaults:
+  severity: high              # warning | average | high | disaster
+  link_alert: true            # immediate DOWN / UP on the next poll
+  utilization:
+    enabled: false            # turn on per interface
+    threshold: 70             # % of link speed, newest sample (RX and TX are separate problems)
+    recovery: 65              # problem clears only below this (prevents flip-flop)
+    poll_interval: 10s        # polling of the link + traffic items of selected interfaces
+  errors:   { enabled: true, rate: 1 }    # errors per second
+  discards: { enabled: true, rate: 1 }    # discards per second
+  flapping: { enabled: true, transitions: 3, window: 10m }
+
+hosts:
+  PNET-STC:
+    site: LAB
+    interfaces:
+      Gi0/0:
+        description: STC uplink to INT-CORE
+        role: ISP
+        severity: disaster
+        utilization: { enabled: true, threshold: 70, recovery: 65 }
+  PNET-MOBILY:
+    site: LAB
+    interfaces:
+      Gi0/0:
+        description: MOBILY uplink to INT-CORE
+        role: ISP
+        severity: disaster
+        utilization: { enabled: true, threshold: 70, recovery: 65 }
+  PNET-SAIX-A:
+    site: LAB
+    interfaces:
+      Gi0/0:
+        description: SAIX-A uplink to SAIX-CORE
+        role: ISP
+        severity: high
