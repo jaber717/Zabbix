@@ -45,7 +45,7 @@ def normalize(data):
     return out
 
 
-def verify(client, data):
+def verify(client, data, extras=None):
     """Returns (verified_dict, review_rows, checks). `data` must already be normalized."""
     review = []
     verified = {"hosts": {}}
@@ -58,6 +58,9 @@ def verify(client, data):
     for c in checks:
         if not c.ok:
             bad.setdefault((c.host, c.iface), []).append(c.message)
+    if extras:
+        for key, why in cross_check(client, extras, hosts_live).items():
+            bad.setdefault(key, []).append(why)
     for host, h in data["hosts"].items():
         for iface, entry in h["interfaces"].items():
             reasons = bad.get((host, iface), []) + bad.get((host, "-"), [])
@@ -84,3 +87,92 @@ def render_review(review):
     for host, iface, why in review:
         lines.append("- `%s` / `%s` — %s" % (host, iface, why))
     return "\n".join(lines) + "\n"
+
+
+# ---------------------------------------------------------------- Codex P2P handover format
+# hosts: {PNET-X: {zabbix_hostid, site, interfaces: {Gi0/0: {zabbix_ifname, snmp_index,
+#         zabbix_status_itemid, description, link_id, severity, utilization_threshold, ...}}}}
+
+def is_codex_format(data):
+    if not (isinstance(data, dict) and isinstance(data.get("hosts"), dict)):
+        return False
+    for h in data["hosts"].values():
+        for i in (h.get("interfaces") or {}).values():
+            if isinstance(i, dict) and ("zabbix_ifname" in i or "device_interface" in i):
+                return True
+    return False
+
+
+def from_codex(data, dedupe=True):
+    """(policy, extras). Policy uses our schema; extras are the identifiers to cross-check live.
+
+    Nothing is invented: speeds are NOT copied (nominal values were never read live), so capacity
+    comes from ifHighSpeed. With dedupe, only one end of each link_id notifies (the other still
+    raises tagged problems), as the handover asks for a deliberate event-owning end.
+    """
+    sel = data.get("selection_rules") or {}
+    policy = {"hosts": {}}
+    extras = {}
+    for host, h in sorted(data["hosts"].items()):
+        ph = policy["hosts"].setdefault(host, {"site": str(h.get("site", "")), "interfaces": {}})
+        for key, i in sorted(h["interfaces"].items()):
+            ifname = i.get("zabbix_ifname") or key
+            rec = i.get("recommended_alerts") or {}
+            entry = {
+                "description": i.get("description") or "",
+                "role": "P2P",
+                "severity": i.get("severity", "high"),
+                "link_id": i.get("link_id", ""),
+                "link_alert": bool(rec.get("link", True)),
+                "utilization": {"enabled": bool(rec.get("utilization", False)),
+                                "threshold": i.get("utilization_threshold", sel.get("utilization_threshold_pct", 70)),
+                                "recovery": i.get("utilization_recovery", sel.get("utilization_recovery_pct", 65))},
+                "errors": {"enabled": bool(rec.get("errors", True)), "rate": 1},
+                "discards": {"enabled": bool(rec.get("discards", True)), "rate": 1},
+                "flapping": {"enabled": bool(rec.get("flapping", True)), "transitions": 3, "window": "10m"},
+            }
+            ph["interfaces"][str(ifname)] = entry
+            extras[(host, str(ifname))] = {"hostid": str(h.get("zabbix_hostid", "")),
+                                           "itemid": str(i.get("zabbix_status_itemid", "")),
+                                           "index": str(i.get("snmp_index", "")), "ifname": str(ifname)}
+    if dedupe:
+        ends = {}
+        for host, ph in policy["hosts"].items():
+            for ifname, e in ph["interfaces"].items():
+                if e["link_id"]:
+                    ends.setdefault(e["link_id"], []).append((host, ifname))
+        for lid, members in ends.items():
+            for host, ifname in sorted(members)[1:]:
+                policy["hosts"][host]["interfaces"][ifname]["notify"] = False
+    return policy, extras
+
+
+def cross_check(client, extras, hosts_live):
+    """Identity checks beyond name existence: host id, status item id, its interface tag and SNMP index."""
+    bad = {}
+    wanted = [x["itemid"] for x in extras.values() if x["itemid"]]
+    items = {}
+    if wanted:
+        for r in client.call("item.get", {"output": ["itemid", "hostid", "key_"], "itemids": wanted,
+                                          "selectTags": ["tag", "value"]}):
+            items[r["itemid"]] = r
+    for (host, ifname), x in extras.items():
+        why = []
+        live = hosts_live.get(host)
+        if live and x["hostid"] and live["hostid"] != x["hostid"]:
+            why.append("host id differs (handover %s, Zabbix %s)" % (x["hostid"], live["hostid"]))
+        if live:
+            it = items.get(x["itemid"])
+            if not it:
+                why.append("status item %s not found" % x["itemid"])
+            else:
+                tag = [t["value"] for t in it.get("tags", []) if t["tag"] == "interface"]
+                if it["hostid"] != live["hostid"]:
+                    why.append("status item %s belongs to another host" % x["itemid"])
+                if ifname not in tag:
+                    why.append("status item %s is tagged interface=%s, not %s" % (x["itemid"], tag, ifname))
+                if x["index"] and not it["key_"].endswith(".%s]" % x["index"]):
+                    why.append("status item key %s does not match snmp_index %s" % (it["key_"], x["index"]))
+        if why:
+            bad[(host, ifname)] = "; ".join(why)
+    return bad

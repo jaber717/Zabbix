@@ -8,6 +8,7 @@ below is opened read-only anyway.
 import base64
 import json
 import ssl
+import urllib.error
 import urllib.request
 
 from netalert.zbx import ApiUnavailable
@@ -26,6 +27,10 @@ class GrafanaProxyTransport(object):
         try:
             with urllib.request.urlopen(req, timeout=40, context=self._ctx) as r:
                 data = json.loads(r.read().decode())
+        except urllib.error.HTTPError as exc:
+            if exc.code != 403:
+                raise ApiUnavailable("grafana proxy: HTTP %s" % exc.code)
+            data = {"error": "Forbidden", "message": "API method is not allowed by the read proxy"}
         except Exception as exc:                      # noqa: BLE001 - any failure means "unreachable"
             raise ApiUnavailable("grafana proxy: %s" % exc)
         if "error" in data:

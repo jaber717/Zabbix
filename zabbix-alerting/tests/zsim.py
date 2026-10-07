@@ -108,13 +108,12 @@ class InterfaceSim(object):
         return evaluate(resolve(text, self.macros, self.ifname, self.index), self.series, self.t)
 
     def _evaluate(self):
-        # the flapping trigger first: link-down depends on it
-        for alert in ["flapping"] + [a for a in self.protos if a != "flapping"]:
+        # Zabbix semantics: no problem -> evaluate the problem expression; open problem -> it
+        # recovers on the recovery expression (RECOVERY_EXPRESSION mode) or when the problem expr is false.
+        for alert in self.protos:
             tp = self.protos[alert]
             key = (alert, self.sev_name)
             was = self.state.get(key, False)
-            if alert == "link_down" and self.state.get(("flapping", self.sev_name)):
-                continue            # dependency: events suppressed while the master trigger is in PROBLEM
             now_problem = self._eval(tp["expression"])
             if not was:
                 nxt = now_problem

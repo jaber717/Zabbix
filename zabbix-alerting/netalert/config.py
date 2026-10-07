@@ -13,14 +13,14 @@ SPEED_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*([KMGT]?)(?:bps)?$", re.IGNORECASE)
 SPEED_MULT = {"": 1, "K": 10 ** 3, "M": 10 ** 6, "G": 10 ** 9, "T": 10 ** 12}
 
 IFACE_KEYS = {"description", "role", "severity", "link_alert", "utilization",
-              "errors", "discards", "flapping", "expected_speed"}
+              "errors", "discards", "flapping", "expected_speed", "link_id", "notify"}
 SECTION_KEYS = {
     "utilization": {"enabled", "threshold", "recovery", "poll_interval"},
     "errors": {"enabled", "rate", "recovery"},
     "discards": {"enabled", "rate", "recovery"},
     "flapping": {"enabled", "transitions", "window"},
 }
-DEFAULTS_KEYS = (IFACE_KEYS - {"description"}) | set()
+DEFAULTS_KEYS = IFACE_KEYS - {"description", "link_id"}
 HOST_KEYS = {"site", "interfaces"}
 TOP_KEYS = {"defaults", "hosts"}
 
@@ -28,6 +28,7 @@ BUILTIN_DEFAULTS = {
     "severity": DEFAULT_SEVERITY,
     "role": "",
     "link_alert": True,
+    "notify": True,
     "expected_speed": None,
     "utilization": {"enabled": False, "threshold": 70, "recovery": 65, "poll_interval": "10s"},
     "errors": {"enabled": True, "rate": 1, "recovery": None},
@@ -154,6 +155,14 @@ def normalize_interface(defaults, raw, host, name, problems):
     if not isinstance(cfg.get("link_alert"), bool):
         problems.append(Problem(host, name, "link_alert must be true or false"))
     out["link_alert"] = bool(cfg.get("link_alert"))
+
+    if not isinstance(cfg.get("notify"), bool):
+        problems.append(Problem(host, name, "notify must be true or false"))
+    out["notify"] = bool(cfg.get("notify"))
+    lid = raw.get("link_id", "")
+    if lid is not None and (not isinstance(lid, (str, int)) or '"' in str(lid) or "\\" in str(lid)):
+        problems.append(Problem(host, name, "link_id must be a plain string"))
+    out["link_id"] = str(lid or "")
 
     try:
         out["expected_speed"] = parse_speed(cfg.get("expected_speed"))

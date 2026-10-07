@@ -32,6 +32,8 @@ TEMPLATE_MACROS = [
     ("{$NETOPS.ROLE}", "", "Interface role (context = interface). Generated."),
     ("{$NETOPS.SEV}", "4", "Severity 2..5 (context = interface). Generated."),
     ("{$NETOPS.LINK}", "1", "Link down/up alert on (1) or off (0)."),
+    ("{$NETOPS.NOTIFY}", "yes", "yes = this end sends notifications; no = problem is still raised and tagged but the action skips it (link dedup)."),
+    ("{$NETOPS.LINKID}", "", "Identifier shared by both ends of one physical link (event tag link_id)."),
     ("{$NETOPS.POLL}", "10s", "Poll interval for link and traffic items of selected interfaces."),
     ("{$NETOPS.POLL.SLOW}", "60s", "Poll interval for error/discard/speed items."),
     ("{$NETOPS.UTIL.ON}", "0", "Utilization alert on (1) or off (0)."),
@@ -155,6 +157,8 @@ def _prototype_tags(alert, direction="-", threshold="-", severity=""):
         {"tag": "if_name", "value": "{#IFNAME}"},
         {"tag": "if_descr", "value": ctx("DESCR")},
         {"tag": "if_role", "value": ctx("ROLE")},
+        {"tag": "link_id", "value": ctx("LINKID")},
+        {"tag": "notify", "value": ctx("NOTIFY")},
         {"tag": "site", "value": "{$NETOPS.SITE}"},
         {"tag": "direction", "value": direction},
         {"tag": "threshold", "value": threshold},
@@ -197,18 +201,22 @@ def trigger_prototypes():
             ctx("FLAP.ON"), gate, _ref(K_OPER), ctx("FLAP.WINDOW"), ctx("FLAP.COUNT")))
         out.append(trig("flapping", flap_name, flap_expr,
                         opdata="status now {ITEM.LASTVALUE1} (1=up)",
-                        desc="Link changed state at least FLAP.COUNT times inside FLAP.WINDOW. "
-                             "One problem instead of one e-mail per transition; link DOWN/UP alerts "
-                             "are held back while this is open."))
-        # to make the dependency target resolvable, flap uses changecount first; opdata uses oper
-        flap_dep = [{"name": flap_name, "expression": flap_expr}]
+                        desc="Link changed state at least FLAP.COUNT times inside FLAP.WINDOW. One "
+                             "problem for the whole bounce storm; the Link DOWN problem stays open "
+                             "(no further DOWN/UP messages) until the link has been quiet."))
 
+        # No dependency on the flapping trigger: the FIRST down is always reported on the next poll.
+        # While changecount() says the link is bouncing, the Link DOWN problem cannot RECOVER, so
+        # repeated down/up cycles stay one open problem instead of a stream of messages; if the link
+        # ends up down the problem simply remains open (persistent outage stays visible).
+        link_recovery = "%s=1 and (%s=0 or changecount(%s,%s)<%s)" % (
+            _last(K_OPER), ctx("FLAP.ON"), _ref(K_OPER), ctx("FLAP.WINDOW"), ctx("FLAP.COUNT"))
         out.append(trig(
             "link_down", "%s Interface DOWN" % _who(),
-            "%s=1 and %s and %s<>1" % (ctx("LINK"), gate, _last(K_OPER)),
-            opdata="ifOperStatus {ITEM.LASTVALUE1} (1=up)", deps=flap_dep,
+            "%s=1 and %s and %s<>1" % (ctx("LINK"), gate, _last(K_OPER)), link_recovery,
+            opdata="ifOperStatus {ITEM.LASTVALUE1} (1=up)",
             desc="Latest polled ifOperStatus is not up(1). Evaluated on every poll of the item; "
-                 "no delay window."))
+                 "no delay window. Recovers when the link is up and no longer flapping."))
 
         for direction, key in (("RX", K_IN), ("TX", K_OUT)):
             # sample first, capacity second: {ITEM.LASTVALUE1}/{ITEM.LASTVALUE2} follow this order

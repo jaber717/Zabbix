@@ -117,7 +117,8 @@ def action_params(spec, groupids, mediatypeid):
         "name": spec["name"], "eventsource": 0, "status": 0 if spec["enabled"] else 1,
         "esc_period": "1h",
         "filter": {"evaltype": 0, "conditions": [
-            {"conditiontype": 25, "operator": 0, "value": tpl.TAG_ALERT}]},
+            {"conditiontype": 25, "operator": 0, "value": tpl.TAG_ALERT},
+            {"conditiontype": 26, "operator": 1, "value": "no", "value2": "notify"}]},
         "operations": [{
             "operationtype": 0, "esc_period": "0", "esc_step_from": 1, "esc_step_to": 1, "evaltype": 0,
             "opmessage": {"default_msg": 0, "subject": spec["subject"], "message": spec["message"],
@@ -137,7 +138,7 @@ def action_signature(a):
     groups = sorted(str(g["usrgrpid"]) for o in ops for g in (o.get("opmessage_grp") or []))
     om = (ops[0].get("opmessage") or {}) if ops else {}
     rm = (rops[0].get("opmessage") or {}) if rops else {}
-    conds = sorted((str(c["conditiontype"]), str(c["operator"]), c["value"])
+    conds = sorted((str(c["conditiontype"]), str(c["operator"]), c["value"], c.get("value2", ""))
                    for c in (a.get("filter") or {}).get("conditions", []))
     return {"status": str(a["status"]), "groups": groups, "mediatype": str(om.get("mediatypeid", "")),
             "subject": om.get("subject", ""), "message": om.get("message", ""),

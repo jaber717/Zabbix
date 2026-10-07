@@ -1,0 +1,452 @@
+schema_version: 1
+captured_at: "2026-10-07T23:24:53+03:00"
+scope: "LAB phase-1 routed point-to-point alerting"
+selection_rules:
+  requires_zabbix_discovery_match: true
+  requires_live_device_verification: true
+  interface_identity: "exact Zabbix {#IFNAME}; device_interface records the full IOS name"
+  utilization_threshold_pct: 70
+  utilization_recovery_pct: 65
+  notes:
+    - "All selected interfaces are routed /30 links and were up/up with an established BGP peer during capture."
+    - "Current Cisco IOS template polling is one minute, not ten seconds."
+    - "Zabbix SNMP was authentication-failed at capture time; item existence and identity are verified, but fresh values are not."
+    - "Both ends are listed when both are monitored. Use link_id for event correlation to avoid duplicate incidents."
+
+hosts:
+  PNET-INT-CORE:
+    zabbix_hostid: "10691"
+    device_hostname: "INT-CORE"
+    vendor: "Cisco"
+    model: "IOSv"
+    os: "IOS 15.6(2)T"
+    management_ip: "192.168.1.184"
+    site: "WAN-LAB"
+    role: "Internet core"
+    interfaces:
+      Gi0/0:
+        device_interface: "GigabitEthernet0/0"
+        zabbix_ifname: "Gi0/0"
+        snmp_index: 1
+        zabbix_status_itemid: "51730"
+        description: "TO-STC-Gi0/0"
+        type: "p2p"
+        link_id: "int-core--stc"
+        peer_device: "STC"
+        peer_interface: "GigabitEthernet0/0"
+        local_ip: "172.16.0.1/30"
+        peer_ip: "172.16.0.2"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64498}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "Primary STC Internet/WAN transit"
+      Gi0/1:
+        device_interface: "GigabitEthernet0/1"
+        zabbix_ifname: "Gi0/1"
+        snmp_index: 2
+        zabbix_status_itemid: "51727"
+        description: "TO-MOBILY-Gi0/0"
+        type: "p2p"
+        link_id: "int-core--mobily"
+        peer_device: "MOBILY"
+        peer_interface: "GigabitEthernet0/0"
+        local_ip: "172.16.0.5/30"
+        peer_ip: "172.16.0.6"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64499}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "Primary Mobily Internet/WAN transit"
+
+  PNET-STC:
+    zabbix_hostid: "10689"
+    device_hostname: "STC"
+    vendor: "Cisco"
+    model: "IOSv"
+    os: "IOS 15.6(2)T"
+    management_ip: "192.168.1.182"
+    site: "WAN-LAB"
+    role: "STC provider simulator"
+    interfaces:
+      Gi0/0:
+        device_interface: "GigabitEthernet0/0"
+        zabbix_ifname: "Gi0/0"
+        snmp_index: 1
+        zabbix_status_itemid: "51502"
+        description: "TO-INT-CORE-Gi0/0"
+        type: "p2p"
+        link_id: "int-core--stc"
+        peer_device: "INT-CORE"
+        peer_interface: "GigabitEthernet0/0"
+        local_ip: "172.16.0.2/30"
+        peer_ip: "172.16.0.1"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64497}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "STC provider transit"
+      Gi0/1:
+        device_interface: "GigabitEthernet0/1"
+        zabbix_ifname: "Gi0/1"
+        snmp_index: 2
+        zabbix_status_itemid: "51500"
+        description: "TO-SITE-B-Gi0/1"
+        type: "p2p"
+        link_id: "stc--site-b"
+        peer_device: "SITE-B"
+        peer_interface: "GigabitEthernet0/1"
+        local_ip: "172.16.1.1/30"
+        peer_ip: "172.16.1.2"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64496}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "STC-to-enterprise WAN handoff"
+
+  PNET-MOBILY:
+    zabbix_hostid: "10690"
+    device_hostname: "MOBILY"
+    vendor: "Cisco"
+    model: "IOSv"
+    os: "IOS 15.6(2)T"
+    management_ip: "192.168.1.183"
+    site: "WAN-LAB"
+    role: "Mobily provider simulator"
+    interfaces:
+      Gi0/0:
+        device_interface: "GigabitEthernet0/0"
+        zabbix_ifname: "Gi0/0"
+        snmp_index: 1
+        zabbix_status_itemid: "51766"
+        description: "TO-INT-CORE-Gi0/1"
+        type: "p2p"
+        link_id: "int-core--mobily"
+        peer_device: "INT-CORE"
+        peer_interface: "GigabitEthernet0/1"
+        local_ip: "172.16.0.6/30"
+        peer_ip: "172.16.0.5"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64497}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "Mobily provider transit"
+      Gi0/1:
+        device_interface: "GigabitEthernet0/1"
+        zabbix_ifname: "Gi0/1"
+        snmp_index: 2
+        zabbix_status_itemid: "51764"
+        description: "TO-SITE-A-Gi0/1"
+        type: "p2p"
+        link_id: "mobily--site-a"
+        peer_device: "SITE-A"
+        peer_interface: "GigabitEthernet0/1"
+        local_ip: "172.16.1.5/30"
+        peer_ip: "172.16.1.6"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64496}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "Mobily-to-enterprise WAN handoff"
+
+  PNET-SAIX-A:
+    zabbix_hostid: "10692"
+    device_hostname: "SAIX-A"
+    vendor: "Cisco"
+    model: "IOSv"
+    os: "IOS 15.6(2)T"
+    management_ip: "192.168.1.186"
+    site: "WAN-LAB"
+    role: "SAIX provider edge A"
+    interfaces:
+      Gi0/0:
+        device_interface: "GigabitEthernet0/0"
+        zabbix_ifname: "Gi0/0"
+        snmp_index: 1
+        zabbix_status_itemid: "51625"
+        description: "TO-SAIX-CORE-Gi0/0"
+        type: "p2p"
+        link_id: "saix-core--saix-a"
+        peer_device: "SAIX-CORE"
+        peer_interface: "GigabitEthernet0/0"
+        local_ip: "172.16.2.2/30"
+        peer_ip: "172.16.2.1"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64500}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "SAIX routed backbone"
+      Gi0/1:
+        device_interface: "GigabitEthernet0/1"
+        zabbix_ifname: "Gi0/1"
+        snmp_index: 2
+        zabbix_status_itemid: "51623"
+        description: "TO-SITE-A-Gi0/0"
+        type: "p2p"
+        link_id: "saix-a--site-a"
+        peer_device: "SITE-A"
+        peer_interface: "GigabitEthernet0/0"
+        local_ip: "172.16.3.1/30"
+        peer_ip: "172.16.3.2"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64496}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "SAIX-to-enterprise WAN handoff"
+
+  PNET-SAIX-B:
+    zabbix_hostid: "10693"
+    device_hostname: "SAIX-B"
+    vendor: "Cisco"
+    model: "IOSv"
+    os: "IOS 15.6(2)T"
+    management_ip: "192.168.1.187"
+    site: "WAN-LAB"
+    role: "SAIX provider edge B"
+    interfaces:
+      Gi0/0:
+        device_interface: "GigabitEthernet0/0"
+        zabbix_ifname: "Gi0/0"
+        snmp_index: 1
+        zabbix_status_itemid: "51543"
+        description: "TO-SAIX-CORE-Gi0/1"
+        type: "p2p"
+        link_id: "saix-core--saix-b"
+        peer_device: "SAIX-CORE"
+        peer_interface: "GigabitEthernet0/1"
+        local_ip: "172.16.2.6/30"
+        peer_ip: "172.16.2.5"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64500}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "SAIX routed backbone"
+      Gi0/1:
+        device_interface: "GigabitEthernet0/1"
+        zabbix_ifname: "Gi0/1"
+        snmp_index: 2
+        zabbix_status_itemid: "51541"
+        description: "TO-SITE-B-Gi0/0"
+        type: "p2p"
+        link_id: "saix-b--site-b"
+        peer_device: "SITE-B"
+        peer_interface: "GigabitEthernet0/0"
+        local_ip: "172.16.3.5/30"
+        peer_ip: "172.16.3.6"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64496}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "SAIX-to-enterprise WAN handoff"
+
+  PNET-SITE-A:
+    zabbix_hostid: "10687"
+    device_hostname: "SITE-A"
+    vendor: "Cisco"
+    model: "IOSv"
+    os: "IOS 15.6(2)T"
+    management_ip: "192.168.1.180"
+    site: "SITE-A"
+    role: "Enterprise WAN edge"
+    interfaces:
+      Gi0/0:
+        device_interface: "GigabitEthernet0/0"
+        zabbix_ifname: "Gi0/0"
+        snmp_index: 1
+        zabbix_status_itemid: "51691"
+        description: "TO-SAIX-A-Gi0/1"
+        type: "p2p"
+        link_id: "saix-a--site-a"
+        peer_device: "SAIX-A"
+        peer_interface: "GigabitEthernet0/1"
+        local_ip: "172.16.3.2/30"
+        peer_ip: "172.16.3.1"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64500}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "SAIX enterprise WAN circuit"
+      Gi0/1:
+        device_interface: "GigabitEthernet0/1"
+        zabbix_ifname: "Gi0/1"
+        snmp_index: 2
+        zabbix_status_itemid: "51686"
+        description: "TO-MOBILY-Gi0/1"
+        type: "p2p"
+        link_id: "mobily--site-a"
+        peer_device: "MOBILY"
+        peer_interface: "GigabitEthernet0/1"
+        local_ip: "172.16.1.6/30"
+        peer_ip: "172.16.1.5"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64499}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "Mobily enterprise WAN circuit"
+      Gi0/2:
+        device_interface: "GigabitEthernet0/2"
+        zabbix_ifname: "Gi0/2"
+        snmp_index: 3
+        zabbix_status_itemid: "51689"
+        description: "INTER-EDGE-TO-SITE-B-Gi0/2"
+        type: "p2p"
+        link_id: "site-a--site-b"
+        peer_device: "SITE-B"
+        peer_interface: "GigabitEthernet0/2"
+        local_ip: "172.16.255.1/30"
+        peer_ip: "172.16.255.2"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64496}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "Critical inter-site/edge redundancy link"
+      Gi0/3:
+        device_interface: "GigabitEthernet0/3"
+        zabbix_ifname: "Gi0/3"
+        snmp_index: 4
+        zabbix_status_itemid: "51688"
+        description: "TO-PALO-TRANSIT-A"
+        type: "p2p"
+        link_id: "site-a--palo-transit-a"
+        peer_device: "PALO-LAB"
+        peer_interface: "ethernet1/1"
+        local_ip: "10.255.1.1/30"
+        peer_ip: "10.255.1.2"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 65020}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "high"
+        severity_reason: "Router-to-firewall routed transit; alternate transit exists"
+
+  PNET-SITE-B:
+    zabbix_hostid: "10688"
+    device_hostname: "SITE-B"
+    vendor: "Cisco"
+    model: "IOSv"
+    os: "IOS 15.6(2)T"
+    management_ip: "192.168.1.181"
+    site: "SITE-B"
+    role: "Enterprise WAN edge"
+    interfaces:
+      Gi0/0:
+        device_interface: "GigabitEthernet0/0"
+        zabbix_ifname: "Gi0/0"
+        snmp_index: 1
+        zabbix_status_itemid: "51595"
+        description: "TO-SAIX-B-Gi0/1"
+        type: "p2p"
+        link_id: "saix-b--site-b"
+        peer_device: "SAIX-B"
+        peer_interface: "GigabitEthernet0/1"
+        local_ip: "172.16.3.6/30"
+        peer_ip: "172.16.3.5"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64500}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "SAIX enterprise WAN circuit"
+      Gi0/1:
+        device_interface: "GigabitEthernet0/1"
+        zabbix_ifname: "Gi0/1"
+        snmp_index: 2
+        zabbix_status_itemid: "51591"
+        description: "TO-STC-Gi0/1"
+        type: "p2p"
+        link_id: "stc--site-b"
+        peer_device: "STC"
+        peer_interface: "GigabitEthernet0/1"
+        local_ip: "172.16.1.2/30"
+        peer_ip: "172.16.1.1"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64498}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "STC enterprise WAN circuit"
+      Gi0/2:
+        device_interface: "GigabitEthernet0/2"
+        zabbix_ifname: "Gi0/2"
+        snmp_index: 3
+        zabbix_status_itemid: "51594"
+        description: "INTER-EDGE-TO-SITE-A-Gi0/2"
+        type: "p2p"
+        link_id: "site-a--site-b"
+        peer_device: "SITE-A"
+        peer_interface: "GigabitEthernet0/2"
+        local_ip: "172.16.255.2/30"
+        peer_ip: "172.16.255.1"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 64496}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "disaster"
+        severity_reason: "Critical inter-site/edge redundancy link"
+      Gi0/3:
+        device_interface: "GigabitEthernet0/3"
+        zabbix_ifname: "Gi0/3"
+        snmp_index: 4
+        zabbix_status_itemid: "51593"
+        description: "TO-PALO-TRANSIT-B"
+        type: "p2p"
+        link_id: "site-b--palo-transit-b"
+        peer_device: "PALO-LAB"
+        peer_interface: "ethernet1/2"
+        local_ip: "10.255.2.1/30"
+        peer_ip: "10.255.2.2"
+        speed_bps: 1000000000
+        speed_source: "IOSv GigabitEthernet nominal speed; live Zabbix speed unavailable during SNMP authentication failure"
+        live_evidence: {admin: "up", oper: "up", routing: "BGP established", peer_as: 65020}
+        recommended_alerts: {link: true, utilization: true, errors: true, discards: true, flapping: true}
+        utilization_threshold: 70
+        utilization_recovery: 65
+        severity: "high"
+        severity_reason: "Router-to-firewall routed transit; alternate transit exists"

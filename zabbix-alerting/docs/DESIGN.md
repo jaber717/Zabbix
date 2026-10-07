@@ -41,7 +41,7 @@ Unselected interfaces keep being monitored by the stock templates; nothing here 
 | **Counter-based rates need two samples** | Utilization/error rates exist from the second poll after (re)discovery. Intentional. |
 | **Reuse of stock templates** | The stock "Interfaces SNMP" LLD is host-wide, polls every 3 min through a walk and uses `avg(15m)>90 %` / `min(5m)`-style triggers — it cannot be made immediate per interface without changing it for everyone. Reusing it would also change every existing host. So: own template for selected interfaces, stock untouched. Optional `suppress_stock: true` sets the stock gating macro `{$IFCONTROL:"<if>"}=0` for selected interfaces to avoid duplicate stock alerts (off by default). |
 | **YAML → context macros vs tags** | Macros carry numbers/strings (thresholds, severity, description). Tags carry what the *action* needs to route/format (`netops_alert`, `if_name`, `role`, `site`, …). Severity is a variant switch, not a tag, because priority is static in a prototype. |
-| **Flapping** | Detected with `changecount()` on the status item; the link DOWN trigger depends on it so a bouncing link yields one problem. Trade-off documented in the README (a persistent outage after flapping is announced when the flap window closes). |
+| **Flapping** | `changecount()` on the status item. No trigger dependency (a dependency would hide a real first DOWN): Link DOWN fires on the first bad poll; its *recovery* expression additionally requires `changecount(window) < transitions`, so a bounce storm is one open Link DOWN problem plus one Flapping problem. Worst case before detection: DOWN, UP, DOWN, then the Flapping problem. A persistent outage keeps the DOWN problem open throughout. |
 | **LAG** | Member and bundle interfaces are ordinary interfaces; a bundle's `ifOperStatus` reports "up" while degraded on several platforms, so **bundle-degradation (fewer members up) is not reliably detectable from standard IF-MIB** and is not claimed. Alert on the members (`link_alert`) and set `expected_speed` on the bundle (capacity drop → speed alert) where the platform reports aggregate speed. |
 | **Vendors** | IF-MIB `ifOperStatus`, `ifHC*`, `ifHighSpeed`, `ifInErrors/ifInDiscards` are standard and implemented on Cisco IOS/IOS-XE/IOS-XR/NX-OS, Huawei VRP, Palo Alto PAN-OS and F5 TMOS. Expected caveats (from general platform behaviour, not measured here): some virtual/aggregate interfaces (PAN-OS, F5, LAGs) may report speed 0 (the tool then neither divides nor alerts on utilization — set `expected_speed`); NX-OS and IOS-XR report `ifDescr` long names (use the exact name shown in Zabbix); counters on some virtual platforms may be 32-bit only (items go unsupported — surfaced by `lab_verify_objects.py`). None of this has been proven on real devices in this phase. |
 | **Interface existence check** | Interface names are taken from the `interface` tag of the host's existing stock items. A host without that tag cannot be verified and fails `--check` (fail closed). |
@@ -59,15 +59,32 @@ name/key/tag. Per environment only `config/environments/<env>.yaml` and two envi
 
 ## Phase B (P2P interface handover)
 
-`handover/CLAUDE-HANDOVER.md` and `handover/p2p-interfaces.yaml` (from Codex) do not exist yet, so **no production interface list is assumed**
-and `config/interfaces.yaml` holds only a LAB starter policy. When they arrive:
+Source: Codex handover (`handover/`, copied from Codex's working tree at SHA `2fb5f19`, where the files were
+untracked and never pushed to `codex/daily-reporting`). 18 verified P2P interfaces on 7 routers; 4 endpoints
+(SAIX-CORE Gi0/0, Gi0/1, PALO-LAB ethernet1/1, 1/2) are REVIEW REQUIRED and not enabled (`config/REVIEW-REQUIRED.md`).
 
 ```bash
-./scripts/ingest-handover.py handover/p2p-interfaces.yaml --env lab   # read-only; verifies every entry live
-#  → config/interfaces.generated.yaml (verified only) + REVIEW-REQUIRED.md (everything that did not verify)
+./scripts/ingest-handover.py handover/p2p-interfaces.yaml --env lab --out config/interfaces.yaml
 ```
 
-Review, copy into `config/interfaces.yaml`, then `--check`, `--dry-run`, apply.
+Every entry is cross-checked live (host id, enabled, SNMP interface, interface name, status item id, the item's
+`interface` tag and SNMP index) — failures are excluded and listed, never guessed. Nominal speeds from the handover are
+**not** copied (they were never read live); capacity comes from `ifHighSpeed`.
+
+* **Fast collection**: direct indexed OIDs per selected interface (`ifOperStatus.N`, `ifHCInOctets.N`, `ifHCOutOctets.N`
+  every 10 s; `ifHighSpeed.N` and error/discard counters every 60 s). No table walk is scheduled; the only walk is the
+  5-minute discovery of `ifName`. 18 interfaces = 54 fast items + 108 slow items (incl. 18 dependent capacity items),
+  ≈ **7.2 new values/s** (≈ 6.9 SNMP GETs/s) on top of the stock 1-minute walk, which is untouched.
+* **Duplicate incidents**: the stock Cisco IOS link/utilization/error triggers are active, so LAB uses `suppress_stock: true`
+  (`{$IFCONTROL:"<if>"}=0` on the 18 selected interfaces only). Each physical link has a `link_id`; one end notifies,
+  the other raises tagged problems that the action skips (`notify: false`). Trade-off: if the notifying router is the
+  one that is unreachable, the peer's problem is visible in Zabbix but not mailed — the stock SNMP-unavailable alerts cover that.
+* **Traps**: not enabled. A later `linkDown/linkUp` trap item can set the same status the triggers read, with this polling as fallback.
+* **Blocked**: all seven routers currently fail SNMPv3 authentication, so no fresh value can be validated
+  (`scripts/live-snmp-state.py` → *Fresh SNMP validation: BLOCKED*). Credentials are not touched by this project.
+* **Not verified**: the e-mail path (media type, action, user group, recovery operation, enabled state). The read-only
+  account cannot read them; Codex reports the stock action and media types as disabled/example-only. Nothing existing is
+  modified; `alert_action` stays unset in `lab.yaml` until a real group is named.
 
 ## Validation status
 

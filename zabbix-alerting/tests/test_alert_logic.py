@@ -117,27 +117,67 @@ class LinkState(unittest.TestCase):
         s.sample(10, oper=2)
         self.assertFalse(s.problem("link_down"))
 
-    def test_flapping_is_one_problem_and_suppresses_link_storm(self):
+    def test_first_down_is_never_swallowed_by_later_flapping(self):
+        s = sim()
+        s.sample(10, oper=1)
+        s.sample(10, oper=2)                         # the first real DOWN
+        first = s.events[0]
+        self.assertEqual((first[1], first[2]), ("link_down", "PROBLEM"))
+        self.assertEqual(first[0], 20)               # raised on that very sample, before any flap detection
+        for i in range(20):                          # then the link bounces
+            s.sample(10, oper=1 if i % 2 == 0 else 2)
+        self.assertEqual(s.problems_opened("flapping"), 1)
+        self.assertGreater([e[0] for e in s.events if e[1] == "flapping"][0], first[0])
+
+    def test_bounce_storm_is_one_flapping_problem_and_no_message_stream(self):
         s = sim()
         s.sample(10, oper=1)
         for i in range(24):                          # 24 transitions in four minutes
             s.sample(10, oper=2 if i % 2 == 0 else 1)
         self.assertEqual(s.problems_opened("flapping"), 1)
-        # the first DOWN fired normally; everything after the flap detector opened is suppressed
-        self.assertLessEqual(s.problems_opened("link_down"), 2)
         flap_at = [e[0] for e in s.events if e[1] == "flapping"][0]
+        # at most: DOWN, UP, DOWN before the detector opens; nothing afterwards
         self.assertEqual([e for e in s.events if e[1] == "link_down" and e[0] > flap_at], [])
+        self.assertLessEqual(len([e for e in s.events if e[1] == "link_down"]), 3)
 
-    def test_persistent_outage_after_flapping_still_alerts(self):
+    def test_persistent_outage_after_flapping_stays_visible(self):
         s = sim()
         s.sample(10, oper=1)
         for i in range(8):
             s.sample(10, oper=2 if i % 2 == 0 else 1)
         s.sample(10, oper=2)                         # ends down
+        self.assertTrue(s.problem("link_down"))
         for _ in range(40):                          # 20 minutes down, no more transitions
             s.sample(30, oper=2)
-        self.assertFalse(s.problem("flapping"))      # window slid past the transitions
-        self.assertTrue(s.problem("link_down"))      # and the real outage is now reported
+            self.assertTrue(s.problem("link_down"))  # visible the whole time, never hidden or recovered
+        self.assertFalse(s.problem("flapping"))      # the flapping problem closed once the window was quiet
+
+    def test_storm_ending_up_recovers_only_after_quiet_window(self):
+        s = sim()
+        s.sample(10, oper=1)
+        for i in range(8):
+            s.sample(10, oper=2 if i % 2 == 0 else 1)  # ends up
+        self.assertTrue(s.problem("link_down"))
+        self.assertTrue(s.problem("flapping"))
+        for _ in range(30):                          # 15 quiet minutes
+            s.sample(30, oper=1)
+        self.assertFalse(s.problem("link_down"))
+        self.assertFalse(s.problem("flapping"))
+
+    def test_plain_outage_still_recovers_immediately(self):
+        s = sim()
+        s.sample(10, oper=1)
+        s.sample(10, oper=2)
+        s.sample(10, oper=1)                         # only two transitions: below the flap count
+        self.assertFalse(s.problem("link_down"))
+
+    def test_flap_detection_off_recovers_immediately(self):
+        s = InterfaceSim(macros_for(cfg(flapping={"enabled": False})), "Gi0/0")
+        s.sample(10, oper=1)
+        for i in range(6):
+            s.sample(10, oper=2 if i % 2 == 0 else 1)
+        self.assertFalse(s.problem("link_down"))
+        self.assertEqual(s.problems_opened("link_down"), 3)
 
     def test_flapping_threshold_is_configurable(self):
         s = InterfaceSim(macros_for(cfg(flapping={"enabled": True, "transitions": 6, "window": "10m"})), "Gi0/0")
