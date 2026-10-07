@@ -80,7 +80,6 @@ Every entry is cross-checked live (host id, enabled, SNMP interface, interface n
   endpoint can never silence its peer. Proper correlation can come later only if it cannot create a missed-alert mode.
 * **Stock alerts**: `suppress_stock` defaults to **false** (LAB and PRODUCTION). It is unverified that the stock Cisco IOS
   trigger prototypes are gated by `{$IFCONTROL}`, so no stock trigger is touched until they can be inspected.
-  one that is unreachable, the peer's problem is visible in Zabbix but not mailed — the stock SNMP-unavailable alerts cover that.
 * **Traps**: not enabled. A later `linkDown/linkUp` trap item can set the same status the triggers read, with this polling as fallback.
 * **Blocked**: all seven routers currently fail SNMPv3 authentication, so no fresh value can be validated
   (`scripts/live-snmp-state.py` → *Fresh SNMP validation: BLOCKED*). Credentials are not touched by this project.
