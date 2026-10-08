@@ -20,3 +20,4 @@ reporting/daily-reporting/config/* text eol=lf
 reporting/daily-reporting/wheels.lock text eol=lf
 reporting/daily-reporting/VERSION text eol=lf
 reporting/daily-reporting/lib/zrs/data/*.json text eol=lf
+scripts/*.sha256 text eol=lf

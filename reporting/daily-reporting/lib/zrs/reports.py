@@ -510,7 +510,7 @@ def executive_summary(ds, cfg):
         kpi("incidents_high", "High / Disaster incidents", cnt["high"], status="bad" if cnt["high"] else "ok", note="previous month %d" % cntp["high"]),
         kpi("incidents_open", "Open at month end", cnt["open"], status="warn" if cnt["open"] else "ok"),
         kpi("mttr_seconds", "Mean time to resolve", mttr, "seconds", "info", note="previous month %s" % ("N/A" if mttrp is None else "%.0f s" % mttrp), formula="mttr"),
-        kpi("downtime_total_s", "Total device downtime", down_total, "seconds", "info", formula="downtime"),
+        kpi("downtime_total_s", "Total device downtime", down_total, "seconds", "info", note="downtime-class problem events only", formula="downtime"),
         kpi("wan_peak_util_pct", "Highest WAN peak utilization", max([r["peak_util_pct"] for r in wan_rows if r["peak_util_pct"] is not None], default=None), "%", "bad" if over else "info", formula="utilization"),
     ]
     findings = []
