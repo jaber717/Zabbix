@@ -163,3 +163,33 @@ Two live-shape corrections are included on the Codex branch for Claude review:
 2. `configuration.export` relocates eight single-item Link Down/Flapping trigger prototypes beneath the
    operational-status item prototype and repeats multi-item triggers beneath referenced items. Fingerprinting now
    reads both rule-level and item-nested triggers and deduplicates them. Regression suite: 152/152 PASS.
+
+## 2026-10-08 - live trigger probe and Claude drift-fix validation
+
+- Fetched `origin/claude/noc-flow-platform`; it remains exactly
+  `423e9de9c8f327fe9132b18e1b39f70ec0bcb570` and is an ancestor of this Codex branch. No reset, force-push, or
+  unrelated-file overwrite was performed.
+- Ran `scripts/live-trigger-probe.py` against the actual Zabbix 7.0.30 LAB using the protected Admin credential.
+  Sanitized probe evidence is stored on the LAB VM as `/tmp/netalert-live-trigger-probe-20261008.json` (mode 600).
+- `triggerprototype.get` is readable. Raw expressions contain internal references such as `{37175}`; the
+  `selectFunctions` response supplies `functionid`, `itemid`, function name, and parameter (for example
+  `changecount` with the contextual window macro), which is sufficient for semantic reconstruction.
+- `configuration.export` is also readable. It returns 20 trigger prototypes at discovery-rule level and relocates
+  the eight single-item Link Down/Flapping prototypes under item key
+  `netops.if.oper[{#SNMPINDEX}]`. It also repeats multi-item trigger references below their item prototypes.
+- Result at Claude commit 423e9de alone: the original `28 missing, 28 unexpected` comparison is gone, but the live
+  dry-run still reports `8 missing, 0 unexpected` because item-nested trigger prototypes were not traversed.
+- Result with Codex commit 02ff61b: nested/rule-level prototypes normalize to the same unique semantic set and the
+  real second dry-run reports exactly `No changes required.` Actual definitions were read; this is not a hash-only
+  result.
+
+### Claude safety action required before production promotion
+
+When both `configuration.export` and the `triggerprototype.get` fallback are unreadable, current commit 423e9de
+adds a note but can still print `No changes required.` based only on the embedded version hash. This must instead
+return/report **`VERIFICATION INCOMPLETE`** and must not count template drift verification as PASS. Add regression
+coverage for both reads denied. This LAB did not take that fallback: both live read paths succeeded.
+
+Telegram note: the operator explicitly retained the existing token/Chat ID for this temporary LAB; it was not
+rotated. The media test and all six automatic action alerts succeeded, but token rotation or decommissioning remains
+a production-promotion prerequisite.
