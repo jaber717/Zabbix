@@ -87,7 +87,7 @@ Every entry is cross-checked live (host id, enabled, SNMP interface, interface n
   account cannot read them; Codex reports the stock action and media types as disabled/example-only. Nothing existing is
   modified; `alert_action` stays unset in `lab.yaml` until a real group is named.
 
-## Validation status (v1.0.0)
+## Validation status (v1.0.1)
 
 | Evidence | Result |
 |---|---|
