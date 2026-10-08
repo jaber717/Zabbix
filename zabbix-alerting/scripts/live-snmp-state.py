@@ -23,7 +23,7 @@ from netalert.zbx import ZabbixClient, ZabbixError                  # noqa: E402
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("policy", nargs="?", default=os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                                              "..", "config", "interfaces.yaml"))
+                                                              "..", "config", "interfaces.lab.yaml"))
     ap.add_argument("--max-age", type=int, default=300)
     a = ap.parse_args()
     c = ZabbixClient(GrafanaProxyTransport(os.environ["GRAFANA_URL"], os.environ["GRAFANA_USER"],

@@ -719,7 +719,7 @@ class MockZabbix(object):
         for k, v in p.items():
             if k in ("actionid",):
                 continue
-            a[k] = str(v) if k == "status" else copy.deepcopy(v)
+            a[k] = str(v) if k in ("status", "eventsource") else copy.deepcopy(v)
         return {"actionids": [p["actionid"]]}
 
     def m_action_delete(self, p):

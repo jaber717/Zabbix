@@ -241,3 +241,35 @@ class NoSecretsInTree(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PerEnvironmentInventory(unittest.TestCase):
+    def test_each_environment_reads_only_its_own_inventory(self):
+        from tests.helpers import BASIC, write
+        w = World(env_name="production")
+        try:
+            cfg = os.path.join(w.base, "config")
+            os.remove(os.path.join(cfg, "interfaces.yaml"))                    # no legacy single-file layout
+            write(os.path.join(cfg, "interfaces.lab.yaml"), BASIC)           # LAB inventory exists...
+            write(os.path.join(cfg, "interfaces.production.yaml"), "hosts: {}\n")
+            rc, out = w.run("--dry-run", "--config", os.path.join(cfg, "interfaces.production.yaml"))
+            self.assertEqual(rc, 0, out)
+            # production default must be the production file, never the LAB one
+            from netalert import cli
+            self.assertTrue(cli.default_policy(w.base, "production").endswith("interfaces.production.yaml"))
+            self.assertTrue(cli.default_policy(w.base, "lab").endswith("interfaces.lab.yaml"))
+            rc, out = w.run("--check")                                         # default policy = production's (empty)
+            self.assertNotIn("RTR-01", out)
+            rc, out = w.run("--confirm", "production")
+            self.assertNotEqual(rc, 0)
+            self.assertEqual(w.mock.writes(), [])
+        finally:
+            w.close()
+
+    def test_shipped_production_inventory_is_empty_and_has_no_lab_objects(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "config", "interfaces.production.yaml"), encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertNotIn("PNET", text)
+        import yaml as _y
+        self.assertEqual(_y.safe_load(text), {"hosts": {}})

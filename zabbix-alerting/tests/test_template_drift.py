@@ -92,19 +92,80 @@ class InternalIds(unittest.TestCase):
         self.assertEqual(self.w.run()[0], 0)
         self.assertIn("No changes required.", self.w.run("--dry-run")[1])
 
-    def test_unreadable_template_does_not_invent_drift(self):
+    def deny_both(self):
         self.z.deny_export = True
         self.z.deny_triggerprototype = True
-        rc, out = self.w.run("--dry-run")
-        self.assertIn("No changes required.", out)
-        self.assertIn("could not be read", out)
 
-    def test_unreadable_template_still_catches_version_change(self):
-        self.z.deny_export = True
-        self.z.deny_triggerprototype = True
+    def test_both_reads_denied_is_verification_incomplete_not_clean(self):
+        self.deny_both()
+        for args in (("--dry-run",), ("--check",)):
+            rc, out = self.w.run(*args)
+            self.assertEqual(rc, 6, args)
+            self.assertIn("VERIFICATION INCOMPLETE", out)
+            self.assertNotIn("No changes required.", out)
+            self.assertNotIn("RESULT: PASS", out)
+
+    def test_matching_version_hash_alone_never_means_clean(self):
+        self.deny_both()
+        tp = next(iter(self.z.templates.values()))
+        self.assertIn("hash=" + tpl.content_hash(), tp["description"])      # hash matches...
+        rc, out = self.w.run("--dry-run")
+        self.assertEqual(rc, 6)                                             # ...still not clean
+        self.assertIn("NOT verified", out)
+
+    def test_apply_is_blocked_when_verification_is_incomplete(self):
+        self.deny_both()
+        from tests.helpers import BASIC
+        self.w.set_yaml(BASIC.replace("threshold: 70, recovery: 65", "threshold: 80, recovery: 75"))
+        before = self.z.snapshot()
+        n = len(self.z.writes())
+        rc, out = self.w.run()
+        self.assertEqual(rc, 6)
+        self.assertIn("NOTHING WAS APPLIED", out)
+        self.assertEqual(len(self.z.writes()), n)
+        self.assertEqual(before, self.z.snapshot())
+
+    def test_incomplete_with_a_version_mismatch_is_also_blocked(self):
+        self.deny_both()
         for t in self.z.templates.values():
             t["description"] = t["description"].replace("hash=", "hash=dead")
-        self.assertIn("template version differs", self.w.run("--dry-run")[1])
+        rc, out = self.w.run()
+        self.assertEqual(rc, 6)
+        self.assertNotIn("applied", out.lower().replace("nothing was applied", ""))
+
+    def test_one_readable_path_is_enough(self):
+        self.z.deny_export = True            # fallback still works
+        self.assertEqual(self.w.run("--dry-run")[0], 0)
+        self.z.deny_export, self.z.deny_triggerprototype = False, True
+        self.assertEqual(self.w.run("--dry-run")[0], 0)
+
+    def test_post_apply_verification_cannot_pass_blind(self):
+        from tests.helpers import BASIC
+        self.w.set_yaml(BASIC.replace("threshold: 70, recovery: 65", "threshold: 80, recovery: 75"))
+        orig = self.z.m_triggerprototype_get
+        calls = {"n": 0}
+        # the first plan reads normally; after the writes the account "loses" both read paths
+        real_send = self.z.send
+
+        def send(payload, authenticated=True, presented_token=None):
+            if payload["method"] == "usermacro.update":
+                self.deny_both()
+            return real_send(payload, authenticated, presented_token)
+        self.z.send = send
+        rc, out = self.w.run()
+        self.assertEqual(rc, 6)
+        self.assertIn("could not be verified", out)
+        self.assertIn("VERIFICATION INCOMPLETE", out)
+
+    def test_first_install_needs_no_template_read(self):
+        w = World()
+        try:
+            w.mock.deny_export = w.mock.deny_triggerprototype = True
+            rc, out = w.run("--dry-run")
+            self.assertEqual(rc, 0)                  # template absent: nothing to verify yet
+            self.assertIn("ADD    template", out)
+        finally:
+            w.close()
 
 
 class ResolveFunctionIds(unittest.TestCase):

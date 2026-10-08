@@ -52,6 +52,10 @@ def write(base, data):
     os.makedirs(d, exist_ok=True)
     stamp = data["taken_utc"].replace(":", "").replace("-", "")
     path = os.path.join(d, "%s-%s.json" % (data["environment"], stamp))
+    n = 1
+    while os.path.exists(path):          # never overwrite an earlier backup (two applies in one second)
+        n += 1
+        path = os.path.join(d, "%s-%s_%d.json" % (data["environment"], stamp, n))
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2, sort_keys=True)
     try:

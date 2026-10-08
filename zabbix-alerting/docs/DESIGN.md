@@ -64,7 +64,7 @@ untracked and never pushed to `codex/daily-reporting`). 18 verified P2P interfac
 (SAIX-CORE Gi0/0, Gi0/1, PALO-LAB ethernet1/1, 1/2) are REVIEW REQUIRED and not enabled (`config/REVIEW-REQUIRED.md`).
 
 ```bash
-./scripts/ingest-handover.py handover/p2p-interfaces.yaml --env lab --out config/interfaces.yaml
+./scripts/ingest-handover.py handover/p2p-interfaces.yaml --env lab --out config/interfaces.lab.yaml
 ```
 
 Every entry is cross-checked live (host id, enabled, SNMP interface, interface name, status item id, the item's
@@ -87,31 +87,16 @@ Every entry is cross-checked live (host id, enabled, SNMP interface, interface n
   account cannot read them; Codex reports the stock action and media types as disabled/example-only. Nothing existing is
   modified; `alert_action` stays unset in `lab.yaml` until a real group is named.
 
-## Validation status
+## Validation status (v1.0.0)
 
-**PASS WITH LIMITATIONS.** Framework implementation and offline API tests passed, but real Zabbix mutation/apply validation
-is pending because the current service account is read-only.
+| Evidence | Result |
+|---|---|
+| Offline suite (`scripts/test.sh`), real CLI/planner/applier against an in-memory Zabbix 7.0 model | 163 tests PASS |
+| Real LAB (Codex, Zabbix 7.0.30, commit `7f1745d`): template import, apply, 18/18 interfaces fresh, second dry-run "No changes required.", Link Down/Recovery, RX/TX 70/65 hysteresis, Telegram problem + recovery, action filtering | PASS (see `handover/agents/codex-latest.md`) |
+| Changes after that run (VERIFICATION INCOMPLETE, per-environment inventory files, backup file naming) | offline tests only; re-run `./apply.sh --env lab --dry-run` and `scripts/lab-write-test.sh` on the tag |
+| Rollback = revert inventory in Git + apply | tested offline (state restored exactly); not yet exercised on a real Zabbix |
+| Secrets scan of tree and Git history (`scripts/secrets-scan.sh`, with a positive control) | PASS |
+| Production | not touched; no production run has been made |
 
-What was proven where:
-
-| Evidence | Where | Covers |
-|---|---|---|
-| Unit/integration tests (`python3 -m unittest discover -s tests -t .`) | in-memory model of the Zabbix 7.0 API, real CLI/planner/applier/client code | YAML validation, plan/dry-run/apply, create/update/delete decisions, ownership protection, drift, idempotency, utilization newest-sample + hysteresis, flapping/link behaviour on the generated expressions, environment separation, production gates, read-only client guard |
-| `scripts/live-readcheck.py` | **live LAB Zabbix 7.0.30, read-only** (via the Grafana datasource proxy) | host lookup, SNMP-interface check, real interface names from item tags, typo/case/missing-host failures, ownership scan, API version, identity macro read |
-| `scripts/lab-write-test.sh` | **not yet run** — needs a write-capable LAB token | `configuration.import` acceptance of the template, real macro/link/action writes, real LLD discovery, real values, real trigger evaluation, idempotent second run |
-
-Things the offline model cannot prove and that the first real run must confirm: that Zabbix 7.0.30 accepts the generated
-template on import (key names such as `lifetime_type`, trigger dependency format, preprocessing parameter layout), that the
-trigger expressions/`event_name` macros compile, that discovery produces supported items on the target platforms, and
-that `host.massremove … templateids_clear` and `task.create` behave as modelled, that Zabbix expands the user macro inside the capacity item's JavaScript preprocessing (otherwise `expected_speed` would not override the reported speed for utilization), and that the server does not reformat trigger expressions in a way that shows up as permanent template drift (whitespace is already ignored). `lab-write-test.sh` checks each of these and
-`lab_verify_objects.py` reports unsupported items.
-
-Once a write-capable LAB token is in `.env`:
-
-```bash
-./apply.sh --env lab --check
-./apply.sh --env lab --dry-run
-./apply.sh --env lab
-./apply.sh --env lab --dry-run       # → "No changes required."
-./scripts/lab-write-test.sh          # all of the above plus change/revert/discovery/values/removal on a harmless policy
-```
+`VERIFICATION INCOMPLETE`: if neither `configuration.export` nor `triggerprototype.get` is readable, the template content cannot be
+compared. The tool then reports `VERIFICATION INCOMPLETE` (exit code 6), never "No changes required.", and refuses to apply.

@@ -116,7 +116,7 @@ hosts:
 
     def test_shipped_files_are_valid(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        for rel in ("config/interfaces.yaml", "examples/interfaces.sample.yaml"):
+        for rel in ("config/interfaces.lab.yaml", "config/interfaces.production.yaml", "examples/interfaces.sample.yaml"):
             d = config.load(os.path.join(root, rel))
             self.assertEqual(msgs(d), [], rel)
 

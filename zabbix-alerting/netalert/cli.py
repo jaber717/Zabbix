@@ -7,17 +7,26 @@ from . import apply as applier
 from . import backup, config, envsafety, model, planner
 from .zbx import ApiUnavailable, HttpTransport, ReadOnlyViolation, ZabbixClient, ZabbixError
 
-EXIT_OK, EXIT_FAIL, EXIT_USAGE, EXIT_SAFETY, EXIT_API, EXIT_VERIFY = 0, 1, 2, 3, 4, 5
+EXIT_OK, EXIT_FAIL, EXIT_USAGE, EXIT_SAFETY, EXIT_API, EXIT_VERIFY, EXIT_INCOMPLETE = 0, 1, 2, 3, 4, 5, 6
 
 
 def default_base():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def default_policy(base, env):
+    """Each environment has its own inventory: config/interfaces.<env>.yaml (never another env's file)."""
+    own = os.path.join(base, "config", "interfaces.%s.yaml" % env)
+    if os.path.isfile(own):
+        return own
+    legacy = os.path.join(base, "config", "interfaces.yaml")      # single-file layout (used by tests)
+    return legacy if os.path.isfile(legacy) else own
+
+
 def parse_args(argv):
     p = argparse.ArgumentParser(prog="apply.sh", description="Interface alerting as code for Zabbix 7.0")
     p.add_argument("--env", default="lab", help="environment file in config/environments (default: lab)")
-    p.add_argument("--config", help="interfaces file (default: config/interfaces.yaml)")
+    p.add_argument("--config", help="interfaces file (default: config/interfaces.<env>.yaml)")
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--check", action="store_true", help="validate only; PASS/FAIL per interface")
     mode.add_argument("--dry-run", action="store_true", help="show ADD/CHANGE/REMOVE; change nothing")
@@ -47,7 +56,7 @@ def run(argv, environ=None, out=print, base=None, transport_factory=None):
     args = parse_args(argv)
     try:
         env = envsafety.load_env(base, args.env)
-        cfg_path = args.config or os.path.join(base, "config", "interfaces.yaml")
+        cfg_path = args.config or default_policy(base, args.env)
         desired = config.load(cfg_path)
     except (envsafety.EnvError, config.ConfigError, OSError) as exc:
         out("ERROR: %s" % exc)
@@ -108,6 +117,8 @@ def run(argv, environ=None, out=print, base=None, transport_factory=None):
             out("RESULT: FAIL (%d failed check(s), %d conflict(s)) — apply would change nothing" %
                 (bad, len(plan.conflicts)))
             return EXIT_FAIL
+        if plan.incomplete:
+            return report_incomplete(plan, out, writing=False)
         out("RESULT: PASS (%d interface(s))" % len(plan.checks))
         return EXIT_OK
 
@@ -118,6 +129,9 @@ def run(argv, environ=None, out=print, base=None, transport_factory=None):
         out("RESULT: FAIL — fix the above first; nothing applied" if writing else
             "RESULT: plan not valid (see failures above); nothing changed")
         return EXIT_FAIL
+
+    if plan.incomplete:
+        return report_incomplete(plan, out, writing=writing)
 
     if plan.empty:
         for n in plan.notes:
@@ -162,6 +176,9 @@ def run(argv, environ=None, out=print, base=None, transport_factory=None):
     for w in warns:
         out("  warning: %s" % w)
     again = planner.build_plan(ro, env, desired, "ok")
+    if again.incomplete:
+        out("RESULT: applied %d change(s) but the result could not be verified." % done)
+        return report_incomplete(again, out, writing=False)
     if not again.empty:
         out("RESULT: applied %d change(s) but verification found %d remaining difference(s):" %
             (done, len(again.changes)))
@@ -170,6 +187,15 @@ def run(argv, environ=None, out=print, base=None, transport_factory=None):
         return EXIT_VERIFY
     out("RESULT: applied %d change(s); verification plan is empty." % done)
     return EXIT_OK
+
+
+def report_incomplete(plan, out, writing):
+    out("VERIFICATION INCOMPLETE")
+    for r in plan.incomplete:
+        out("  - %s" % r)
+    out("  Not reported as clean and %s. Re-run with an account that may call configuration.export "
+        "or triggerprototype.get." % ("NOTHING WAS APPLIED" if writing else "no drift verdict is given"))
+    return EXIT_INCOMPLETE
 
 
 def init_identity(env, ident, rw, args, out):

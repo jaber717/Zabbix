@@ -4,7 +4,7 @@ List the interfaces that must alert in **one YAML file**. Three commands validat
 Everything else stays monitored exactly as before.
 
 ```bash
-vi config/interfaces.yaml        # 1. edit
+vi config/interfaces.lab.yaml    # 1. edit (config/interfaces.<env>.yaml; production: see docs/PRODUCTION-INSTALL.md)
 ./apply.sh --check               # 2. PASS / FAIL for every interface, nothing changes
 ./apply.sh --dry-run             # 3. shows what would be ADDed / CHANGEd / REMOVEd
 ./apply.sh                       # 4. applies it; run again and it says "No changes required."

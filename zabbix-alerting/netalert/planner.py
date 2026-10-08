@@ -35,6 +35,7 @@ class Plan(object):
         self.changes = []
         self.conflicts = []     # foreign objects we refuse to touch: REVIEW REQUIRED
         self.notes = []
+        self.incomplete = []    # reasons the live state could not be fully verified
 
     @property
     def failed(self):
@@ -288,8 +289,9 @@ def build_plan(client, env, desired, identity_state="ok", allow_init=False):
         live_fp = live_fingerprint(client, tplid)
         if live_fp is None:
             problems = []
-            plan.notes.append("template content could not be read with this account (no configuration.export / "
-                              "trigger prototype access): only the template version hash was compared")
+            plan.incomplete.append("the managed template's triggers cannot be read with this account (neither "
+                                   "configuration.export nor triggerprototype.get is permitted): its content was NOT "
+                                   "verified, and the version hash alone cannot prove it is unmodified")
         else:
             problems = diff_fingerprint(tpl.fingerprint_doc(want_doc), live_fp)
         hash_now = "hash=" + tpl.content_hash()

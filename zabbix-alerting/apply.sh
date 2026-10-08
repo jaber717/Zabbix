@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Interface alerting as code — the only command an operator runs.
 #
-#   vi config/interfaces.yaml
+#   vi config/interfaces.<env>.yaml
 #   ./apply.sh --check            validate: PASS/FAIL per interface, nothing is changed
 #   ./apply.sh --dry-run          show ADD / CHANGE / REMOVE, nothing is changed
 #   ./apply.sh                    apply (asks nothing; prints a banner, takes a backup first)

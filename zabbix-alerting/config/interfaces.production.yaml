@@ -1,0 +1,5 @@
+# PRODUCTION interface inventory. Intentionally EMPTY: production has its own routers and links.
+# Nothing from the LAB inventory (config/interfaces.lab.yaml) applies here.
+# Add production interfaces (see docs/PRODUCTION-INSTALL.md), then:
+#   ./apply.sh --env production --check
+hosts: {}

@@ -11,8 +11,10 @@ zabbix:
   url_regex: '^CHANGE-ME-TO-YOUR-PRODUCTION-URL-REGEX$'
   forbid_url_regex: '(lab|test|dev)'
 
+# Production notifications: configure your OWN media type and user group in Zabbix first, then fill in the
+# NAMES below (see docs/PRODUCTION-INSTALL.md). Never reuse the temporary LAB Telegram bot.
 # alert_action:
 #   name: "NETOPS-IaC Interface Alerts"
 #   enabled: true
-#   usergroups: ["Network Operations"]
-#   media_type: null
+#   usergroups: ["<production user group>"]
+#   media_type: "<production media type name>"

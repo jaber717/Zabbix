@@ -34,7 +34,7 @@ def discovered_interfaces(c, hostid):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--env", default="lab")
-    ap.add_argument("--config", default=os.path.join(BASE, "config", "interfaces.yaml"))
+    ap.add_argument("--config", default=os.path.join(BASE, "config", "interfaces.lab.yaml"))
     ap.add_argument("--wait", type=int, default=420, help="seconds to wait for discovery and first values")
     a = ap.parse_args()
     env = envsafety.load_env(BASE, a.env)

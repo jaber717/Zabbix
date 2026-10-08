@@ -12,7 +12,7 @@ from tests.helpers import World
 from tests.zsim import InterfaceSim, macros_for
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-POLICY = os.path.join(ROOT, "config", "interfaces.yaml")
+POLICY = os.path.join(ROOT, "config", "interfaces.lab.yaml")
 REVIEW = ["SAIX-CORE", "PALO-LAB"]
 
 

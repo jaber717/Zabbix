@@ -50,3 +50,13 @@ python3 scripts/live-trigger-probe.py --save /root/probe.json   # needs ZBX_URL/
 ```
 If the dry-run still reports a template CHANGE, send me the printed `triggers: N missing/unexpected (e.g. ...)` line and the
 probe output (it contains no credentials): the export shape on 7.0.30 is the one thing the model could not prove.
+
+## 2026-10-08 - v1.0.0 release integration
+- Fast-forwarded to Codex `7f1745d` (Telegram recovery type 0, export-nested trigger normalisation); nothing rewritten.
+- Safety fix: both `configuration.export` and `triggerprototype.get` unreadable => `VERIFICATION INCOMPLETE` (exit 6), never
+  "No changes required.", apply blocked; also enforced on the post-apply check. 7 regression tests.
+- Backup files are never overwritten (two applies in one second).
+- Per-environment inventories: `config/interfaces.<env>.yaml`; production ships empty. `docs/PRODUCTION-INSTALL.md` added.
+- `scripts/secrets-scan.sh` (tree + Git history, positive-control tested): PASS. Offline tests 163/163.
+- CODEX: please re-run on the tag `./apply.sh --env lab --check`, `--dry-run` (expect "No changes required."), because the
+  rename of the LAB inventory to `config/interfaces.lab.yaml` and the incomplete-verification logic were tested offline only.
