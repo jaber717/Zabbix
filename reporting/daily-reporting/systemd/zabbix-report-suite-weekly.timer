@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Zabbix weekly reports (PDF/XLSX/JSON)
+
+[Timer]
+OnCalendar=__ZRS_ON_CALENDAR__
+Persistent=true
+RandomizedDelaySec=120
+Unit=zabbix-report-suite@weekly.service
+
+[Install]
+WantedBy=timers.target

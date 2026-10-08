@@ -1,0 +1,45 @@
+{
+  "schema": "zabbix-reporting-suite-v1",
+  "output": {
+    "directory": "/var/lib/zabbix-daily-reporting/suite",
+    "file_mode": "0640",
+    "dir_mode": "0750",
+    "retention_days": {"daily": 90, "weekly": 180, "monthly": 730},
+    "include_dataset_in_json": true
+  },
+  "week_start": "monday",
+  "formats": ["pdf", "xlsx", "json"],
+  "sla": {"target_percent": 99.9, "min_coverage": 0.9},
+  "limits": {
+    "items": 30000,
+    "hosts_per_request": 100,
+    "trend_items_per_request": 50,
+    "trend_rows": 20000,
+    "history_items_per_request": 20,
+    "history_rows": 50000,
+    "history_p95_max_items": 200
+  },
+  "incident": {"lookback_days": 30, "top_n": 10},
+  "infra": {"host_groups": [], "top_n": 10},
+  "wan": {
+    "links": []
+  },
+  "reports": {
+    "daily_network_health": {"enabled": true},
+    "wan_isp_performance": {"enabled": true},
+    "infrastructure_health": {"enabled": true},
+    "executive_summary": {"enabled": true},
+    "incident_analysis": {"enabled": true},
+    "monitoring_quality": {"enabled": true}
+  },
+  "schedule": {"daily": "06:30", "weekly": "Mon 06:45", "monthly": "1 07:00"},
+  "delivery": {
+    "enabled": false,
+    "mode": "test",
+    "test_recipients": [],
+    "recipients": [],
+    "allowed_recipient_domains": [],
+    "subject_prefix": "[Zabbix Report]",
+    "max_attachment_mb": 20
+  }
+}

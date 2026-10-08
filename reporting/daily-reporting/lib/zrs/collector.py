@@ -183,23 +183,14 @@ class Collector(object):
         # still-open problems of ANY age
         current = get_limited(self.api, self.notes, "problem.get",
                               {"output": ["eventid", "clock", "name", "severity", "acknowledged", "r_eventid"],
-                               "hostids": ids, "suppressed": None, "symptom": False,
-                               "selectHosts": ["hostid", "name"]}, limit, "problem.get open")
+                               "hostids": ids, "suppressed": None, "symptom": False}, limit, "problem.get open")
         known = {str(e["eventid"]) for e in events}
         for p in current:
             if str(p["eventid"]) not in known:
                 p = dict(p)
                 p.setdefault("hosts", [])
                 events.append(p)
-        # problem.get has no host list on all builds: fill missing hosts through event.get by id
-        missing = [str(e["eventid"]) for e in events if not e.get("hosts")]
-        for part in [missing[i:i + 200] for i in range(0, len(missing), 200)]:
-            if part:
-                fill = {str(r["eventid"]): r for r in self.api.call(
-                    "event.get", {"output": ["eventid"], "eventids": part, "selectHosts": ["hostid", "name"]})}
-                for e in events:
-                    if str(e["eventid"]) in fill:
-                        e["hosts"] = fill[str(e["eventid"])].get("hosts", [])
+        self._fill_hosts(events)          # problem.get returns no host list: ask event.get (selectHosts is supported there)
         events = [e for e in events if any(str(h["hostid"]) in self.hosts for h in e.get("hosts", []))]
         r_ids = sorted({str(e["r_eventid"]) for e in events if str(e.get("r_eventid") or "0") != "0"})
         recoveries = {}
@@ -210,6 +201,15 @@ class Collector(object):
         patterns = self.cfg["classification"]["downtime_problem_patterns"]
         return build_incidents(events, recoveries, period, self.now_ts, patterns, host_site)
 
+    def _fill_hosts(self, rows):
+        need = [str(r["eventid"]) for r in rows if not r.get("hosts")]
+        for part in [need[i:i + 200] for i in range(0, len(need), 200)]:
+            fill = dict((str(r["eventid"]), r) for r in self.api.call(
+                "event.get", {"output": ["eventid"], "eventids": part, "selectHosts": ["hostid", "name"]}))
+            for r in rows:
+                if str(r["eventid"]) in fill:
+                    r["hosts"] = fill[str(r["eventid"])].get("hosts", [])
+
     def open_problems(self):
         z = self.cfg["zabbix"]
         ids = sorted(self.hosts)
@@ -217,9 +217,10 @@ class Collector(object):
         for part in [ids[i:i + 200] for i in range(0, len(ids), 200)]:
             rows.extend(get_limited(self.api, self.notes, "problem.get",
                                     {"output": ["eventid", "clock", "name", "severity", "acknowledged"], "hostids": part,
-                                     "suppressed": None, "symptom": False, "selectHosts": ["hostid", "name"]},
+                                     "suppressed": None, "symptom": False},
                                     int(z["maximum_problems"]), "problem.get current"))
-        return rows
+        self._fill_hosts(rows)
+        return [r for r in rows if any(str(h["hostid"]) in self.hosts for h in r.get("hosts", []))]
 
     # ---------------------------------------------------------------- dataset
     def finish(self, report_key, period, extra):

@@ -1,0 +1,19 @@
+[Unit]
+Description=Zabbix reporting suite (%i reports)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=zabbix-report
+Group=zabbix-report
+EnvironmentFile=-/etc/zabbix-daily-reporting/secrets.env
+ExecStart=/usr/bin/python3 /opt/zabbix-daily-reporting/bin/zabbix_report_suite.py --config /etc/zabbix-daily-reporting/report.json --suite-config /etc/zabbix-daily-reporting/suite.json --cadence %i --send
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/zabbix-daily-reporting
+RestrictSUIDSGID=true
+LockPersonality=true

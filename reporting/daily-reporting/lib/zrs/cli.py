@@ -32,9 +32,12 @@ def _base_loader():
 
 def parse_args(argv):
     p = argparse.ArgumentParser(prog="zabbix_report_suite.py", description="PDF / XLSX / JSON reports from Zabbix")
-    p.add_argument("--config", required=True, help="report.json (RC2 configuration)")
+    p.add_argument("--config", help="report.json (RC2 configuration); required except for --selftest and --print-calendar")
     p.add_argument("--suite-config", help="suite.json (optional; defaults apply when absent)")
     p.add_argument("--report", default="all", help="all, or a comma list: daily, wan, infra, executive, incident, quality")
+    p.add_argument("--cadence", choices=["daily", "weekly", "monthly"], help="run every report of this cadence (used by the timers)")
+    p.add_argument("--selftest", action="store_true", help="render the bundled synthetic dataset to a temporary directory and verify PDF/XLSX/JSON (no Zabbix needed)")
+    p.add_argument("--print-calendar", choices=["daily", "weekly", "monthly"], help="print the systemd OnCalendar value for a cadence from the suite configuration")
     p.add_argument("--date", help="any calendar date inside the wanted period (default: the last COMPLETE period)")
     p.add_argument("--formats", help="comma list of pdf,xlsx,json (default: suite formats)")
     p.add_argument("--output-directory")
@@ -78,9 +81,25 @@ def main(argv=None, api_factory=None, environ=None, smtp_factory=None, stdout=No
     say = (lambda s: print(s, file=stdout or sys.stdout))
     a = parse_args(argv if argv is not None else sys.argv[1:])
     environ = os.environ if environ is None else environ
+    if a.selftest:
+        return selftest(say)
+    if a.print_calendar:
+        from .config import load_suite, on_calendar
+        try:
+            say(on_calendar(load_suite(a.suite_config), a.print_calendar))
+            return 0
+        except (ConfigError, ValueError, OSError, KeyError) as exc:
+            print("RESULT=FAIL ERROR=configuration: %s" % exc, file=sys.stderr)
+            return 2
+    if not a.config:
+        print("RESULT=FAIL ERROR=--config is required", file=sys.stderr)
+        return 2
     try:
         cfg = load_all(a.config, a.suite_config, _base_loader())
-        keys = REPORT_KEYS if a.report == "all" else tuple(resolve(x) for x in a.report.split(","))
+        if a.cadence:
+            keys = tuple(k for k in REPORT_KEYS if REPORTS[k]["kind"] == a.cadence)
+        else:
+            keys = REPORT_KEYS if a.report == "all" else tuple(resolve(x) for x in a.report.split(","))
         keys = [k for k in keys if cfg["suite"]["reports"].get(k, {}).get("enabled", True)]
     except (ConfigError, ValueError, OSError, KeyError) as exc:
         print("RESULT=FAIL ERROR=configuration: %s" % exc, file=sys.stderr)
@@ -177,3 +196,33 @@ def _maybe_deliver(cfg, suite, a, environ, smtp_factory, d, doc, ds, manifest, t
     dlv.smtp_send(cfg["delivery"], msg, environ, **kw)
     dlv.record(d, key, {"recipients": len(recipients), "mode": suite["delivery"]["mode"], "at": ds["generated_at"]}, int(suite["output"]["file_mode"], 8))
     say("DELIVERY=SENT RECIPIENTS=%d MODE=%s" % (len(recipients), suite["delivery"]["mode"]))
+
+
+def selftest(say):
+    """Proves the installed dependencies and renderers work, using a bundled synthetic dataset."""
+    import tempfile
+    from .reports import build
+    path = Path(__file__).resolve().parent / "data" / "selftest.json"
+    fx = json.loads(path.read_text())
+    cfg, ds = fx["cfg"], fx["dataset"]
+    doc = build(ds, cfg)
+    with tempfile.TemporaryDirectory(prefix="zrs-selftest-") as tmp:
+        rendered = _render(doc, ds, ["json", "pdf", "xlsx"], True)
+        d = Path(tmp)
+        manifest = out.write_outputs(d, "selftest", rendered, doc, ds["dataset_sha256"], 0o600,
+                                     {"run_id": "selftest", "generated_at": ds["generated_at"], "suite_version": SUITE_VERSION})
+        checks = []
+        pdf = (d / "selftest.pdf").read_bytes()
+        checks.append(("PDF", pdf.startswith(b"%PDF-") and ("dataset-sha256:" + ds["dataset_sha256"]).encode() in pdf))
+        from openpyxl import load_workbook
+        wb = load_workbook(str(d / "selftest.xlsx"))
+        checks.append(("XLSX", wb.sheetnames[0] == "Summary" and "Audit" in wb.sheetnames))
+        j = json.loads((d / "selftest.json").read_text())
+        checks.append(("JSON", j["dataset_sha256"] == ds["dataset_sha256"] and [k["value"] for k in j["kpis"]] == [k["value"] for k in doc["kpis"]]))
+        checks.append(("MANIFEST", manifest["status"] == "COMPLETE" and len(manifest["files"]) == 3))
+    for name, ok in checks:
+        say("SELFTEST_%s=%s" % (name, "PASS" if ok else "FAIL"))
+    say("SELFTEST_VERSIONS=%s" % json.dumps(out.versions(), sort_keys=True))
+    ok = all(c[1] for c in checks)
+    say("RESULT=%s" % ("PASS" if ok else "FAIL"))
+    return 0 if ok else 1

@@ -13,3 +13,10 @@ evidence/m3/raw/** -text -diff
 evidence/m4/raw/** -text -diff
 evidence/m4/resume/raw/** -text -diff
 evidence/m4/resume-pass/raw/** -text -diff
+
+# reporting suite: runtime files must be LF on every checkout (systemd units, JSON, locks)
+reporting/daily-reporting/systemd/* text eol=lf
+reporting/daily-reporting/config/* text eol=lf
+reporting/daily-reporting/wheels.lock text eol=lf
+reporting/daily-reporting/VERSION text eol=lf
+reporting/daily-reporting/lib/zrs/data/*.json text eol=lf

@@ -23,6 +23,8 @@ DEFAULT_SUITE = {
     "infra": {"host_groups": [], "top_n": 10},
     "wan": {"links": []},
     "reports": dict((k, {"enabled": True}) for k in REPORT_KEYS),
+    # Local times used to render systemd OnCalendar. The timers are installed DISABLED.
+    "schedule": {"daily": "06:30", "weekly": "Mon 06:45", "monthly": "1 07:00"},
     # Delivery is OFF. Even when enabled, mail goes only to test_recipients unless mode is "live" AND the
     # environment variable ZRS_ALLOW_LIVE_DELIVERY=YES is set AND the command line has --send.
     "delivery": {"enabled": False, "mode": "test", "test_recipients": [], "recipients": [], "allowed_recipient_domains": [],
@@ -71,6 +73,13 @@ def validate_suite(s):
         cap = link.get("capacity_bps")
         if cap is not None and not (isinstance(cap, (int, float)) and cap > 0):
             raise ConfigError("wan.links capacity_bps must be a positive number or null")
+    sch = s["schedule"]
+    if not re.fullmatch(r"(?:[01][0-9]|2[0-3]):[0-5][0-9]", sch["daily"]):
+        raise ConfigError("schedule.daily must be HH:MM")
+    if not re.fullmatch(r"(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) (?:[01][0-9]|2[0-3]):[0-5][0-9]", sch["weekly"]):
+        raise ConfigError("schedule.weekly must be like 'Mon 06:45'")
+    if not re.fullmatch(r"(?:[1-9]|1[0-9]|2[0-8]) (?:[01][0-9]|2[0-3]):[0-5][0-9]", sch["monthly"]):
+        raise ConfigError("schedule.monthly must be like '1 07:00' (day 1-28)")
     for k in s["reports"]:
         if k not in REPORT_KEYS:
             raise ConfigError("unknown report in suite.reports: %s" % k)
@@ -103,3 +112,15 @@ def load_all(report_json, suite_json, base_loader):
     cfg = base_loader(report_json)
     cfg["suite"] = load_suite(suite_json)
     return cfg
+
+
+def on_calendar(suite, kind):
+    """systemd OnCalendar string for a cadence, from suite['schedule']."""
+    v = suite["schedule"][kind]
+    if kind == "daily":
+        return "*-*-* %s:00" % v
+    if kind == "weekly":
+        day, hm = v.split(" ")
+        return "%s *-*-* %s:00" % (day, hm)
+    day, hm = v.split(" ")
+    return "*-*-%02d %s:00" % (int(day), hm)

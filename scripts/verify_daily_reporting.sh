@@ -16,5 +16,22 @@ grep -Fxq "OnCalendar=$EXPECTED_CALENDAR" "$SYSTEMD/zabbix-daily-report.timer" |
 set +e; "$DR_PYTHON" "$APP/bin/native_preflight.py"; native_rc=$?; set -e
 ((native_rc==0)) && dr_info 'NATIVE_PDF=PASS' || dr_warn 'NATIVE_PDF=NOT_READY (custom report validation passed)'
 dr_has_credentials "$ETC/secrets.env" && dr_info 'API_CREDENTIALS=CONFIGURED' || dr_warn 'API_CREDENTIALS=NOT_CONFIGURED'
+# ---- reporting suite
+for file in "$APP/bin/zabbix_report_suite.py" "$APP/lib/zrs/__init__.py" "$ETC/suite.json" "$SYSTEMD/zabbix-report-suite@.service"; do [[ -r $file ]] || dr_fail "missing $file"; done
+"$DR_PYTHON" -m py_compile "$APP/bin/zabbix_report_suite.py" "$APP/lib/zrs/"*.py
+dr_validate_suite "$APP" "$ETC/suite.json"; dr_info 'SUITE_CONFIGURATION=PASS'
+for kind in daily weekly monthly; do
+  cal=$(dr_suite_calendar "$APP" "$ETC/suite.json" "$kind"); [[ -r $SYSTEMD/zabbix-report-suite-$kind.timer ]] || dr_fail "missing suite $kind timer"
+  grep -Fxq "OnCalendar=$cal" "$SYSTEMD/zabbix-report-suite-$kind.timer" || dr_fail "suite $kind timer schedule mismatch; expected $cal"
+  dr_info "SUITE_TIMER_${kind^^}=$cal"
+done
+dr_info "SUITE_DELIVERY=$(dr_suite_delivery_state "$APP" "$ETC/suite.json")"
+if [[ -d $APP/vendor ]]; then
+  set +e; selftest_out=$(PYTHONPATH="$APP/vendor" "$DR_PYTHON" "$APP/bin/zabbix_report_suite.py" --selftest 2>&1); selftest_rc=$?; set -e
+  ((selftest_rc==0)) || { printf '%s
+' "$selftest_out" >&2; dr_fail 'SUITE_SELFTEST=FAIL'; }
+  dr_info 'SUITE_SELFTEST=PASS'
+else dr_warn 'SUITE_SELFTEST=NOT_RUN (PDF/XLSX dependencies not installed)'; fi
+if [[ -z ${DAILY_REPORTING_ROOT:-} ]]; then for kind in daily weekly monthly; do systemctl is-enabled --quiet "zabbix-report-suite-$kind.timer" 2>/dev/null && dr_info "SUITE_TIMER_STATE_${kind^^}=ENABLED" || dr_info "SUITE_TIMER_STATE_${kind^^}=NOT_ENABLED"; done; fi
 if [[ -z ${DAILY_REPORTING_ROOT:-} ]] && systemctl is-active --quiet zabbix-daily-report.timer; then systemctl cat zabbix-daily-report.timer | grep -Fxq "OnCalendar=$EXPECTED_CALENDAR" || dr_fail 'active timer does not match report.schedule_local'; dr_info 'ACTIVE_TIMER_SCHEDULE=PASS'; else dr_info 'ACTIVE_TIMER_SCHEDULE=NOT_ACTIVE'; fi
 dr_info "TIMER_SCHEDULE=$EXPECTED_CALENDAR"; dr_info 'PYTHON_SYNTAX=PASS'; dr_info 'CONFIGURATION=PASS'; dr_info 'RESULT=PASS'

@@ -1,0 +1,613 @@
+{
+ "cfg": {
+  "classification": {
+   "downtime_problem_patterns": [
+    "unavailable",
+    "unreachable",
+    "no snmp data",
+    "no agent data",
+    "icmp ping"
+   ],
+   "ha_problem_patterns": [
+    "cluster",
+    "failover",
+    "not in sync",
+    "ha "
+   ],
+   "utilization_problem_patterns": [
+    "utilization",
+    "bandwidth",
+    "traffic"
+   ]
+  },
+  "delivery": {
+   "custom_email_enabled": false,
+   "recipients": [
+    "noc@example.com"
+   ],
+   "sender": "zabbix@example.com",
+   "smtp_host": "smtp.example.com",
+   "smtp_port": 25,
+   "smtp_starttls": false,
+   "smtp_username": ""
+  },
+  "native_pdf": {
+   "dashboard_id": "",
+   "dashboard_name": "Daily Network Health",
+   "enabled": false,
+   "owner_user_id": "",
+   "recipient_group_ids": [],
+   "recipient_user_ids": [],
+   "report_writers": 1,
+   "web_service_url": "http://127.0.0.1:10053/report"
+  },
+  "report": {
+   "name": "Daily Network Health",
+   "output_directory": "/var/lib/zabbix-daily-reporting/reports",
+   "period": "previous_day",
+   "retention_days": 90,
+   "schedule_local": "07:00",
+   "timezone": "Asia/Riyadh"
+  },
+  "schema": "zabbix-daily-reporting-v1",
+  "scope": {
+   "exclude_host_groups": [],
+   "include_host_groups": [],
+   "site_tag": "site",
+   "sites": []
+  },
+  "severity": [
+   "high",
+   "disaster"
+  ],
+  "suite": {
+   "delivery": {
+    "allowed_recipient_domains": [],
+    "enabled": false,
+    "max_attachment_mb": 20,
+    "mode": "test",
+    "recipients": [],
+    "subject_prefix": "[Zabbix Report]",
+    "test_recipients": []
+   },
+   "formats": [
+    "pdf",
+    "xlsx",
+    "json"
+   ],
+   "incident": {
+    "lookback_days": 30,
+    "top_n": 10
+   },
+   "infra": {
+    "host_groups": [],
+    "top_n": 10
+   },
+   "limits": {
+    "history_items_per_request": 20,
+    "history_p95_max_items": 200,
+    "history_rows": 50000,
+    "hosts_per_request": 100,
+    "items": 30000,
+    "trend_items_per_request": 50,
+    "trend_rows": 20000
+   },
+   "output": {
+    "dir_mode": "0750",
+    "directory": "/var/lib/zabbix-daily-reporting/suite",
+    "file_mode": "0640",
+    "include_dataset_in_json": true,
+    "retention_days": {
+     "daily": 90,
+     "monthly": 730,
+     "weekly": 180
+    }
+   },
+   "reports": {
+    "daily_network_health": {
+     "enabled": true
+    },
+    "executive_summary": {
+     "enabled": true
+    },
+    "incident_analysis": {
+     "enabled": true
+    },
+    "infrastructure_health": {
+     "enabled": true
+    },
+    "monitoring_quality": {
+     "enabled": true
+    },
+    "wan_isp_performance": {
+     "enabled": true
+    }
+   },
+   "schedule": {
+    "daily": "06:30",
+    "monthly": "1 07:00",
+    "weekly": "Mon 06:45"
+   },
+   "schema": "zabbix-reporting-suite-v1",
+   "sla": {
+    "min_coverage": 0.9,
+    "target_percent": 99.9
+   },
+   "wan": {
+    "links": [
+     {
+      "host": "RTR-HQ",
+      "interface": "Gi0/0",
+      "isp": "STC",
+      "site": "HQ"
+     },
+     {
+      "host": "RTR-BR1",
+      "interface": "Gi0/1",
+      "isp": "MOBILY"
+     }
+    ]
+   },
+   "week_start": "monday"
+  },
+  "thresholds": {
+   "cpu_percent": 85,
+   "flapping_events": 4,
+   "interface_utilization_percent": 80,
+   "memory_percent": 85,
+   "raw_metric_evaluation": false,
+   "stale_data_minutes": 15
+  },
+  "zabbix": {
+   "api_url": "https://selftest.invalid/api_jsonrpc.php",
+   "ca_file": "/etc/pki/ca-trust/source/anchors/corporate-ca.crt",
+   "frontend_url": "https://zabbix.example.com/",
+   "maximum_hosts": 2000,
+   "maximum_items": 30000,
+   "maximum_problems": 10000,
+   "request_timeout_seconds": 30
+  }
+ },
+ "dataset": {
+  "audit": {
+   "api_by_method": {
+    "event.get": 2,
+    "history.get": 1,
+    "host.get": 1,
+    "item.get": 1,
+    "problem.get": 2
+   },
+   "api_calls": 7,
+   "limits": {
+    "history_items_per_request": 20,
+    "history_p95_max_items": 200,
+    "history_rows": 50000,
+    "hosts_per_request": 100,
+    "items": 30000,
+    "trend_items_per_request": 50,
+    "trend_rows": 20000
+   },
+   "notes": {
+    "failed": [],
+    "truncated": [],
+    "warnings": []
+   },
+   "scope": {
+    "exclude_host_groups": [],
+    "include_host_groups": [],
+    "sites": []
+   },
+   "source_api": "https://selftest.invalid"
+  },
+  "collector_version": "1.1.0-rc1",
+  "dataset_sha256": "b8f504b9b49216698cf2162fa99bcc21b580b8d7e69d6a9384921c992fbb123e",
+  "generated_at": "2026-10-08T07:00:00+03:00",
+  "hosts": [
+   {
+    "groups": [
+     "Routers"
+    ],
+    "host": "DEAD-BR1",
+    "hostid": "5",
+    "interface_errors": [],
+    "name": "DEAD-BR1",
+    "site": "BR1",
+    "state_now": "DOWN"
+   },
+   {
+    "groups": [
+     "Firewalls"
+    ],
+    "host": "FW-HQ",
+    "hostid": "3",
+    "interface_errors": [],
+    "name": "FW-HQ",
+    "site": "HQ",
+    "state_now": "UP"
+   },
+   {
+    "groups": [
+     "Routers"
+    ],
+    "host": "RTR-BR1",
+    "hostid": "2",
+    "interface_errors": [],
+    "name": "RTR-BR1",
+    "site": "BR1",
+    "state_now": "UP"
+   },
+   {
+    "groups": [
+     "Routers"
+    ],
+    "host": "RTR-HQ",
+    "hostid": "1",
+    "interface_errors": [],
+    "name": "RTR-HQ",
+    "site": "HQ",
+    "state_now": "UP"
+   },
+   {
+    "groups": [
+     "Switches"
+    ],
+    "host": "SW-BR1",
+    "hostid": "4",
+    "interface_errors": [],
+    "name": "SW-BR1",
+    "site": "BR1",
+    "state_now": "UP"
+   }
+  ],
+  "incident_quality": {
+   "duplicate_events_removed": 0,
+   "recovery_time_unknown": 1
+  },
+  "incidents": [
+   {
+    "acknowledged": false,
+    "duration_in_window_s": 10800,
+    "duration_total_s": 104400,
+    "end": 1791331200,
+    "eventid": "3",
+    "host_names": [
+     "FW-HQ",
+     "RTR-HQ"
+    ],
+    "hosts": [
+     {
+      "hostid": "1",
+      "name": "RTR-HQ"
+     },
+     {
+      "hostid": "3",
+      "name": "FW-HQ"
+     }
+    ],
+    "is_downtime": false,
+    "name": "Interface Gi0/0: High bandwidth usage",
+    "open_at_period_end": false,
+    "recovery_time_unknown": false,
+    "resolved_in_window": true,
+    "severity": 2,
+    "severity_name": "Warning",
+    "sites": [
+     "HQ"
+    ],
+    "start": 1791226800,
+    "started_in_window": false
+   },
+   {
+    "acknowledged": false,
+    "duration_in_window_s": 86400,
+    "duration_total_s": null,
+    "end": null,
+    "eventid": "4",
+    "host_names": [
+     "DEAD-BR1"
+    ],
+    "hosts": [
+     {
+      "hostid": "5",
+      "name": "DEAD-BR1"
+     }
+    ],
+    "is_downtime": true,
+    "name": "Unavailable by ICMP ping",
+    "open_at_period_end": true,
+    "recovery_time_unknown": false,
+    "resolved_in_window": false,
+    "severity": 5,
+    "severity_name": "Disaster",
+    "sites": [
+     "BR1"
+    ],
+    "start": 1791255600,
+    "started_in_window": false
+   },
+   {
+    "acknowledged": true,
+    "duration_in_window_s": 1800,
+    "duration_total_s": 1800,
+    "end": 1791358200,
+    "eventid": "1",
+    "host_names": [
+     "RTR-BR1"
+    ],
+    "hosts": [
+     {
+      "hostid": "2",
+      "name": "RTR-BR1"
+     }
+    ],
+    "is_downtime": true,
+    "name": "Unavailable by ICMP ping",
+    "open_at_period_end": false,
+    "recovery_time_unknown": false,
+    "resolved_in_window": true,
+    "severity": 4,
+    "severity_name": "High",
+    "sites": [
+     "BR1"
+    ],
+    "start": 1791356400,
+    "started_in_window": true
+   },
+   {
+    "acknowledged": false,
+    "duration_in_window_s": 1800,
+    "duration_total_s": 1800,
+    "end": 1791359100,
+    "eventid": "2",
+    "host_names": [
+     "RTR-BR1"
+    ],
+    "hosts": [
+     {
+      "hostid": "2",
+      "name": "RTR-BR1"
+     }
+    ],
+    "is_downtime": true,
+    "name": "No SNMP data collection",
+    "open_at_period_end": false,
+    "recovery_time_unknown": false,
+    "resolved_in_window": true,
+    "severity": 3,
+    "severity_name": "Average",
+    "sites": [
+     "BR1"
+    ],
+    "start": 1791357300,
+    "started_in_window": true
+   },
+   {
+    "acknowledged": false,
+    "duration_in_window_s": 43200,
+    "duration_total_s": null,
+    "end": null,
+    "eventid": "5",
+    "host_names": [
+     "RTR-HQ"
+    ],
+    "hosts": [
+     {
+      "hostid": "1",
+      "name": "RTR-HQ"
+     }
+    ],
+    "is_downtime": false,
+    "name": "High CPU utilization",
+    "open_at_period_end": true,
+    "recovery_time_unknown": true,
+    "resolved_in_window": false,
+    "severity": 3,
+    "severity_name": "Average",
+    "sites": [
+     "HQ"
+    ],
+    "start": 1791363600,
+    "started_in_window": true
+   },
+   {
+    "acknowledged": false,
+    "duration_in_window_s": 300,
+    "duration_total_s": 300,
+    "end": 1791371100,
+    "eventid": "8",
+    "host_names": [
+     "RTR-BR1"
+    ],
+    "hosts": [
+     {
+      "hostid": "2",
+      "name": "RTR-BR1"
+     }
+    ],
+    "is_downtime": true,
+    "name": "Unavailable by ICMP ping",
+    "open_at_period_end": false,
+    "recovery_time_unknown": false,
+    "resolved_in_window": true,
+    "severity": 4,
+    "severity_name": "High",
+    "sites": [
+     "BR1"
+    ],
+    "start": 1791370800,
+    "started_in_window": true
+   },
+   {
+    "acknowledged": false,
+    "duration_in_window_s": 300,
+    "duration_total_s": 300,
+    "end": 1791378300,
+    "eventid": "9",
+    "host_names": [
+     "RTR-BR1"
+    ],
+    "hosts": [
+     {
+      "hostid": "2",
+      "name": "RTR-BR1"
+     }
+    ],
+    "is_downtime": true,
+    "name": "Unavailable by ICMP ping",
+    "open_at_period_end": false,
+    "recovery_time_unknown": false,
+    "resolved_in_window": true,
+    "severity": 4,
+    "severity_name": "High",
+    "sites": [
+     "BR1"
+    ],
+    "start": 1791378000,
+    "started_in_window": true
+   }
+  ],
+  "items": [
+   {
+    "delay": "1m",
+    "error": "",
+    "hostid": "1",
+    "interface": null,
+    "itemid": "101",
+    "key": "icmpping",
+    "kind": "icmp_ping",
+    "lastclock": 1791431970,
+    "name": "ICMP ping",
+    "state": "0",
+    "stats": {
+     "avg": 1.0,
+     "coverage": 1.0,
+     "hours": 0,
+     "max": 1.0,
+     "min": 1.0,
+     "p95_of_hourly_avg": null,
+     "p95_raw": null,
+     "samples": 1440,
+     "source": "history",
+     "up_ratio": 1.0
+    },
+    "status": "0",
+    "trends_days": "365d",
+    "units": "",
+    "value_type": "3"
+   },
+   {
+    "delay": "1m",
+    "error": "",
+    "hostid": "2",
+    "interface": null,
+    "itemid": "102",
+    "key": "icmpping",
+    "kind": "icmp_ping",
+    "lastclock": 1791431970,
+    "name": "ICMP ping",
+    "state": "0",
+    "stats": {
+     "avg": 0.9791666666666666,
+     "coverage": 1.0,
+     "hours": 0,
+     "max": 1.0,
+     "min": 0.0,
+     "p95_of_hourly_avg": null,
+     "p95_raw": null,
+     "samples": 1440,
+     "source": "history",
+     "up_ratio": 0.9791666666666666
+    },
+    "status": "0",
+    "trends_days": "365d",
+    "units": "",
+    "value_type": "3"
+   },
+   {
+    "delay": "1m",
+    "error": "",
+    "hostid": "3",
+    "interface": null,
+    "itemid": "103",
+    "key": "icmpping",
+    "kind": "icmp_ping",
+    "lastclock": 1791421200,
+    "name": "ICMP ping",
+    "state": "0",
+    "stats": {
+     "avg": 1.0,
+     "coverage": 0.5,
+     "hours": 0,
+     "max": 1.0,
+     "min": 1.0,
+     "p95_of_hourly_avg": null,
+     "p95_raw": null,
+     "samples": 720,
+     "source": "history",
+     "up_ratio": 1.0
+    },
+    "status": "0",
+    "trends_days": "365d",
+    "units": "",
+    "value_type": "3"
+   },
+   {
+    "delay": "1m",
+    "error": "",
+    "hostid": "5",
+    "interface": null,
+    "itemid": "105",
+    "key": "icmpping",
+    "kind": "icmp_ping",
+    "lastclock": 1791431970,
+    "name": "ICMP ping",
+    "state": "0",
+    "stats": {
+     "avg": 0.0,
+     "coverage": 1.0,
+     "hours": 0,
+     "max": 0.0,
+     "min": 0.0,
+     "p95_of_hourly_avg": null,
+     "p95_raw": null,
+     "samples": 1440,
+     "source": "history",
+     "up_ratio": 0.0
+    },
+    "status": "0",
+    "trends_days": "365d",
+    "units": "",
+    "value_type": "3"
+   }
+  ],
+  "open_problems": [
+   {
+    "acknowledged": false,
+    "clock": 1791255600,
+    "eventid": "4",
+    "hostids": [
+     "5"
+    ],
+    "hosts": [
+     "DEAD-BR1"
+    ],
+    "name": "Unavailable by ICMP ping",
+    "severity": 5
+   }
+  ],
+  "period": {
+   "boundaries": "half-open [start, end)",
+   "end": "2026-10-08T00:00:00+03:00",
+   "end_ts": 1791406800,
+   "kind": "daily",
+   "label": "2026-10-07",
+   "seconds": 86400,
+   "start": "2026-10-07T00:00:00+03:00",
+   "start_ts": 1791320400,
+   "timezone": "Asia/Riyadh"
+  },
+  "previous_period": null,
+  "report": "daily_network_health",
+  "schema": "zabbix-reporting-suite-dataset-v1"
+ }
+}

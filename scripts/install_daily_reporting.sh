@@ -3,15 +3,18 @@ set -Eeuo pipefail
 DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P); ROOT=$(cd "$DIR/.." && pwd -P)
 # shellcheck source=scripts/lib/daily-reporting-common.sh
 source "$DIR/lib/daily-reporting-common.sh"
-PREFLIGHT=0; ENABLE_TIMER=0; APPLY_NATIVE=0
-while (($#)); do case "$1" in --preflight) PREFLIGHT=1;; --enable-timer) ENABLE_TIMER=1;; --apply-native-config) APPLY_NATIVE=1;; *) dr_fail 'usage: install_daily_reporting.sh [--preflight] [--enable-timer] [--apply-native-config]' ;; esac; shift; done
+PREFLIGHT=0; ENABLE_TIMER=0; APPLY_NATIVE=0; ENABLE_SUITE_TIMERS=0
+while (($#)); do case "$1" in --preflight) PREFLIGHT=1;; --enable-timer) ENABLE_TIMER=1;; --apply-native-config) APPLY_NATIVE=1;; --enable-suite-timers) ENABLE_SUITE_TIMERS=1;; *) dr_fail 'usage: install_daily_reporting.sh [--preflight] [--enable-timer] [--enable-suite-timers] [--apply-native-config]' ;; esac; shift; done
 dr_need sha256sum; dr_need install; dr_os; dr_python
 SOURCE="$ROOT/reporting/daily-reporting"; [[ -d $SOURCE ]] || dr_fail "project files missing: $SOURCE"
 [[ -r $ROOT/MANIFEST.sha256 ]] && dr_manifest "$ROOT"
 CONFIG_SOURCE="$SOURCE/config/report.example.json"; dr_validate_config "$SOURCE" "$CONFIG_SOURCE"; dr_info 'RELEASE_CONFIG=PASS'
+dr_validate_suite "$SOURCE" "$SOURCE/config/suite.example.json"; dr_info 'RELEASE_SUITE_CONFIG=PASS'
 APP=$(dr_prefix /opt/zabbix-daily-reporting); ETC=$(dr_prefix /etc/zabbix-daily-reporting); STATE=$(dr_prefix /var/lib/zabbix-daily-reporting); SYSTEMD=$(dr_prefix /etc/systemd/system); BACKUPS=$(dr_prefix /var/backups/zabbix-daily-reporting)
 installed_config_rc=0
 if [[ -f $ETC/report.json ]]; then set +e; dr_validate_config "$SOURCE" "$ETC/report.json"; installed_config_rc=$?; set -e; ((installed_config_rc==0)) && dr_info 'INSTALLED_CONFIG=PASS' || dr_warn 'INSTALLED_CONFIG=WARNING'; else dr_info 'INSTALLED_CONFIG=NOT_INSTALLED'; fi
+WHEELHOUSE=${DAILY_REPORTING_WHEELHOUSE:-$SOURCE/wheelhouse}; WHEEL_LOCK=${DAILY_REPORTING_WHEEL_LOCK:-$SOURCE/wheels.lock}
+if [[ -d $WHEELHOUSE ]] && compgen -G "$WHEELHOUSE/*.whl" >/dev/null; then dr_wheel_extract "$WHEELHOUSE" "$WHEEL_LOCK" "" >/dev/null || dr_fail 'SUITE_WHEELHOUSE=FAIL (hash or lock mismatch)'; dr_info 'SUITE_WHEELHOUSE=PASS'; else dr_warn 'SUITE_WHEELHOUSE=ABSENT (PDF/XLSX dependencies are not bundled)'; fi
 dr_info "OS=$DR_OS"; dr_info "PYTHON=$($DR_PYTHON --version 2>&1)"; dr_info 'CUSTOM_REPORT_PREFLIGHT=PASS'
 set +e; "$DR_PYTHON" "$SOURCE/bin/native_preflight.py"; native_rc=$?; set -e
 ((native_rc==0)) || dr_warn 'native PDF prerequisites are incomplete; custom reporting remains installable'
@@ -29,6 +32,7 @@ fi
 [[ -d $APP ]] && cp -a "$APP" "$BACKUP/application"
 STAGE="${APP}.install.$$"; trap 'rm -rf -- "$STAGE"' EXIT; rm -rf -- "$STAGE"; install -d -m 0755 "$STAGE"; cp -a "$SOURCE/." "$STAGE/"
 find "$STAGE" -type d -exec chmod 0755 {} +; find "$STAGE" -type f -exec chmod 0644 {} +; chmod 0755 "$STAGE"/bin/*.py
+dr_suite_deps "$SOURCE" "$STAGE" "$APP"
 if [[ -d $APP ]]; then mv "$APP" "${APP}.replaced-$STAMP"; fi
 mv "$STAGE" "$APP"
 if [[ ! -f $ETC/report.json ]]; then install -m 0640 "$CONFIG_SOURCE" "$ETC/report.json"; else cp -a "$ETC/report.json" "$BACKUP/report.json"; dr_info 'CONFIG=PRESERVED'; fi
@@ -42,6 +46,7 @@ CALENDAR=$(dr_schedule_calendar "$APP" "$ETC/report.json"); TIMER_STAGE="$BACKUP
 sed "s|__DAILY_REPORTING_ON_CALENDAR__|$CALENDAR|" "$SOURCE/systemd/zabbix-daily-report.timer" >"$TIMER_STAGE"
 grep -Fxq "OnCalendar=$CALENDAR" "$TIMER_STAGE" || dr_fail 'timer schedule rendering failed'
 install -m 0644 "$TIMER_STAGE" "$SYSTEMD/zabbix-daily-report.timer"; dr_info "TIMER_SCHEDULE=$CALENDAR"
+dr_install_suite "$SOURCE" "$APP" "$ETC" "$SYSTEMD" "$BACKUP" "$ENABLE_SUITE_TIMERS"
 if [[ -z ${DAILY_REPORTING_ROOT:-} ]]; then
   chown root:zabbix-report "$ETC/report.json" "$ETC/secrets.env"; chmod 0640 "$ETC/report.json"; chmod 0600 "$ETC/secrets.env"
   command -v restorecon >/dev/null && restorecon -RF "$APP" "$ETC" "$STATE" "$SYSTEMD/zabbix-daily-report."{service,timer} || true
