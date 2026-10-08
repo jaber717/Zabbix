@@ -13,8 +13,10 @@ zabbix:
 
 # Production notifications: configure your OWN media type and user group in Zabbix first, then fill in the
 # NAMES below (see docs/PRODUCTION-INSTALL.md). Never reuse the temporary LAB Telegram bot.
+# E-mail (SMTP) example - the SMTP media type itself is configured in Zabbix, not here. Problem AND recovery
+# messages are sent through the same media type:
 # alert_action:
-#   name: "NETOPS-IaC Interface Alerts"
+#   name: "NETOPS-IaC Interface Alerts"       # must start with NETOPS-IaC
 #   enabled: true
-#   usergroups: ["<production user group>"]
-#   media_type: "<production media type name>"
+#   usergroups: ["<production user group>"]   # users in it need an active e-mail media (all severities)
+#   media_type: "Email"                        # exact name of the production media type; null = all of the group's media

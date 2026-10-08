@@ -8,9 +8,9 @@ bot token / chat id, no SNMP credentials. This repository contains none of them.
 
 ```bash
 sudo dnf install -y git python3 python3-pyyaml        # or: apt install git python3 python3-yaml
-git clone https://github.com/jaber717/Zabbix.git
-cd Zabbix && git checkout v1.0.0                      # always deploy a tag, not a moving branch
-cd zabbix-alerting
+git clone https://github.com/jaber717/Zabbix.git Zabbix
+git -C Zabbix checkout -b prod-local v1.0.1     # deploy a TAG; your site edits live on the local branch prod-local
+cd Zabbix/zabbix-alerting
 python3 -m unittest discover -s tests -t .            # optional sanity check (offline, ~2 s)
 ```
 
@@ -80,10 +80,15 @@ token cannot read the template definition (`configuration.export` / `triggerprot
 4. Prove an alert path on one non-critical link in a maintenance window before relying on it.
 
 ## 5. Update to a new release
+Your production edits (`url_regex`, `alert_action`, `config/interfaces.production.yaml`) are committed on the local branch `prod-local`,
+so an update is a merge of the new tag:
 ```bash
-cd Zabbix && git fetch --tags && git checkout vX.Y.Z && cd zabbix-alerting
-./apply.sh --env production --dry-run      # review, then apply with --confirm production
+cd Zabbix && git add -A zabbix-alerting/config && git commit -m "production config" ; git fetch --tags
+git merge v1.0.2                      # the new release tag; conflicts only if a release touches your two config files
+cd zabbix-alerting && python3 -m unittest discover -s tests -t . && ./apply.sh --env production --dry-run
+./apply.sh --env production --confirm production      # only if the dry-run is what you expect
 ```
+If the update is bad: `git reset --hard ORIG_HEAD` (before applying) or roll back as in section 6.
 
 ## 6. Rollback
 Rollback is "return the inventory to the previous Git state and apply again" (idempotent):

@@ -238,7 +238,7 @@ def run_checks(client, desired, hosts_live):
         if not known:
             for iname in sorted(hcfg["interfaces"]):
                 checks.append(Check(hname, iname, False,
-                                         "cannot verify: host has no items tagged interface=<name>"))
+                                         "cannot verify: host has no items tagged interface=<name> (link the SNMP interface template and wait for its discovery)"))
             continue
         for iname in sorted(hcfg["interfaces"]):
             if any(c.host == hname and c.iface == iname and not c.ok for c in checks):
