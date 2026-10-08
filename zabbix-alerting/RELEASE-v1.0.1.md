@@ -2,6 +2,8 @@
 
 Supersedes v1.0.0 (tagged earlier the same day before the operator-usability review; **install v1.0.1, not v1.0.0**).
 
+> **Superseded by v1.0.2.** This release (v1.0.1, tag unchanged) failed final release acceptance only because `scripts/ingest-handover.py` did not compile (unterminated string). All live LAB checks passed. Install v1.0.2 - see `RELEASE-v1.0.2.md`.
+
 * Operator guide: `OPERATOR-GUIDE.md`. Production runbook: `docs/PRODUCTION-INSTALL.md`. Design/validation: `docs/DESIGN.md`.
 * Per-environment inventories and notification settings (Telegram in LAB, SMTP e-mail in Production by configuration only).
 * Safety: environment identity gate, ownership markers, backups, `--confirm production`, VERIFICATION INCOMPLETE blocks applies.

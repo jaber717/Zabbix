@@ -100,3 +100,7 @@ Every entry is cross-checked live (host id, enabled, SNMP interface, interface n
 
 `VERIFICATION INCOMPLETE`: if neither `configuration.export` nor `triggerprototype.get` is readable, the template content cannot be
 compared. The tool then reports `VERIFICATION INCOMPLETE` (exit code 6), never "No changes required.", and refuses to apply.
+
+## Validation status (v1.0.2 candidate)
+
+v1.0.1 passed every live LAB check (Codex, `handover/agents/codex-v1.0.1-final-lab-acceptance.md`) and failed release acceptance on one defect: `scripts/ingest-handover.py` did not compile. v1.0.2 fixes that line and adds `scripts/check-syntax.py` / `scripts/release-gate.sh` and `tests/test_python_syntax.py` so an uncompilable file or a shell syntax error can no longer reach a release. No Zabbix-facing behaviour changed. Live LAB acceptance of the exact candidate commit, real LAB rollback and ShellCheck are recorded in `RELEASE-v1.0.2.md` and the candidate hand-off file.

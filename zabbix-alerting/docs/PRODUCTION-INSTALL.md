@@ -9,7 +9,7 @@ bot token / chat id, no SNMP credentials. This repository contains none of them.
 ```bash
 sudo dnf install -y git python3 python3-pyyaml        # or: apt install git python3 python3-yaml
 git clone https://github.com/jaber717/Zabbix.git Zabbix
-git -C Zabbix checkout -b prod-local v1.0.1     # deploy a TAG; your site edits live on the local branch prod-local
+git -C Zabbix checkout -b prod-local v1.0.2     # deploy a TAG; your site edits live on the local branch prod-local
 cd Zabbix/zabbix-alerting
 python3 -m unittest discover -s tests -t .            # sanity check before editing config (offline, ~2 s)
 ```
