@@ -11,7 +11,7 @@ sudo dnf install -y git python3 python3-pyyaml        # or: apt install git pyth
 git clone https://github.com/jaber717/Zabbix.git Zabbix
 git -C Zabbix checkout -b prod-local v1.0.1     # deploy a TAG; your site edits live on the local branch prod-local
 cd Zabbix/zabbix-alerting
-python3 -m unittest discover -s tests -t .            # optional sanity check (offline, ~2 s)
+python3 -m unittest discover -s tests -t .            # sanity check before editing config (offline, ~2 s)
 ```
 
 ### Credentials (kept out of Git)
@@ -88,7 +88,7 @@ git merge v1.0.2                      # the new release tag; conflicts only if a
 cd zabbix-alerting && python3 -m unittest discover -s tests -t . && ./apply.sh --env production --dry-run
 ./apply.sh --env production --confirm production      # only if the dry-run is what you expect
 ```
-If the update is bad: `git reset --hard ORIG_HEAD` (before applying) or roll back as in section 6.
+If the merge reports a conflict in one of your config files: `git merge --abort`, then merge by hand. If the update is bad: `git reset --hard ORIG_HEAD` (before applying) or roll back as in section 6.
 
 ## 6. Rollback
 Rollback is "return the inventory to the previous Git state and apply again" (idempotent):
