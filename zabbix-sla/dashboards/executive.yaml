@@ -1,0 +1,11 @@
+# Executive dashboard: SLA reports per class (native "SLA report" widget) and the monitoring-quality problems that qualify them.
+# Logical fields are resolved to Zabbix ids at apply time (sla: <class>, service: <sla_id>).
+name: Executive service availability
+display_period: 60
+pages:
+  - name: Availability
+    widgets:
+      - {type: slareport, name: SITE-A internet access (inferred from link state), x: 0, y: 0, width: 12, height: 5, fields: {sla: connectivity-standard, service: svc.siteA.internet, show_periods: 3}}
+      - {type: slareport, name: SITE-B internet access (inferred), x: 12, y: 0, width: 12, height: 5, fields: {sla: connectivity-standard, service: svc.siteB.internet, show_periods: 3}}
+      - {type: slareport, name: Inter-site connectivity (inferred), x: 0, y: 5, width: 12, height: 5, fields: {sla: connectivity-standard, service: svc.inter-site, show_periods: 3}}
+      - {type: problems, name: Monitoring-data quality (stale probes), x: 12, y: 5, width: 12, height: 5, fields: {tags: [{tag: sla_probe_stale, operator: 4, value: ""}], show_tags: 1}}

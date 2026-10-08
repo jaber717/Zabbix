@@ -1,0 +1,11 @@
+# NOC dashboard: what is down right now, split by what it means.
+# The service tree itself is native: Monitoring -> Services -> "NETOPS-SLA: Service assurance".
+name: NOC service view
+display_period: 30
+pages:
+  - name: Now
+    widgets:
+      - {type: problems, name: Link down (availability), x: 0, y: 0, width: 12, height: 6, fields: {tags: [{tag: netops_alert, operator: 1, value: link_down}], show_tags: 3}}
+      - {type: problems, name: Probe failures (verified path), x: 12, y: 0, width: 12, height: 6, fields: {tags: [{tag: sla_probe, operator: 4, value: ""}], show_tags: 3}}
+      - {type: problems, name: Stale probe data (not downtime), x: 0, y: 6, width: 12, height: 5, fields: {tags: [{tag: sla_probe_stale, operator: 4, value: ""}], show_tags: 3}}
+      - {type: slareport, name: SITE-A internet, x: 12, y: 6, width: 12, height: 5, fields: {sla: connectivity-standard, service: svc.siteA.internet, show_periods: 1}}
