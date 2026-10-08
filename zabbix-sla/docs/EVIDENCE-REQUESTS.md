@@ -1,0 +1,22 @@
+# Unknowns and evidence required from Codex
+
+Each item says what is unknown, why it matters, the safest way to obtain it, and what the platform does until then. "RO" = read-only; "LAB-W" = writes to the LAB Zabbix only.
+
+| ID | Unknown | Why it matters | How to obtain | Until then |
+|---|---|---|---|---|
+| E-01 | Does Zabbix 7.0.30 combine several **service problem tags** with AND or OR? | Leaves need `link_id` AND `netops_alert=link_down`; OR would count utilization alerts as downtime | `python3 scripts/accept_tag_semantics.py --env lab --host <host> --item-key <key>` (LAB-W; creates and deletes one throw-away trigger and two services; needs a LAB token that may write services and triggers) | `tag_semantics: unknown` in the inventory makes `check` FAIL for any leaf with two tags; nothing is applied |
+| E-02 | Exact `service.get/create`, `sla.get/create/getsli` field names and enums on 7.0.30 (algorithm values, `status_rules`, `problem_tags.operator`, SLA `period`, `schedule`, `excluded_downtimes`, `getsli` layout) | The API model was written from the documentation | `python3 scripts/accept_api_shapes.py --env lab` (LAB-W) and attach its JSON | model mirrors documentation only |
+| E-03 | Is the account used for `check/plan` able to read `service.*`, `sla.*`, `item.*`, `trigger.*`, `event.*` (RO) and the apply account able to write them? | Least privilege; `service.get`, `sla.get`, `trigger.get`, `item.get`, `event.get`, `host.get` were readable through the Grafana read proxy; `template.*`, `maintenance.*` were not | role/permission listing | `check` reports what it cannot read as `VERIFICATION INCOMPLETE` |
+| E-04 | Where can probes run? Zabbix server, proxy at each site, or a probe host? Which source addresses/VRFs does each runner have? | Path-specific probing needs a vantage point and source selection | Network team / topology | probes `status: proposed` |
+| E-05 | Which **destinations** exist per path (≥ 2 per path, independent of each other) and what are their addresses/ports? For critical applications: name, VIP/address, protocol/port, owner, site, expected path(s), contractual SLO | Quorum probing and application services cannot be invented | Application owners | application services absent from the LAB inventory (no placeholders applied) |
+| E-06 | Routing proof method per path: pinned destination prefix, source policy routing, or traceroute evidence; current routing policy for National vs International addressing (is fallback of National via transit permitted/observed?) | A probe without routing proof is reachability only; national fallback must not be assumed | Routing configuration review (read-only `show` evidence) and, in LAB, a controlled failover test | national fallback `verified: false` |
+| E-07 | Is the LAB reachable from the Zabbix server network to the probe destinations (mgmt 192.168.1.0/24 vs 172.16.x.x)? | Probes may be unrunnable in the LAB | Connectivity test from the intended runner | probes remain definitions only |
+| E-08 | Provider contract SLA terms (STC, Mobily, SAIX): measured scope, exclusions, measurement point, credits | Needed for the *separate* provider-claim table | Contracts / account managers | table present, values `unknown` |
+| E-09 | Does NetBox sync (nbzsync) rewrite or strip host tags? Is adding a host tag acceptable? | Phase-3 device layer needs a host tag; Phase 1 does not | RO: sync code/config review; LAB-W test on one host | no host tags used |
+| E-10 | Real dashboard widget field type ids on this build (`slareport`, `problems`, service widgets) | Dashboard generator must not guess | Build the reference dashboard by hand, then run `scripts/accept_widget_fields.py` (reads it with `dashboard.get`) | dashboards: spec only, apply refuses |
+| E-11 | SLO values and approvals (per class), planned-maintenance policy owner, maximum monthly planned downtime | `apply` refuses unapproved SLOs in Production | Service owners / NOC management | placeholder SLOs flagged `approved: false` |
+| E-12 | Time-of-day schedule per SLA (24x7 or business hours) | Changes the SLI | NOC management | 24x7 |
+| E-13 | Which unmonitored far ends matter (SAIX-CORE, PALO-LAB): can they be added to Zabbix? | T1 cannot see their failure | Network team | listed as `signal_coverage: partial` |
+
+## Live acceptance matrix (executed by Codex, results go to `evidence/`)
+See [ACCEPTANCE-MATRIX.md](ACCEPTANCE-MATRIX.md).

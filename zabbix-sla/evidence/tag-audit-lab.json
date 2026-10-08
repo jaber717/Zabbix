@@ -1,0 +1,350 @@
+{
+  "api_version": "7.0.30",
+  "hosts": {
+    "count": 11,
+    "groups": {
+      "Discovered hosts": 11
+    },
+    "tags": {
+      "netbox_id": {
+        "count": 4,
+        "distinct_values": 4,
+        "samples": [
+          "76",
+          "77",
+          "70",
+          "71"
+        ]
+      },
+      "netbox_type": {
+        "count": 4,
+        "distinct_values": 1,
+        "samples": [
+          "device"
+        ]
+      },
+      "source": {
+        "count": 4,
+        "distinct_values": 1,
+        "samples": [
+          "netbox"
+        ]
+      }
+    }
+  },
+  "items": {
+    "sampled": 724,
+    "tags": {
+      "component": {
+        "count": 765,
+        "distinct_values": 15,
+        "samples": [
+          "network",
+          "system",
+          "raw",
+          "memory",
+          "health"
+        ]
+      },
+      "description": {
+        "count": 244,
+        "distinct_values": 20,
+        "samples": [
+          "OOB-MGMT_to_MGMT-SW",
+          "TO-SITE-B-Gi0/0",
+          "TO-STC-Gi0/1",
+          "TO-SAIX-CORE-Gi0/1",
+          "INTER-EDGE-TO-SITE-A-Gi0/2"
+        ]
+      },
+      "interface": {
+        "count": 406,
+        "distinct_values": 6,
+        "samples": [
+          "Gi0/1",
+          "Gi0/0",
+          "Gi0/5",
+          "Gi0/2",
+          "Gi0/3"
+        ]
+      }
+    }
+  },
+  "notes": [
+    "triggerprototype.get: not readable with this account (triggerprototype.get: API method is not allowed by the read proxy )"
+  ],
+  "recent_problem_events": {
+    "sampled": 87,
+    "tags": {
+      "__telegram_msg_id_<N>": {
+        "count": 3,
+        "distinct_values": 3,
+        "samples": [
+          "10",
+          "11",
+          "8"
+        ]
+      },
+      "class": {
+        "count": 74,
+        "distinct_values": 1,
+        "samples": [
+          "network"
+        ]
+      },
+      "component": {
+        "count": 156,
+        "distinct_values": 3,
+        "samples": [
+          "network",
+          "health",
+          "system"
+        ]
+      },
+      "description": {
+        "count": 2,
+        "distinct_values": 2,
+        "samples": [
+          "TO-SAIX-CORE-Gi0/1",
+          "TO-INTERNET-ENDPOINT"
+        ]
+      },
+      "direction": {
+        "count": 13,
+        "distinct_values": 3,
+        "samples": [
+          "RX",
+          "TX",
+          "-"
+        ]
+      },
+      "if_descr": {
+        "count": 13,
+        "distinct_values": 2,
+        "samples": [
+          "TO-SAIX-CORE-Gi0/0",
+          "TO-SAIX-CORE-Gi0/1"
+        ]
+      },
+      "if_name": {
+        "count": 13,
+        "distinct_values": 1,
+        "samples": [
+          "Gi0/0"
+        ]
+      },
+      "if_role": {
+        "count": 13,
+        "distinct_values": 1,
+        "samples": [
+          "P2P"
+        ]
+      },
+      "interface": {
+        "count": 15,
+        "distinct_values": 2,
+        "samples": [
+          "Gi0/0",
+          "Gi0/2"
+        ]
+      },
+      "link_id": {
+        "count": 13,
+        "distinct_values": 2,
+        "samples": [
+          "saix-core--saix-a",
+          "saix-core--saix-b"
+        ]
+      },
+      "netbox_id": {
+        "count": 6,
+        "distinct_values": 4,
+        "samples": [
+          "71",
+          "70",
+          "77",
+          "76"
+        ]
+      },
+      "netbox_type": {
+        "count": 6,
+        "distinct_values": 1,
+        "samples": [
+          "device"
+        ]
+      },
+      "netops_alert": {
+        "count": 13,
+        "distinct_values": 3,
+        "samples": [
+          "util_rx",
+          "util_tx",
+          "link_down"
+        ]
+      },
+      "scope": {
+        "count": 84,
+        "distinct_values": 2,
+        "samples": [
+          "availability",
+          "performance"
+        ]
+      },
+      "severity_label": {
+        "count": 13,
+        "distinct_values": 1,
+        "samples": [
+          "disaster"
+        ]
+      },
+      "site": {
+        "count": 13,
+        "distinct_values": 1,
+        "samples": [
+          "WAN-LAB"
+        ]
+      },
+      "source": {
+        "count": 6,
+        "distinct_values": 1,
+        "samples": [
+          "netbox"
+        ]
+      },
+      "target": {
+        "count": 152,
+        "distinct_values": 8,
+        "samples": [
+          "cisco",
+          "cisco-ios",
+          "cisco-nexus",
+          "n9000",
+          "big-ip"
+        ]
+      },
+      "threshold": {
+        "count": 13,
+        "distinct_values": 2,
+        "samples": [
+          "0.05",
+          "-"
+        ]
+      }
+    },
+    "without_tags": 0
+  },
+  "services": {
+    "count": 0,
+    "names": []
+  },
+  "slas": {
+    "count": 0,
+    "names": []
+  },
+  "trigger_prototypes": null,
+  "triggers": {
+    "count": 730,
+    "tags": {
+      "direction": {
+        "count": 504,
+        "distinct_values": 3,
+        "samples": [
+          "-",
+          "RX",
+          "TX"
+        ]
+      },
+      "if_descr": {
+        "count": 504,
+        "distinct_values": 4,
+        "samples": [
+          "{$NETOPS.DESCR:\"Gi0/0\"}",
+          "{$NETOPS.DESCR:\"Gi0/1\"}",
+          "{$NETOPS.DESCR:\"Gi0/2\"}",
+          "{$NETOPS.DESCR:\"Gi0/3\"}"
+        ]
+      },
+      "if_name": {
+        "count": 504,
+        "distinct_values": 4,
+        "samples": [
+          "Gi0/0",
+          "Gi0/1",
+          "Gi0/2",
+          "Gi0/3"
+        ]
+      },
+      "if_role": {
+        "count": 504,
+        "distinct_values": 4,
+        "samples": [
+          "{$NETOPS.ROLE:\"Gi0/0\"}",
+          "{$NETOPS.ROLE:\"Gi0/1\"}",
+          "{$NETOPS.ROLE:\"Gi0/2\"}",
+          "{$NETOPS.ROLE:\"Gi0/3\"}"
+        ]
+      },
+      "link_id": {
+        "count": 504,
+        "distinct_values": 4,
+        "samples": [
+          "{$NETOPS.LINKID:\"Gi0/0\"}",
+          "{$NETOPS.LINKID:\"Gi0/1\"}",
+          "{$NETOPS.LINKID:\"Gi0/2\"}",
+          "{$NETOPS.LINKID:\"Gi0/3\"}"
+        ]
+      },
+      "netops_alert": {
+        "count": 504,
+        "distinct_values": 7,
+        "samples": [
+          "flapping",
+          "link_down",
+          "util_rx",
+          "util_tx",
+          "errors"
+        ]
+      },
+      "scope": {
+        "count": 298,
+        "distinct_values": 5,
+        "samples": [
+          "performance",
+          "availability",
+          "notice",
+          "capacity",
+          "security"
+        ]
+      },
+      "severity_label": {
+        "count": 504,
+        "distinct_values": 4,
+        "samples": [
+          "warning",
+          "average",
+          "high",
+          "disaster"
+        ]
+      },
+      "site": {
+        "count": 504,
+        "distinct_values": 1,
+        "samples": [
+          "{$NETOPS.SITE}"
+        ]
+      },
+      "threshold": {
+        "count": 504,
+        "distinct_values": 5,
+        "samples": [
+          "-",
+          "{$NETOPS.UTIL.MAX:\"Gi0/0\"}",
+          "{$NETOPS.UTIL.MAX:\"Gi0/1\"}",
+          "{$NETOPS.UTIL.MAX:\"Gi0/2\"}",
+          "{$NETOPS.UTIL.MAX:\"Gi0/3\"}"
+        ]
+      }
+    },
+    "without_tags": 0
+  }
+}
