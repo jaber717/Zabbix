@@ -96,7 +96,8 @@ dr_suite_deps(){
     [[ -r $lock ]] || dr_fail 'wheels.lock is missing; refusing to install unpinned dependencies'
     n=$(dr_wheel_extract "$wheelhouse" "$lock" "$stage/vendor") || dr_fail 'dependency wheel verification/extraction failed (see message above)'
     find "$stage/vendor" -type d -exec chmod 0755 {} +; find "$stage/vendor" -type f -exec chmod 0644 {} +
-    PYTHONPATH="$stage/vendor" "$DR_PYTHON" -c 'import reportlab, openpyxl, PIL' 2>/dev/null || dr_fail 'SUITE_DEPENDENCIES=FAIL: wheels verified but reportlab/openpyxl/Pillow do not import on this Python (wrong ABI?)'
+    # the strongest import check there is: render all three formats from the bundled synthetic dataset with the staged copy
+    "$DR_PYTHON" "$stage/bin/zabbix_report_suite.py" --selftest >/dev/null 2>&1 || dr_fail 'SUITE_DEPENDENCIES=FAIL: wheels verified but the PDF/XLSX self-test fails on this Python (wrong ABI or missing library); nothing was installed'
     dr_info "SUITE_DEPENDENCIES=PASS wheels=$n"
   elif [[ -d $previous/vendor ]]; then
     cp -a "$previous/vendor" "$stage/vendor"; dr_info 'SUITE_DEPENDENCIES=PRESERVED'

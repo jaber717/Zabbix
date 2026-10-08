@@ -12,6 +12,8 @@ cp -a "$ROOT/scripts/daily-reporting-release.sha256" "$ROOT/scripts/fetch_report
 cp -a "$ROOT/scripts/lib/daily-reporting-common.sh" "$WORK/$NAME/scripts/lib/"
 cp -a "$ROOT/docs/DAILY-REPORTING.md" "$WORK/$NAME/docs/"
 cp -a "$ROOT/docs/reporting-suite" "$WORK/$NAME/docs/"
+# a bundle built on a Windows checkout must still be LF: systemd units and shell scripts break with CRLF
+find "$WORK/$NAME" -type f \( -name '*.sh' -o -name '*.py' -o -name '*.service' -o -name '*.timer' -o -name '*.json' -o -name '*.lock' -o -name '*.md' -o -name '*.txt' -o -name '*.sha256' -o -name VERSION \) -exec sed -i 's/\r$//' {} +
 (cd "$WORK/$NAME" && find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum) >"$WORK/$NAME/MANIFEST.sha256"
 find "$WORK/$NAME/scripts" "$WORK/$NAME/reporting/daily-reporting/bin" -type f \( -name '*.sh' -o -name '*.py' \) -exec chmod 0755 {} +
 tar --sort=name --mtime='UTC 2020-01-01' --owner=0 --group=0 --numeric-owner -C "$WORK" -czf "$DIST/$NAME.tar.gz" "$NAME"

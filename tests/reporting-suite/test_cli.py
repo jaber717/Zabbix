@@ -429,5 +429,26 @@ class Delivery(Base):
         self.assertEqual(d.decide_recipients(dict(base, mode="live"), True, False, {"ZRS_ALLOW_LIVE_DELIVERY": "yes"})[0], [])
 
 
+
+
+class DirectoryHandling(Base):
+    @unittest.skipUnless(os.name == "posix", "POSIX permission bits")
+    def test_existing_output_directory_is_never_chmodded_new_ones_are_secure(self):
+        existing = self.dir / "shared"
+        existing.mkdir()
+        os.chmod(str(existing), 0o777)
+        self.run_cli("--report", "daily", "--formats", "json", "--output-directory", str(existing), expect=0)
+        self.assertEqual(stat.S_IMODE(os.stat(str(existing)).st_mode), 0o777)               # untouched
+        run = existing / "daily-network-health" / "2026-10-07"
+        self.assertEqual(stat.S_IMODE(os.stat(str(run)).st_mode), 0o750)
+        self.assertEqual(stat.S_IMODE(os.stat(str(run.parent)).st_mode), 0o750)
+
+    def test_output_directory_can_be_created_from_scratch(self):
+        target = self.dir / "a" / "b"
+        target.parent.mkdir()
+        self.run_cli("--report", "daily", "--formats", "json", "--output-directory", str(target), expect=0)
+        self.assertTrue((target / "daily-network-health" / "2026-10-07" / "manifest.json").exists())
+
+
 if __name__ == "__main__":
     unittest.main()

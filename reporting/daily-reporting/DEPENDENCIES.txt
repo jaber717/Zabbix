@@ -1,9 +1,18 @@
-Runtime (custom HTML/JSON report):
+Runtime, RC2 HTML/JSON report (unchanged):
 - RHEL 9.x
 - Python 3.9 or newer (standard library only)
 - Network/TLS access to the Zabbix 7.0 API
 
-Optional native Zabbix Scheduled PDF reporting prerequisites (not bundled):
+Reporting suite (PDF / XLSX / JSON), added in 1.1.0-rc1:
+- Same Python (3.9 on RHEL 9) and the same API access
+- Third-party Python packages, bundled as hash-pinned wheels (wheels.lock) and installed OFFLINE into <application>/vendor by the installer:
+    reportlab 4.2.5, openpyxl 3.1.5, et_xmlfile 2.0.0, Pillow 10.4.0 (cp39, manylinux x86_64), charset-normalizer 3.4.0 (cp39, manylinux x86_64)
+- No pip, no network and no system package changes are needed on the isolated server. Fetch/verify the wheels on a connected workstation with
+  scripts/fetch_reporting_wheels.sh (build_offline_bundle.sh does this automatically).
+- The installer refuses a missing, modified or wrong-ABI wheel and installs nothing in that case. Without a wheelhouse the RC2 report keeps working
+  and PDF/XLSX reports are reported as unavailable.
+
+Optional native Zabbix Scheduled PDF reporting prerequisites (not bundled, independent of the suite):
 - zabbix-web-service matching the installed Zabbix 7.0 release
 - A current supported Google Chrome or Chromium executable
 - Zabbix server WebServiceURL ending in /report
@@ -11,4 +20,4 @@ Optional native Zabbix Scheduled PDF reporting prerequisites (not bundled):
 - Configured Zabbix frontend URL
 - Enabled email media type and recipient user media
 
-No Python packages, JavaScript packages, external fonts, or remote runtime assets are required.
+No JavaScript packages, external fonts or remote runtime assets are required (PDFs use the built-in Helvetica family).

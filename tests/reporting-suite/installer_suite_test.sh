@@ -88,6 +88,17 @@ test ! -e "$SD/zabbix-report-suite@.service"; test ! -e "$SD/zabbix-report-suite
 test -f "$ETC/suite.json"; test -f "$ETC/report.json"; test -f "$R/var/lib/zabbix-daily-reporting/suite/daily-network-health/2026-10-07/keep.pdf"
 pass ROLLBACK_PRESERVES_CONFIG_AND_REPORTS
 
+
+# ---- 7b. wrong-ABI protection: the REAL RHEL 9 (cp39) wheels must be refused on any other Python, installing nothing
+REAL="$ROOT/reporting/daily-reporting/wheelhouse"
+if [[ -d $REAL ]] && ls "$REAL"/*.whl >/dev/null 2>&1 && ! python3 -c 'import sys;raise SystemExit(0 if sys.version_info[:2]==(3,9) else 1)'; then
+  export DAILY_REPORTING_ROOT="$TMP/root-abi"
+  set +e; abi=$(DAILY_REPORTING_WHEELHOUSE="$REAL" DAILY_REPORTING_WHEEL_LOCK="$ROOT/reporting/daily-reporting/wheels.lock" bash "$ROOT/scripts/install_daily_reporting.sh" 2>&1); abi_rc=$?; set -e
+  test "$abi_rc" -ne 0; grep -Fq 'SUITE_DEPENDENCIES=FAIL' <<<"$abi"; test ! -d "$TMP/root-abi/opt/zabbix-daily-reporting"
+  export DAILY_REPORTING_ROOT="$TMP/root"; pass WRONG_ABI_WHEELS_REFUSED
+else
+  printf 'WRONG_ABI_WHEELS_REFUSED=SKIPPED (python is 3.9 or wheelhouse not fetched)\n'
+fi
 # ---- 8. upgrade from RC2 (needs RC2_TREE) and rollback back to it
 if [[ -n ${RC2_TREE:-} && -d $RC2_TREE/scripts ]]; then
   rm -rf "$R"; export DAILY_REPORTING_ROOT="$TMP/root2"; R="$TMP/root2"; APP="$R/opt/zabbix-daily-reporting"; ETC="$R/etc/zabbix-daily-reporting"; SD="$R/etc/systemd/system"

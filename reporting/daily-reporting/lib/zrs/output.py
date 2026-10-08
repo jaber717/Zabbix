@@ -48,13 +48,13 @@ def atomic_write(path, data, mode=0o640):
 
 
 def run_dir(base, slug, label, dir_mode=0o750):
-    d = Path(base) / slug / label
-    d.mkdir(parents=True, exist_ok=True)
-    for p in (d, d.parent, Path(base)):
-        try:
-            os.chmod(str(p), dir_mode)
-        except OSError:
-            pass
+    """Create <base>/<slug>/<label>. Only directories created here get the secure mode; an existing
+    directory (for example one passed with --output-directory) is never chmod-ed."""
+    base, d = Path(base), Path(base) / slug / label
+    for p in (base, base / slug, d):
+        if not p.exists():
+            p.mkdir(mode=dir_mode)
+            os.chmod(str(p), dir_mode)          # mkdir honours the umask; make the mode exact
     return d
 
 

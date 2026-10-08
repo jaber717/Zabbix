@@ -1,6 +1,10 @@
 # Zabbix Daily Reporting
 
-Version `1.0.0-rc2` provides two deliberately independent reporting paths:
+> **Reporting suite (PDF / XLSX / JSON).** Version `1.1.0-rc1` adds six professional reports on top of this RC2 design without changing it.
+> See [`docs/reporting-suite/`](reporting-suite/ARCHITECTURE.md): architecture, KPI definitions, test plan and the Codex hand-off. Everything below
+> still describes the unchanged RC2 HTML/JSON report and the optional native Zabbix PDF path.
+
+The RC2 design (`1.0.0-rc2`, now shipped inside release `1.1.0-rc1`) provides two deliberately independent reporting paths:
 
 1. A configuration-driven Python report that reads Zabbix 7.0 API data and writes bounded previous-day JSON and HTML summaries.
 2. Native Zabbix Scheduled PDF preparation, prerequisite detection, and an explicit API apply step.
@@ -32,15 +36,15 @@ On the connected workstation:
 git switch codex/daily-reporting
 git pull --ff-only
 ./scripts/build_offline_bundle.sh
-(cd dist && sha256sum -c zabbix-daily-reporting-1.0.0-rc2.tar.gz.sha256)
+(cd dist && sha256sum -c zabbix-daily-reporting-1.1.0-rc1.tar.gz.sha256)
 ```
 
 Transfer the archive and its `.sha256` file through the approved offline process. On the isolated RHEL 9 server:
 
 ```bash
-sha256sum -c zabbix-daily-reporting-1.0.0-rc2.tar.gz.sha256
-tar -xzf zabbix-daily-reporting-1.0.0-rc2.tar.gz
-cd zabbix-daily-reporting-1.0.0-rc2
+sha256sum -c zabbix-daily-reporting-1.1.0-rc1.tar.gz.sha256
+tar -xzf zabbix-daily-reporting-1.1.0-rc1.tar.gz
+cd zabbix-daily-reporting-1.1.0-rc1
 sudo ./scripts/install_daily_reporting.sh --preflight
 sudo ./scripts/install_daily_reporting.sh
 sudo ./scripts/verify_daily_reporting.sh
