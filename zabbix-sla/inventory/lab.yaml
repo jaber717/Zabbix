@@ -1,0 +1,182 @@
+# LAB service-assurance inventory (WAN-LAB). Source of topology: handover/network-device-inventory.md and handover/p2p-interfaces.yaml
+# (11 routed P2P links; the link_id values are the NETOPS event tags that already exist in Zabbix).
+#
+# STATUS: LAB proposal. tag_semantics stays `unknown` until scripts/accept_tag_semantics.py has proved AND semantics live (evidence E-01);
+# until then `check` refuses to apply. Probes are `proposed`: runner, destinations and routing proof are unknown (E-04..E-07).
+schema: zabbix-sla-inventory-v1
+environment: lab
+tag_semantics: unknown
+
+settings:
+  planned_downtime_cap_hours: 8
+
+# ----------------------------------------------------------------------------- T1 components (links)
+components:
+  lnk.int-core--stc:       {kind: link, link_id: int-core--stc,       provider: STC,    description: INT-CORE <-> STC}
+  lnk.int-core--mobily:    {kind: link, link_id: int-core--mobily,    provider: MOBILY, description: INT-CORE <-> MOBILY}
+  lnk.stc--site-b:         {kind: link, link_id: stc--site-b,         provider: STC,    site: SITE-B, description: STC <-> SITE-B}
+  lnk.mobily--site-a:      {kind: link, link_id: mobily--site-a,      provider: MOBILY, site: SITE-A, description: MOBILY <-> SITE-A}
+  lnk.saix-core--saix-a:   {kind: link, link_id: saix-core--saix-a,   provider: SAIX,   signal_coverage: partial, description: SAIX-CORE <-> SAIX-A (SAIX-CORE not monitored)}
+  lnk.saix-core--saix-b:   {kind: link, link_id: saix-core--saix-b,   provider: SAIX,   signal_coverage: partial, description: SAIX-CORE <-> SAIX-B (SAIX-CORE not monitored)}
+  lnk.saix-a--site-a:      {kind: link, link_id: saix-a--site-a,      provider: SAIX,   site: SITE-A, description: SAIX-A <-> SITE-A}
+  lnk.saix-b--site-b:      {kind: link, link_id: saix-b--site-b,      provider: SAIX,   site: SITE-B, description: SAIX-B <-> SITE-B}
+  lnk.site-a--site-b:      {kind: link, link_id: site-a--site-b,      site: INTER-SITE, description: SITE-A <-> SITE-B inter-edge}
+  # security edge links: role of PALO-LAB in the service model is not confirmed (E-13), so they are NOT used by any path yet
+  lnk.site-a--palo-transit-a: {kind: link, link_id: site-a--palo-transit-a, signal_coverage: partial, description: SITE-A <-> PALO-LAB (PALO-LAB not monitored)}
+  lnk.site-b--palo-transit-b: {kind: link, link_id: site-b--palo-transit-b, signal_coverage: partial, description: SITE-B <-> PALO-LAB (PALO-LAB not monitored)}
+
+# ----------------------------------------------------------------------------- T2 paths (series: any component down = path down)
+paths:
+  path.siteA.intl.direct:
+    title: SITE-A international via MOBILY
+    site: SITE-A
+    provider: MOBILY
+    components: [lnk.mobily--site-a, lnk.int-core--mobily]
+  path.siteA.intl.via-siteB:
+    title: SITE-A international via inter-edge and STC
+    site: SITE-A
+    provider: STC
+    components: [lnk.site-a--site-b, lnk.stc--site-b, lnk.int-core--stc]
+  path.siteB.intl.direct:
+    title: SITE-B international via STC
+    site: SITE-B
+    provider: STC
+    components: [lnk.stc--site-b, lnk.int-core--stc]
+  path.siteB.intl.via-siteA:
+    title: SITE-B international via inter-edge and MOBILY
+    site: SITE-B
+    provider: MOBILY
+    components: [lnk.site-a--site-b, lnk.mobily--site-a, lnk.int-core--mobily]
+  path.siteA.nat.direct:
+    title: SITE-A national via SAIX-A
+    site: SITE-A
+    provider: SAIX
+    components: [lnk.saix-a--site-a, lnk.saix-core--saix-a]
+  path.siteA.nat.via-siteB:
+    title: SITE-A national via inter-edge and SAIX-B
+    site: SITE-A
+    provider: SAIX
+    components: [lnk.site-a--site-b, lnk.saix-b--site-b, lnk.saix-core--saix-b]
+  path.siteB.nat.direct:
+    title: SITE-B national via SAIX-B
+    site: SITE-B
+    provider: SAIX
+    components: [lnk.saix-b--site-b, lnk.saix-core--saix-b]
+  path.siteB.nat.via-siteA:
+    title: SITE-B national via inter-edge and SAIX-A
+    site: SITE-B
+    provider: SAIX
+    components: [lnk.site-a--site-b, lnk.saix-a--site-a, lnk.saix-core--saix-a]
+  path.inter-site.direct:
+    title: Inter-site over the inter-edge link
+    site: INTER-SITE
+    components: [lnk.site-a--site-b]
+  path.inter-site.via-transit:
+    title: Inter-site through the international transit (MOBILY - INT-CORE - STC)
+    site: INTER-SITE
+    components: [lnk.mobily--site-a, lnk.int-core--mobily, lnk.int-core--stc, lnk.stc--site-b]
+
+# ----------------------------------------------------------------------------- connectivity (parallel = down only when ALL members are down)
+connectivity:
+  conn.siteA.international:
+    redundancy: parallel
+    site: SITE-A
+    title: SITE-A international connectivity
+    members: [path.siteA.intl.direct, path.siteA.intl.via-siteB]
+  conn.siteB.international:
+    redundancy: parallel
+    site: SITE-B
+    title: SITE-B international connectivity
+    members: [path.siteB.intl.direct, path.siteB.intl.via-siteA]
+  conn.siteA.national:
+    redundancy: parallel
+    site: SITE-A
+    title: SITE-A national connectivity
+    description: National fallback through the international transit is NOT modelled (routing policy unverified, E-06)
+    members: [path.siteA.nat.direct, path.siteA.nat.via-siteB]
+  conn.siteB.national:
+    redundancy: parallel
+    site: SITE-B
+    title: SITE-B national connectivity
+    description: National fallback through the international transit is NOT modelled (routing policy unverified, E-06)
+    members: [path.siteB.nat.direct, path.siteB.nat.via-siteA]
+  conn.inter-site:
+    redundancy: parallel
+    site: INTER-SITE
+    title: Inter-site connectivity
+    description: The transit alternative is excluded until a failover test proves it (E-06)
+    members:
+      - path.inter-site.direct
+      - {ref: path.inter-site.via-transit, fallback_via_transit: true, verified: false}
+
+# ----------------------------------------------------------------------------- business services
+business:
+  svc.siteA.internet:   {tier: T2, site: SITE-A, requires: [conn.siteA.international], sla_class: connectivity-standard, title: SITE-A internet access (inferred)}
+  svc.siteB.internet:   {tier: T2, site: SITE-B, requires: [conn.siteB.international], sla_class: connectivity-standard, title: SITE-B internet access (inferred)}
+  svc.siteA.national:   {tier: T2, site: SITE-A, requires: [conn.siteA.national],      sla_class: connectivity-standard, title: SITE-A national access (inferred)}
+  svc.siteB.national:   {tier: T2, site: SITE-B, requires: [conn.siteB.national],      sla_class: connectivity-standard, title: SITE-B national access (inferred)}
+  svc.inter-site:       {tier: T2, site: INTER-SITE, requires: [conn.inter-site],      sla_class: connectivity-standard, title: Inter-site connectivity (inferred)}
+  svc.siteA.internet.verified:
+    tier: T3
+    site: SITE-A
+    requires: [conn.siteA.international, probe.siteA.intl]
+    sla_class: connectivity-verified
+    title: SITE-A internet access (verified end to end)
+  svc.siteB.internet.verified:
+    tier: T3
+    site: SITE-B
+    requires: [conn.siteB.international, probe.siteB.intl]
+    sla_class: connectivity-verified
+    title: SITE-B internet access (verified end to end)
+
+# ----------------------------------------------------------------------------- T3 Active Assurance probes (PROPOSED: not applied)
+probes:
+  probe.siteA.intl:
+    status: proposed
+    title: SITE-A international reachability
+    runner: TBD-RUNNER-SITE-A            # E-04: which Zabbix host/proxy runs this
+    verification: none                    # E-06: replace with pinned_destination / source_pbr / traceroute once a routing proof exists
+    quorum: 2
+    interval: 30s
+    stale_after: 5m
+    destinations:
+      - {name: dest-1, address: tbd-destination-1.invalid, check: icmp, note: "E-05: real, independent destinations required"}
+      - {name: dest-2, address: tbd-destination-2.invalid, check: icmp}
+      - {name: dest-3, address: tbd-destination-3.invalid, check: icmp}
+  probe.siteB.intl:
+    status: proposed
+    title: SITE-B international reachability
+    runner: TBD-RUNNER-SITE-B
+    verification: none
+    quorum: 2
+    interval: 30s
+    stale_after: 5m
+    destinations:
+      - {name: dest-1, address: tbd-destination-1.invalid, check: icmp}
+      - {name: dest-2, address: tbd-destination-2.invalid, check: icmp}
+      - {name: dest-3, address: tbd-destination-3.invalid, check: icmp}
+
+# ----------------------------------------------------------------------------- SLA classes (SLOs are PLACEHOLDERS: approved: false)
+slas:
+  connectivity-standard:
+    title: Connectivity (inferred from link state)
+    slo: 99.9
+    approved: false
+    source: placeholder - E-11 (no contract or internal target supplied)
+    effective_date: 2026-10-01
+    timezone: Asia/Riyadh
+  connectivity-verified:
+    title: Connectivity (verified end to end)
+    slo: 99.9
+    approved: false
+    source: placeholder - E-11
+    effective_date: 2026-10-01
+    timezone: Asia/Riyadh
+
+planned_downtime: []
+
+# ----------------------------------------------------------------------------- provider SLA claims (kept SEPARATE from our measurements; E-08)
+provider_sla:
+  STC:    {scope: unknown, measured_at: unknown, source: E-08}
+  MOBILY: {scope: unknown, measured_at: unknown, source: E-08}
+  SAIX:   {scope: unknown, measured_at: unknown, source: E-08}

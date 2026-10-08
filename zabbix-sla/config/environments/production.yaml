@@ -1,0 +1,12 @@
+# PRODUCTION environment. Nothing here is used until the production go-live is approved (see docs/PRODUCTION-RUNBOOK.md).
+# The URL regex is a deliberate second lock; the primary lock is the server-side identity macro {$NETOPS.ENVIRONMENT}=production.
+environment: production
+production: true
+inventory: inventory/production.yaml
+zabbix:
+  url_env: ZABBIX_SLA_URL_PRODUCTION
+  token_env: ZABBIX_SLA_TOKEN_PRODUCTION
+  verify_tls: true
+  api_version: "7.0"
+  url_regex: '^https://CHANGE-ME-production-zabbix-host(/|$)'   # set at go-live; the placeholder matches nothing real
+  forbid_url_regex: '(lab|test|dev)'

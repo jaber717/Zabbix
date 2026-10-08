@@ -1,0 +1,5 @@
+schema: zabbix-sla-inventory-v1
+environment: production
+# PRODUCTION inventory: intentionally EMPTY. Nothing from the LAB inventory applies here; production has its own topology.
+# Do not copy inventory/lab.yaml. See docs/PRODUCTION-RUNBOOK.md.
+tag_semantics: unknown

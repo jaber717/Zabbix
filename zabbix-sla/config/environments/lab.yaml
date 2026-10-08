@@ -1,0 +1,9 @@
+# LAB environment for the SLA platform. URL and token come from the environment variables named below (see .env.example).
+# Use a dedicated API token (service/sla/item/trigger/host read + service/sla write); never reuse the alerting token.
+environment: lab
+inventory: inventory/lab.yaml
+zabbix:
+  url_env: ZABBIX_SLA_URL_LAB
+  token_env: ZABBIX_SLA_TOKEN_LAB
+  verify_tls: true
+  api_version: "7.0"
