@@ -12,5 +12,5 @@ while read -r sum name url; do
   fi
   echo "$sum  $OUT/$name" | sha256sum -c --status || { echo "HASH MISMATCH: $name" >&2; rm -f "$OUT/$name"; exit 1; }
   echo "OK $name"
-done <"$LOCK"
+done < <(tr -d "" <"$LOCK")
 echo 'RESULT=PASS'
