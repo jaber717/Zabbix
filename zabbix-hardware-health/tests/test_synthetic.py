@@ -148,12 +148,20 @@ class TestPreflight(Base):
 
     def test_an_enabled_hardware_action_refuses(self):
         self.fz.add_action(A.ACTION_NAME, A.hardware_filter(), status="0")
-        self.assertIn("hardware action is DISABLED outside the approved window", self.failing(self.pre()))
+        self.assertIn("hardware action is DISABLED before the test", self.failing(self.pre()))
 
-    def test_a_disabled_or_absent_hardware_action_is_fine(self):
+    def test_an_absent_hardware_action_is_fine(self):
         self.assertTrue(self.pre()["ok"])
+
+    def test_a_preexisting_disabled_action_is_not_silently_adopted(self):
         self.fz.add_action(A.ACTION_NAME, A.hardware_filter(), status="1")
-        self.assertTrue(self.pre()["ok"])
+        r = self.pre()
+        self.assertFalse(r["ok"])
+        self.assertEqual(self.failing(r), ["a PRE-EXISTING hardware action is explicitly acknowledged (it is never adopted, modified or deleted by the test)"])
+        scope = SY.load_scope(write_scope(self.p.base, existing_hardware_action={"acknowledged": True, "note": "left over from HW-N1"}))
+        r = SY.preflight(self.api, scope, NOTIF, now=NOW)
+        self.assertTrue(r["ok"], r["checks"])
+        self.assertTrue(r["pre_existing_action"])
 
     def test_missing_interface_action_refuses(self):
         self.fz.actions.clear()
@@ -168,11 +176,17 @@ class TestPreflight(Base):
         self.fz.users[:] = []
         self.assertFalse(self.pre()["ok"])
 
-    def test_outside_the_window_is_informational_not_blocking(self):
+    def test_outside_the_window_execution_is_refused_but_review_is_allowed(self):
         later = NOW + datetime.timedelta(days=5)
-        r = SY.preflight(self.api, self.scope, NOTIF, now=later)
-        self.assertTrue(r["ok"])
-        self.assertFalse(r["in_window"])
+        r = SY.preflight(self.api, self.scope, NOTIF, now=later)               # execute mode (default)
+        self.assertFalse(r["ok"])
+        self.assertFalse(r["execution_allowed"])
+        self.assertEqual(self.failing(r), ["INSIDE THE APPROVED WINDOW (mandatory to execute)"])
+        rv = SY.preflight(self.api, self.scope, NOTIF, now=later, mode="review")
+        self.assertTrue(rv["ok"])
+        self.assertFalse(rv["execution_allowed"])                                # ready is not permission
+        inside = SY.preflight(self.api, self.scope, NOTIF, now=NOW)
+        self.assertTrue(inside["execution_allowed"])
 
     def test_cli_preflight_exit_codes_and_no_writes(self):
         p = self.p
@@ -204,7 +218,7 @@ class TestManifest(Base):
         self.assertEqual(len(a["interface_actions"]), 1)
         self.assertEqual(a["interface_actions"][0]["name"], "NETOPS-IaC Interface Alerts")
         self.assertEqual(a["manifest_sha256"], b["manifest_sha256"])
-        self.assertEqual(a["hardware_action"], {"exists": False, "actionid": None, "status": None, "signature": None})
+        self.assertEqual(a["hardware_action"], {"exists": False, "actionid": None, "status": None, "signature": None, "definition_sha256": None})
         self.assertEqual(a["recipients"], ["u1", "u2"])
         self.assertEqual(SY.diff(a, b), [])
 
@@ -293,6 +307,7 @@ class TestLedgerAndCleanup(Base):
     def test_already_deleted_objects_are_skipped_and_action_not_redisabled(self):
         led, ids = self.make_fixtures()
         led.data["disabled_at"] = "t2"
+        self.fz.actions[ids["aid"]]["status"] = "1"                              # really disabled on Zabbix
         self.fz.triggers[ids["hid"]] = []
         plan = SY.cleanup_plan(self.api, led)
         methods = [s["method"] for s in plan]
@@ -371,15 +386,18 @@ class TestVerifyCases(TestLedgerAndCleanup):
 
     def test_cases_b_c_require_zero_hardware_notifications(self):
         led, ids = self.make_fixtures()
-        self.fz.events = [{"eventid": "b1", "r_eventid": "b2", "objectid": ids["tb"], "value": "1", "clock": "1"}]
+        self.fz.events = [{"eventid": "e1", "r_eventid": "e2", "objectid": ids["ta"], "value": "1", "clock": "1"},
+                          {"eventid": "b1", "r_eventid": "b2", "objectid": ids["tb"], "value": "1", "clock": "1"}]
+        self.fz.alerts = [{"alertid": "ctl", "actionid": ids["aid"], "eventid": "e1", "p_eventid": "0", "userid": "u1", "status": "1", "retries": "0", "error": "",
+                           "subject": "s", "message": "m", "alerttype": "0"}]                     # positive control: the action was live for Case A
         self.assertTrue(SY.verify_case(self.api, "B", led, ["u1"])["ok"])
-        self.fz.alerts = [{"alertid": "z", "actionid": ids["aid"], "eventid": "b1", "p_eventid": "0", "userid": "u1", "status": "1", "retries": "0", "error": "",
-                           "subject": "s", "message": "m", "alerttype": "0"}]
+        self.fz.alerts.append({"alertid": "z", "actionid": ids["aid"], "eventid": "b1", "p_eventid": "0", "userid": "u1", "status": "1", "retries": "0", "error": "",
+                           "subject": "s", "message": "m", "alerttype": "0"})
         r = SY.verify_case(self.api, "B", led, ["u1"])
         self.assertFalse(r["ok"])
         self.assertTrue(any("ZERO hardware-action notifications" in f for f in r["findings"]))
         self.assertTrue(any("exclusion violated" in f for f in r["findings"]))
-        self.fz.alerts = []
+        self.fz.alerts = self.fz.alerts[:1]
         self.assertTrue(SY.verify_case(self.api, "C", led, ["u1"])["ok"])
 
     def test_the_hardware_action_delivering_for_an_unrelated_event_is_caught(self):

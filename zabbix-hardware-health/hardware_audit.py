@@ -48,7 +48,7 @@ def _parser():
     m.add_argument("--out")
     m.add_argument("--json")
     syn = sub.add_parser("synthetic", help="READ-ONLY support for the approved LAB synthetic notification test")
-    syn.add_argument("what", choices=["preflight", "snapshot", "diff", "verify", "cleanup-plan", "ledger-record", "ledger-mark"])
+    syn.add_argument("what", choices=["review", "preflight", "snapshot", "diff", "verify", "cleanup-plan", "ledger-record", "ledger-mark"])
     syn.add_argument("--scope")
     syn.add_argument("--notifications")
     syn.add_argument("--out")
@@ -82,14 +82,20 @@ def _write_json(path, obj):
             fh.write("\n")
 
 
-def _synthetic(args, environ, transport, base, out, catalogue, now):
+def _synthetic(args, environ, transport, base, out, catalogue, clock):
     from hwh import synthetic as SY
     if args.env != "lab":
         raise AuditError("the synthetic notification test is LAB only (refused before contacting any server)")
     cfg = policy.load_config(os.path.join(base, "config", "hardware.lab.yaml"), "lab", catalogue)
+    now = clock or datetime.datetime.now(datetime.timezone.utc)
+    scope_path = args.scope or os.path.join(base, "config", "synthetic-test.yaml")
     if args.what in ("ledger-record", "ledger-mark"):
         if not args.ledger:
             raise AuditError("--ledger is required")
+        # starting or advancing the test (recording a created fixture, marking the action ENABLED) is gated by the approved window;
+        # recording that the action was DISABLED is never gated, so a test can always be wound down.
+        if args.what == "ledger-record" or args.event == "enabled":
+            SY.require_window(SY.load_scope(scope_path), now)
         led = SY.Ledger.load(args.ledger) if os.path.isfile(args.ledger) else SY.Ledger(args.ledger)
         if args.what == "ledger-record":
             if not args.kind or not args.id or not str(args.id).isdigit():
@@ -101,7 +107,7 @@ def _synthetic(args, environ, transport, base, out, catalogue, now):
         else:
             if not args.event:
                 raise AuditError("ledger-mark needs --event enabled|disabled")
-            led.data[args.event + "_at"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            led.data[args.event + "_at"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
             led.save()
         out("ledger updated: " + json.dumps(led.ids(), sort_keys=True))
         return 0
@@ -113,17 +119,24 @@ def _synthetic(args, environ, transport, base, out, catalogue, now):
             out("  DIFFERENCE: " + x)
         out("  Zabbix is back to the before-state (event/alert history excepted)" if not d else "  NOT restored")
         return 0 if not d else 1
-    scope = SY.load_scope(args.scope or os.path.join(base, "config", "synthetic-test.yaml"))
+    scope = SY.load_scope(scope_path)
     spec = A.load_spec(args.notifications or os.path.join(base, "config", "notifications.lab.yaml"))
-    api, version = _open("lab", cfg, environ, transport, write=False)
     if args.what == "preflight":
-        r = SY.preflight(api, scope, spec, now=None)
+        SY.require_window(scope, now)                       # the execution gate is checked BEFORE any server is contacted
+    api, version = _open("lab", cfg, environ, transport, write=False)
+    if args.what in ("preflight", "review"):
+        mode = "execute" if args.what == "preflight" else "review"
+        r = SY.preflight(api, scope, spec, now=now, mode=mode)
         for c in r["checks"]:
             out("  %s  %s%s" % ("ok  " if c["ok"] else "FAIL", c["check"], ("  - " + c["detail"]) if c["detail"] else ""))
-        out("PREFLIGHT %s" % ("PASS: execution may be requested" if r["ok"] else "REFUSED: do not execute"))
+        if mode == "review":
+            out("REVIEW: %s. This is a read-only readiness review; it never authorises execution (%s)." % (
+                "READY" if r["ok"] else "NOT READY", "inside the window" if r["in_window"] else "outside the approved window"))
+            return 0 if r["ok"] else 1
+        out("PREFLIGHT %s" % ("PASS: execution may start" if r["ok"] else "REFUSED: do not execute"))
         return 0 if r["ok"] else 1
     if args.what == "snapshot":
-        m = SY.snapshot(api, scope)
+        m = SY.snapshot(api, scope, now=now)
         text = json.dumps(m, indent=2, sort_keys=True)
         if args.out:
             with open(args.out, "w", encoding="utf-8") as fh:
@@ -146,10 +159,12 @@ def _synthetic(args, environ, transport, base, out, catalogue, now):
     for x in r["findings"]:
         out("  FINDING: " + x)
     out("case %s: %s" % (args.case, "NOTIFICATION PIPELINE CHECK PASS (synthetic)" if r["ok"] else "FAIL"))
+    if not r["ok"]:
+        out("ON ANY FAILURE: DISABLE THE HARDWARE ACTION NOW (run 'synthetic cleanup-plan'; its first step disables the recorded action if it is enabled)")
     return 0 if r["ok"] else 1
 
 
-def main(argv=None, environ=None, transport=None, base=None, now=None, out=print):
+def main(argv=None, environ=None, transport=None, base=None, now=None, out=print, clock=None):
     args = _parser().parse_args(argv)
     environ = os.environ if environ is None else environ
     base = base or HERE
@@ -192,7 +207,7 @@ def main(argv=None, environ=None, transport=None, base=None, now=None, out=print
             out(json.dumps(res, indent=2, sort_keys=True))
             return 0
         if args.cmd == "synthetic":
-            return _synthetic(args, environ, transport, base, out, catalogue, now)
+            return _synthetic(args, environ, transport, base, out, catalogue, clock)
         if args.cmd == "action":
             if args.env != "lab":
                 raise AuditError("hardware action management is LAB only in this release (refused before contacting any server)")

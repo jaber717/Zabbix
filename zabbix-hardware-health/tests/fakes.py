@@ -95,6 +95,8 @@ class FakeZabbix(object):
             for h in self.hosts.values():
                 if flt and h["host"] not in flt:
                     continue
+                if p.get("hostids") and h["hostid"] not in p["hostids"]:
+                    continue
                 r = {"hostid": h["hostid"], "host": h["host"], "status": h["status"]}
                 if "selectParentTemplates" in p:
                     r["parentTemplates"] = [{"name": t} for t in h["templates"]]
@@ -107,7 +109,7 @@ class FakeZabbix(object):
         if method == "item.get":
             rows = []
             for hid in (p.get("hostids") or list(self.items)):
-                if not p.get("hostids") and not (p.get("filter") or {}).get("key_"):
+                if not p.get("hostids") and not (p.get("filter") or {}).get("key_") and not p.get("itemids"):
                     continue
                 flt = (p.get("filter") or {}).get("key_")
                 for it in self.items.get(hid, []):
@@ -120,12 +122,22 @@ class FakeZabbix(object):
                         r.pop("preprocessing", None)
                     if "selectTags" not in p:
                         r.pop("tags", None)
-                    rows.append(copy.deepcopy(r))
+                    if p.get("itemids") and it["itemid"] not in p["itemids"]:
+                        continue
+                    r = copy.deepcopy(r)
+                    if "selectHosts" in p:
+                        r["hosts"] = [{"hostid": hid}]
+                    rows.append(r)
             return rows
         if method == "trigger.get":
             rows = []
             for hid in (p.get("hostids") or list(self.triggers)):
-                rows += copy.deepcopy(self.triggers.get(hid, []))
+                for t in copy.deepcopy(self.triggers.get(hid, [])):
+                    if p.get("triggerids") and t["triggerid"] not in p["triggerids"]:
+                        continue
+                    if "selectHosts" in p:
+                        t["hosts"] = [{"hostid": hid}]
+                    rows.append(t)
             sr = (p.get("search") or {}).get("description")
             if sr:
                 rows = [t for t in rows if t["description"].startswith(sr)]
@@ -135,7 +147,8 @@ class FakeZabbix(object):
             return rows
         if method == "hostgroup.get":
             names = (p.get("filter") or {}).get("name")
-            return [{"groupid": g, "name": n} for g, n in self.hostgroups.items() if not names or n in names]
+            return [{"groupid": g, "name": n} for g, n in self.hostgroups.items()
+                    if (not names or n in names) and (not p.get("groupids") or g in p["groupids"])]
         if method == "user.get":
             return [dict(userid=u["userid"], medias=copy.deepcopy(u["medias"])) for u in self.users if set(u["usrgrpids"]) & set(p.get("usrgrpids", []))]
         if method == "event.get":
@@ -153,7 +166,7 @@ class FakeZabbix(object):
             names = (p.get("filter") or {}).get("name")
             return [g for g in self.usergroups if not names or g["name"] in names]
         if method == "action.get":
-            rows = list(self.actions.values())
+            rows = [a for a in self.actions.values() if not p.get("actionids") or a["actionid"] in p["actionids"]]
             nm = (p.get("filter") or {}).get("name")
             if nm:
                 rows = [a for a in rows if a["name"] in nm]

@@ -88,12 +88,13 @@ class Project(object):
         return p
 
     def run(self, *argv, **kw):
+        clock = kw.get("clock")
         out = []
         err = io.StringIO()
         old = sys.stderr
         sys.stderr = err
         try:
-            rc = cli.main(list(argv), environ=kw.get("environ", self.environ), transport=self.fake, base=self.base, now=NOW, out=out.append)
+            rc = cli.main(list(argv), environ=kw.get("environ", self.environ), transport=self.fake, base=self.base, now=NOW, out=out.append, clock=clock)
         finally:
             sys.stderr = old
         return rc, "\n".join(out), err.getvalue()
