@@ -88,6 +88,41 @@ def add_evidence(fz, ledger, ids, case, t_before, t_after, sent=None, event_cloc
     ledger.save()
 
 
+def seed_audit(fz, aid, created, enable=None, disable=None, extra=None):
+    """Server-side audit rows for the hardware action, as auditlog.get would return them (resourcetype 5). Keeps the fake live status consistent."""
+    import json as _json
+    rows = fz.auditlog
+    n = len(rows) + 1
+    rows.append({"auditid": "au%d" % n, "clock": str(created), "action": "0", "resourcetype": "5", "resourceid": str(aid), "resourcename": "NETOPS-HW Hardware Health",
+                 "details": _json.dumps({"action.status": ["add", "1"], "action.name": ["add", "NETOPS-HW Hardware Health"]})})
+    status = "1"
+    if enable is not None:
+        rows.append({"auditid": "au%d" % (n + 1), "clock": str(enable), "action": "1", "resourcetype": "5", "resourceid": str(aid), "resourcename": "NETOPS-HW Hardware Health",
+                     "details": _json.dumps({"action.status": ["update", "0", "1"]})})
+        status = "0"
+    if disable is not None:
+        rows.append({"auditid": "au%d" % (n + 2), "clock": str(disable), "action": "1", "resourcetype": "5", "resourceid": str(aid), "resourcename": "NETOPS-HW Hardware Health",
+                     "details": _json.dumps({"action.status": ["update", "1", "0"]})})
+        status = "1"
+    for r in extra or []:
+        rows.append(r)
+    fz.actions[aid]["status"] = status
+
+
+def seed_history(fz, itemid, samples):
+    for clock, value in samples:
+        fz.history.append({"itemid": str(itemid), "clock": str(clock), "ns": "0", "value": str(value)})
+
+
+def deletion_ids(plan):
+    """The ids a cleanup plan would DELETE, as a parsed set - never a substring search of serialised output (which may contain hashes)."""
+    out = set()
+    for step in plan:
+        if str(step["method"]).endswith(".delete"):
+            out.update(str(i) for i in step["params"])
+    return out
+
+
 class Project(object):
     """A temp project directory with the shipped catalogue/registry and an editable policy, driven through the real CLI."""
 

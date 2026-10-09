@@ -5,7 +5,8 @@ import urllib.error
 import urllib.request
 
 READ_METHODS = frozenset(["apiinfo.version", "host.get", "item.get", "trigger.get", "usermacro.get",
-                          "action.get", "usergroup.get", "mediatype.get", "hostgroup.get", "user.get", "alert.get", "event.get"])
+                          "action.get", "usergroup.get", "mediatype.get", "hostgroup.get", "user.get", "alert.get", "event.get",
+                          "auditlog.get", "history.get", "settings.get"])
 ACTION_WRITE_METHODS = frozenset(["action.create", "action.update", "action.delete"])
 
 

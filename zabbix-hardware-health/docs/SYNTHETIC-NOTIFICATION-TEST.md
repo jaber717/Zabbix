@@ -3,6 +3,16 @@
 **NOT EXECUTED. Needs explicit written authorization from the operator before any Zabbix write. LAB only. No Production, no Interface Alerting change.**
 Nothing in this repository writes to Zabbix for this test. The tooling added for it (`hardware_audit.py --env lab synthetic ...`) is **read-only against Zabbix** (review, preflight, snapshot, diff, cleanup-plan, verify) plus two commands that write only a local ledger file (`ledger-record`, `ledger-mark`). The fixtures are created and deleted by the independent tester with an approved LAB token.
 
+## 0. The acceptance rule (applies to every verdict in this document)
+
+**PASS only when adequate authoritative evidence exists. Otherwise INCONCLUSIVE or FAIL - never an assumed PASS.**
+
+* **PASS** - every required evidence source was available, complete and mutually consistent, and showed what the case requires.
+* **FAIL** - the evidence contradicts the requirement (the action was disabled during the case, an unexpected value arrived, an unexpected notification was sent, the audit log and live state disagree ...).
+* **INCONCLUSIVE** - the evidence is missing, unavailable, truncated, too recent, ambiguous under clock skew, unparseable, or only tester-supplied. An empty answer is never read as "nothing happened". `verify` exits 0 / 1 / 4 for PASS / FAIL / INCONCLUSIVE.
+
+A negative case (B, C, D) therefore cannot pass on a zero alert count, on the tester's own snapshots, on a local "sent" mark, or on an earlier Case A alert (see section 7).
+
 ## 1. Three results that must never be confused
 
 | Label | Meaning | Status today |
@@ -42,6 +52,7 @@ The approved window is a **mandatory execution gate**, not a hint.
 
 ```bash
 python3.12 hardware_audit.py --env lab synthetic review      # read-only; may run BEFORE the window; reports READY / NOT READY; never authorises execution
+python3.12 hardware_audit.py --env lab synthetic audit-probe  # read-only: can this account read the audit log, settings and item history? exit 4 = no -> negative cases will be INCONCLUSIVE
 python3.12 hardware_audit.py --env lab synthetic preflight   # the gate: refused outside the approved window (before any server is contacted) and on any failed check
 ```
 
@@ -104,7 +115,7 @@ For Cases B and C to prove that filtering works, the action must be live while t
 
 **On any failure** (section 8) disable the action at once - do not finish the remaining cases first (section 9a gives the independent emergency path).
 
-**A negative case (B, C, D) is only accepted with independent, timestamped evidence that the action was enabled for that case.** A zero-alert result alone, an earlier Case A alert, or the ledger's `enabled_at` are not evidence. For each negative case the tester brackets the case:
+**A negative case (B, C, D) is only accepted with authoritative, server-side evidence.** The tester brackets each case with local observations (they tie the case to a time interval and to the exact action id) - but local data alone can never produce a PASS, because it cannot show the absence of an unobserved disable / re-enable and can be altered:
 
 ```bash
 python3.12 hardware_audit.py --env lab synthetic observe --ledger $L --case B --phase before    # reads the recorded action live: id, status, definition hash; ownership must hold
@@ -113,7 +124,27 @@ python3.12 hardware_audit.py --env lab synthetic ledger-mark --ledger $L --event
 python3.12 hardware_audit.py --env lab synthetic observe --ledger $L --case B --phase after
 ```
 
-`verify` rejects the case, as **inconclusive**, unless: exactly one `before` and one `after` observation exist; both are for the recorded action id, both show it **enabled**, with an unchanged definition hash that still matches the live action; the interval is positive and at most 900 seconds (a longer gap could hide an unseen toggle); the recorded `sent` time(s) and every event of the case trigger lie inside the interval; no other observation inside the interval shows the action disabled; the ledger does not claim a disable before the interval ended; and (when the scope is supplied) the observations fall inside the approved window. B and C additionally need Case A's Problem delivered by the same action (a positive control). Observations are never overwritten or duplicated.
+**Timing rules** (they exist because Zabbix and this host have different clocks and audit records are flushed asynchronously): wait **at least 10 seconds** after enabling the action before the first value is sent; wait **at least 10 seconds** after a case's `after` observation before any further change to the action; **disable the action as the last step of the test**, then run `verify` for B, C and D **at least 60 seconds later**. Running `verify` earlier, or before the final disable, is INCONCLUSIVE by design (no audit record exists after the interval, so continuity of logging after the case is not shown).
+
+## 7a. Evidence integrity design
+
+`verify` for a negative case needs ALL of the following. The two server-side sources decide; the local record only ties the case to a time interval.
+
+| # | Source | What must hold | If not |
+|---|---|---|---|
+| L | local observations (`observe`), `sent` marks, event clocks | exactly one `before` and one `after`; both show the recorded action id, **enabled**, same definition hash; interval 1..900 s; every send/event inside it; window respected | contradiction -> FAIL; missing -> INCONCLUSIVE |
+| S | `settings.get` | `auditlog_enabled=1` (and mode "log all") | INCONCLUSIVE |
+| A1 | `auditlog.get` for the action (resourcetype 5, exact id), time-ascending | an **add record exists** for this exact id (proves audit logging captured this object and that the query works - an empty response is never accepted); records are complete: fewer than the 1000-row limit AND the server's `countOutput` equals the rows returned; verification at least 60 s after the interval | INCONCLUSIVE |
+| A2 | the same records, parsed | status timeline rebuilt from the add record and every `action.status` update: **enabled at least 5 s before the first send/event** (clock-skew margin), **no status change until 5 s after the interval**, no delete, no update of any other field inside the interval (outside it: INCONCLUSIVE, the definition the case ran against is not established); at least one audit record **after** the interval (continuity); the audit's final status **equals the live status** | disabled / changed / deleted / contradiction -> FAIL; ambiguous or missing -> INCONCLUSIVE |
+| A3 | `auditlog.get` search on the action name | no other action with the same name was added (recreate / duplicate) | FAIL |
+| A4 | `auditlog.get` search on `details` for `auditlog` | no change of the audit settings since the action was created (logging could have been switched off and on) | INCONCLUSIVE |
+| H | `history.get` on the **exact synthetic trapper item** (`value_type` taken from the item; `history` retention must be non-zero) | samples **actually received** in the interval: B must show `2` and `0`, C must show `5` (and at least one expected sample at or after the recorded send time); no unexpected value (the cases did not overlap, nobody else is sending) | missing / truncated -> INCONCLUSIVE; unexpected value -> FAIL |
+
+Precision and asynchrony: audit and history timestamps are whole seconds on the server clock; every comparison carries a 5 s skew margin that always falls on the cautious side (ambiguity is INCONCLUSIVE, never PASS). The 60 s settling time covers the server's asynchronous audit flush. Positive control: B/C/D additionally need Case A's Problem delivered by the same action.
+
+**Required live read-only permissions:** `auditlog.get` requires **Super Admin**. This project never creates a privileged account, never raises a role and never changes audit-log settings. If the tester's existing authorised account cannot read the audit log, negative cases are INCONCLUSIVE and the delivery test cannot demonstrate filtering. Check beforehand, read-only: `python3.12 hardware_audit.py --env lab synthetic audit-probe` (exit 0 = settings, audit log and history are all readable and audit logging is on; exit 4 = unavailable). Also needed: `history.get`, `item.get`, `settings.get`, `event.get`, `alert.get`, `action.get`.
+
+**Known limits:** a tester with the right to edit audit settings could in principle silence the log; this is detected only to the extent such a change is itself recorded (A4). The `details` format and the resource type id of an action (5) are read from Zabbix 7.0 documentation: the requirement of an add record for the exact id is the empirical check - if either assumption is wrong the result is INCONCLUSIVE, not PASS.
 
 ## 8. Run the cases, then verify (read-only)
 
@@ -123,7 +154,7 @@ Send the values with `zabbix_sender` from the LAB Zabbix host to host `NETOPS-HW
 python3.12 hardware_audit.py --env lab synthetic verify --ledger $L --case A    # also B, C (and D only if approved)
 ```
 
-`verify` checks, using only event/alert/action reads:
+Run `verify` for the negative cases only after the final disable and at least 60 seconds after the last case (section 7a); earlier runs are INCONCLUSIVE. `verify` checks, using only event/alert/action reads plus the authoritative sources of section 7a:
 
 * **Problem and Recovery** - exactly one Problem event for the case trigger, recovered; Case A: each approved recipient has exactly one Problem alert and one Recovery alert from the hardware action (`p_eventid` distinguishes them), nobody else, all delivered (`status` sent, no `error`);
 * **Message macro expansion** - the Problem message contains the expanded values `SYNTHETIC-NOT-A-DEVICE`, `synthetic-1`, `LAB`, `fan`; neither message contains `*UNKNOWN*` or a literal `{EVENT.TAGS`; the Recovery carries the recovery wording;

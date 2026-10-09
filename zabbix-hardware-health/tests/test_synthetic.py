@@ -11,7 +11,7 @@ from hwh import action as A
 from hwh import synthetic as SY
 from hwh.api import AuditError, ZabbixAPI
 from tests.fakes import FakeZabbix
-from tests.helpers import ROOT, Project, add_evidence, create_owned_action
+from tests.helpers import ROOT, Project, add_evidence, create_owned_action, seed_audit, seed_history, deletion_ids
 
 NOW = datetime.datetime.now(datetime.timezone.utc)
 FMT = "%Y-%m-%dT%H:%M:%S+00:00"
@@ -300,9 +300,10 @@ class TestLedgerAndCleanup(Base):
         other_host = self.fz.add_host("UNRELATED")
         other_trig = self.fz.add_trigger(other_host, "unrelated", [])
         plan = SY.cleanup_plan(self.api, led, self.p.base)
-        flat = json.dumps(plan)
-        self.assertNotIn(other_trig, flat)
-        self.assertNotIn(other_host, flat)
+        doomed = deletion_ids(plan)
+        self.assertNotIn(other_trig, doomed)
+        self.assertNotIn(other_host, doomed)
+        self.assertEqual(doomed, {ids["ta"], ids["tb"], ids["iid"], ids["hid"], ids["gid"]})
 
     def test_already_deleted_objects_are_skipped_and_action_not_redisabled(self):
         led, ids = self.make_fixtures()
@@ -390,19 +391,22 @@ class TestVerifyCases(TestLedgerAndCleanup):
         led, ids = self.make_fixtures()
         add_evidence(self.fz, led, ids, "B", 1000, 1100, sent=1010, event_clock=1050)
         add_evidence(self.fz, led, ids, "C", 1200, 1300, sent=1210)
+        seed_audit(self.fz, ids["aid"], created=100, enable=500, disable=2000)
+        seed_history(self.fz, ids["iid"], [(1010, 2), (1060, 0), (1210, 5)])
+        self.later = datetime.datetime.fromtimestamp(5000, datetime.timezone.utc)
         self.fz.events = [{"eventid": "e1", "r_eventid": "e2", "objectid": ids["ta"], "value": "1", "clock": "900"},
                           {"eventid": "b1", "r_eventid": "b2", "objectid": ids["tb"], "value": "1", "clock": "1050"}]
         self.fz.alerts = [{"alertid": "ctl", "actionid": ids["aid"], "eventid": "e1", "p_eventid": "0", "userid": "u1", "status": "1", "retries": "0", "error": "",
                            "subject": "s", "message": "m", "alerttype": "0"}]                     # positive control: the action was live for Case A
-        self.assertTrue(SY.verify_case(self.api, "B", led, ["u1"])["ok"])
+        self.assertTrue(SY.verify_case(self.api, "B", led, ["u1"], now=self.later)["ok"])
         self.fz.alerts.append({"alertid": "z", "actionid": ids["aid"], "eventid": "b1", "p_eventid": "0", "userid": "u1", "status": "1", "retries": "0", "error": "",
                            "subject": "s", "message": "m", "alerttype": "0"})
-        r = SY.verify_case(self.api, "B", led, ["u1"])
+        r = SY.verify_case(self.api, "B", led, ["u1"], now=self.later)
         self.assertFalse(r["ok"])
         self.assertTrue(any("ZERO hardware-action notifications" in f for f in r["findings"]))
         self.assertTrue(any("exclusion violated" in f for f in r["findings"]))
         self.fz.alerts = self.fz.alerts[:1]
-        self.assertTrue(SY.verify_case(self.api, "C", led, ["u1"])["ok"])
+        self.assertTrue(SY.verify_case(self.api, "C", led, ["u1"], now=self.later)["ok"])
 
     def test_the_hardware_action_delivering_for_an_unrelated_event_is_caught(self):
         led, ids = self.make_fixtures()

@@ -439,9 +439,20 @@ NEGATIVE_CASES = ("B", "C", "D")
 
 
 def negative_case_evidence(api, ledger, case, live, scope=None):
+    """LOCAL, tester-supplied evidence only. It can contradict (FAIL) or be missing (INCONCLUSIVE) but can never by itself establish a PASS:
+    the authoritative server-side evidence in hwh/evidence.py is also required. Returns (fails, inconclusive, interval-or-None)."""
+    f, inc = _negative_local(api, ledger, case, live, scope)
+    d = ledger.data
+    obs = [o for o in (d.get("observations") or []) if o["case"] == case]
+    b = [o for o in obs if o["phase"] == "before"]
+    a = [o for o in obs if o["phase"] == "after"]
+    return f, inc, ((b[0]["utc"], a[0]["utc"]) if len(b) == 1 and len(a) == 1 else None)
+
+
+def _negative_local(api, ledger, case, live, scope=None):
     """Independent evidence that the hardware action was ENABLED for the whole of this negative case. Zero alerts only mean something if the action
     was live: a missing, inconsistent or inconclusive record is a finding, and a clean zero is never enough on its own."""
-    f = []
+    f, inc = [], []
     d = ledger.data
     aid = d.get("action")
     obs = d.get("observations") or []
@@ -449,8 +460,8 @@ def negative_case_evidence(api, ledger, case, live, scope=None):
     before = [o for o in mine if o["phase"] == "before"]
     after = [o for o in mine if o["phase"] == "after"]
     if len(before) != 1 or len(after) != 1:
-        return ["no usable action-state evidence for case %s: need exactly one 'before' and one 'after' observation (found %d and %d). A zero-notification "
-                "result without proof that the action was enabled during the case is INCONCLUSIVE, not a pass" % (case, len(before), len(after))]
+        return [], ["INCONCLUSIVE: no usable action-state evidence for case %s: need exactly one 'before' and one 'after' observation (found %d and %d). A zero-notification "
+                    "result without proof that the action was enabled during the case is INCONCLUSIVE, not a pass" % (case, len(before), len(after))]
     b, a = before[0], after[0]
     for o in (b, a):
         if str(o["actionid"]) != str(aid):
@@ -467,7 +478,7 @@ def negative_case_evidence(api, ledger, case, live, scope=None):
         f.append("the observed interval is %ds, longer than the %ds bound: the action could have been toggled unseen" % (span, MAX_CASE_SECONDS))
     sent = (d.get("sent") or {}).get(case) or []
     if not sent:
-        f.append("no 'sent' mark for case %s: the time the value was sent is not tied to the observed interval" % case)
+        inc.append("INCONCLUSIVE: no 'sent' mark for case %s: the time the value was sent is not tied to the observed interval" % case)
     for t in sent:
         if not b["utc"] <= _epoch(t) <= a["utc"]:
             f.append("a value was sent at %s, outside the observed interval %d..%d" % (t, b["utc"], a["utc"]))
@@ -478,12 +489,12 @@ def negative_case_evidence(api, ledger, case, live, scope=None):
     if tid:
         clocks = [int(e["clock"]) for e in _events(api, tid)]
         if not clocks:
-            f.append("no event exists for the case trigger: the case did not run")
+            inc.append("INCONCLUSIVE: no event exists for the case trigger: the case is not shown to have run")
         for c in clocks:
             if not b["utc"] <= c <= a["utc"]:
                 f.append("an event at %d is outside the observed interval %d..%d" % (c, b["utc"], a["utc"]))
     elif case != "C":
-        f.append("no trigger recorded for case %s" % case)
+        inc.append("INCONCLUSIVE: no trigger recorded for case %s" % case)
     da = d.get("disabled_at")
     if da and _epoch(da) < a["utc"]:
         f.append("the ledger records the action as disabled at %s, before the end of the observed interval" % da)
@@ -493,7 +504,7 @@ def negative_case_evidence(api, ledger, case, live, scope=None):
             t = datetime.datetime.fromtimestamp(o["utc"], datetime.timezone.utc)
             if not w0 <= t <= w1:
                 f.append("the %s observation is outside the approved window" % o["phase"])
-    return f
+    return f, inc
 
 
 # ----------------------------------------------------------------------------------------------------------------- verification
@@ -508,18 +519,37 @@ def _alerts(api, actionid, eventids):
                                   "actionids": [actionid], "eventids": sorted(eventids)})
 
 
-def verify_case(api, case, ledger, recipients_expected, scope=None):
-    """Read-only. Returns {"case", "ok", "findings": [...]}. Expectations PER APPROVED RECIPIENT: A = 1 Problem + 1 Recovery; B, C, D(hardware action) = 0."""
-    f = []
+def _result(case, f, inc):
+    verdict = "FAIL" if f else ("INCONCLUSIVE" if inc else "PASS")
+    return {"case": case, "ok": verdict == "PASS", "verdict": verdict, "findings": list(f) + list(inc), "fail": list(f), "inconclusive": list(inc)}
+
+
+def verify_case(api, case, ledger, recipients_expected, scope=None, now=None):
+    """Read-only. Returns {"case", "verdict": PASS|FAIL|INCONCLUSIVE, "ok", "findings"}. Expectations PER APPROVED RECIPIENT: A = 1 Problem + 1 Recovery; B, C, D(hardware action) = 0.
+    ACCEPTANCE RULE: PASS only when adequate authoritative evidence exists. Otherwise INCONCLUSIVE or FAIL - never an assumed PASS."""
+    f, inc = [], []
     hw = hardware_action_state(api)
     if not hw["exists"] or hw["actionid"] != ledger.data.get("action"):
-        return {"case": case, "ok": False, "findings": ["the hardware action recorded in the ledger is not the one on Zabbix"]}
+        return _result(case, ["the hardware action recorded in the ledger is not the one on Zabbix"], [])
     n = len(recipients_expected)
     if not ledger.data.get("enabled_at"):
-        return {"case": case, "ok": False, "findings": ["no enabled_at mark: the hardware action is not recorded as enabled during the cases, so a zero-notification result proves nothing"]}
+        return _result(case, [], ["INCONCLUSIVE: no enabled_at mark: the hardware action is not recorded as enabled during the cases, so a zero-notification result proves nothing"])
     if case in NEGATIVE_CASES:
+        from . import evidence as E
         live_action = A.get_action_by_id(api, hw["actionid"])
-        f.extend(negative_case_evidence(api, ledger, case, live_action, scope))
+        lf, li, interval = negative_case_evidence(api, ledger, case, live_action, scope)
+        f.extend(lf)
+        inc.extend(li)
+        if interval is not None:
+            tid0 = ledger.data["triggers"].get(case)
+            relevant = [int(t) for t in (ledger.data.get("sent") or {}).get(case, [])] + ([int(e["clock"]) for e in _events(api, tid0)] if tid0 else [])
+            now_ts = int((now or datetime.datetime.now(datetime.timezone.utc)).timestamp())
+            af, ai = E.audit_evidence(api, ledger, case, interval[0], interval[1], str(live_action["status"]), relevant, now_ts)
+            f.extend(af)
+            inc.extend(ai)
+            hf, hi = E.history_evidence(api, ledger, case, interval[0], interval[1], (ledger.data.get("sent") or {}).get(case, []))
+            f.extend(hf)
+            inc.extend(hi)
     tid = ledger.data["triggers"].get(case)
     if case == "C":
         if tid:
@@ -527,7 +557,7 @@ def verify_case(api, case, ledger, recipients_expected, scope=None):
         ev_ids = set()
     else:
         if not tid:
-            return {"case": case, "ok": False, "findings": ["no trigger id recorded for case %s" % case]}
+            return _result(case, ["no trigger id recorded for case %s" % case], [])
         events = _events(api, tid)
         problems = [e for e in events if str(e["value"]) == "1"]
         ev_ids = set()
@@ -538,7 +568,7 @@ def verify_case(api, case, ledger, recipients_expected, scope=None):
         if case in ("A", "B", "D") and len(problems) != 1:
             f.append("expected exactly one Problem event, found %d" % len(problems))
         if problems and str(problems[0].get("r_eventid", "0")) == "0":
-            f.append("the Problem has not recovered yet (send the recovery value)")
+            inc.append("INCONCLUSIVE: the Problem has not recovered yet (send the recovery value)")
     alerts = _alerts(api, hw["actionid"], ev_ids)
     prob = [a for a in alerts if str(a["p_eventid"]) == "0"]
     rec = [a for a in alerts if str(a["p_eventid"]) != "0"]
@@ -575,7 +605,7 @@ def verify_case(api, case, ledger, recipients_expected, scope=None):
         for e in (_events(api, ta0) if ta0 else []):
             a_ids |= {str(e["eventid"]), str(e.get("r_eventid", "0"))}
         if not _alerts(api, hw["actionid"], a_ids):
-            f.append("no positive control: Case A produced no hardware-action alert, so a zero for case %s cannot show that filtering works" % case)
+            inc.append("INCONCLUSIVE: no positive control: Case A produced no hardware-action alert, so a zero for case %s cannot show that filtering works" % case)
     # exclusion: the hardware action may only ever have acted on events of trigger A during the test
     allowed = set()
     ta = ledger.data["triggers"].get("A")
@@ -592,4 +622,4 @@ def verify_case(api, case, ledger, recipients_expected, scope=None):
             leaked = _alerts(api, ia["actionid"], ev_ids)
             if leaked:
                 f.append("Interface Alerting action %s delivered %d alert(s) for a synthetic event" % (ia["actionid"], len(leaked)))
-    return {"case": case, "ok": not f, "findings": f}
+    return _result(case, f, inc)

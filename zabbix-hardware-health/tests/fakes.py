@@ -29,6 +29,11 @@ class FakeZabbix(object):
         self.users = []          # {"userid", "usrgrpids": [...], "medias": [...]}
         self.events = []         # {"eventid","r_eventid","objectid","value","clock"}
         self.alerts = []         # alert.get rows
+        self.auditlog = []       # auditlog.get rows: {auditid, clock, action, resourcetype, resourceid, resourcename, details}
+        self.history = []        # history.get rows: {itemid, clock, value}
+        self.settings = {"auditlog_enabled": "1", "auditlog_mode": "1"}
+        self.denied = set()      # methods the account may not call (e.g. auditlog.get without Super Admin)
+        self.audit_count_delta = 0
         self._n = 100
 
     # ---------------------------------------------------------------- seeding
@@ -72,6 +77,8 @@ class FakeZabbix(object):
         method, params = payload["method"], payload.get("params") or {}
         self.calls.append((method, "Authorization" in req.headers or "authorization" in req.headers))
         try:
+            if method in self.denied:
+                return _Resp(json.dumps({"jsonrpc": "2.0", "error": {"code": -32500, "message": "Application error.", "data": "No permissions to call \"%s\"." % method}, "id": payload["id"]}).encode("utf-8"))
             result = self.dispatch(method, params)
             body = {"jsonrpc": "2.0", "result": result, "id": payload["id"]}
         except KeyError as exc:
@@ -154,6 +161,32 @@ class FakeZabbix(object):
         if method == "event.get":
             ids = p.get("objectids") or []
             return [dict(e) for e in self.events if e["objectid"] in ids]
+        if method == "settings.get":
+            return dict(self.settings)
+        if method == "history.get":
+            ids = p.get("itemids") or []
+            rows = [dict(r) for r in self.history if r["itemid"] in ids and p.get("time_from", 0) <= int(r["clock"]) <= p.get("time_till", 10 ** 12)]
+            rows.sort(key=lambda r: int(r["clock"]))
+            return rows[: p.get("limit", 10 ** 9)]
+        if method == "auditlog.get":
+            f = p.get("filter") or {}
+            def match(r):
+                for k, v in f.items():
+                    vals = [str(x) for x in (v if isinstance(v, list) else [v])]
+                    if str(r.get(k)) not in vals:
+                        return False
+                if p.get("time_from") is not None and int(r["clock"]) < p["time_from"]:
+                    return False
+                if p.get("time_till") is not None and int(r["clock"]) > p["time_till"]:
+                    return False
+                for k, v in (p.get("search") or {}).items():
+                    if v.lower() not in str(r.get(k, "")).lower():
+                        return False
+                return True
+            rows = sorted([dict(r) for r in self.auditlog if match(r)], key=lambda r: (int(r["clock"]), str(r.get("auditid"))))
+            if p.get("countOutput"):
+                return str(len(rows) + self.audit_count_delta)
+            return rows[: p.get("limit", 10 ** 9)]
         if method == "alert.get":
             rows = [dict(a) for a in self.alerts if a["actionid"] in p.get("actionids", [a["actionid"]])]
             if p.get("eventids"):

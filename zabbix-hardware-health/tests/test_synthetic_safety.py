@@ -9,7 +9,7 @@ from hwh import action as A
 from hwh import synthetic as SY
 from hwh.api import AuditError, ZabbixAPI
 from tests.fakes import FakeZabbix
-from tests.helpers import Project, create_owned_action
+from tests.helpers import Project, create_owned_action, deletion_ids
 from tests.test_synthetic import NOTIF, NOW, fake_lab, scope_dict, write_scope
 
 HOUR = datetime.timedelta(hours=1)
@@ -220,8 +220,8 @@ class TestOwnershipVerification(Safety):
         led, ids = self.fixtures()
         bystander = self.fz.add_host("BYSTANDER")
         plan = SY.cleanup_plan(self.api, led, self.p.base)
-        flat = str([s["params"] for s in plan])
-        self.assertNotIn(bystander, flat)
+        self.assertNotIn(bystander, deletion_ids(plan))
+        self.assertEqual(deletion_ids(plan), {ids["ta"], ids["tb"], ids["iid"], ids["hid"], "910"})
         self.assertEqual(plan[1]["params"], sorted([ids["ta"], ids["tb"]]))
 
 

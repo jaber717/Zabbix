@@ -48,7 +48,7 @@ def _parser():
     m.add_argument("--out")
     m.add_argument("--json")
     syn = sub.add_parser("synthetic", help="READ-ONLY support for the approved LAB synthetic notification test")
-    syn.add_argument("what", choices=["review", "preflight", "snapshot", "diff", "verify", "cleanup-plan", "emergency-disable-plan", "observe", "ledger-record", "ledger-mark"])
+    syn.add_argument("what", choices=["review", "preflight", "snapshot", "diff", "verify", "cleanup-plan", "emergency-disable-plan", "observe", "audit-probe", "ledger-record", "ledger-mark"])
     syn.add_argument("--scope")
     syn.add_argument("--notifications")
     syn.add_argument("--out")
@@ -103,6 +103,16 @@ def _synthetic(args, environ, transport, base, out, catalogue, clock):
         raise AuditError("the synthetic notification test is LAB only (refused before contacting any server)")
     cfg = policy.load_config(os.path.join(base, "config", "hardware.lab.yaml"), "lab", catalogue)
     now = clock or datetime.datetime.now(datetime.timezone.utc)
+    if args.what == "audit-probe":
+        from hwh import evidence as EV
+        api, version = _open("lab", cfg, environ, transport, write=False)
+        r = EV.probe(api)
+        for k in ("settings_readable", "auditlog_enabled", "auditlog_readable", "history_readable"):
+            out("  %-22s %s" % (k, r[k]))
+        for d in r["detail"]:
+            out("  note: " + d)
+        out("AUTHORITATIVE EVIDENCE %s" % ("AVAILABLE" if r["authoritative_evidence_available"] else "UNAVAILABLE: negative synthetic cases (B, C, D) can only be INCONCLUSIVE"))
+        return 0 if r["authoritative_evidence_available"] else 4
     scope_path = args.scope or os.path.join(base, "config", "synthetic-test.yaml")
     if args.what in ("ledger-record", "ledger-mark"):
         if not args.ledger:
@@ -194,13 +204,13 @@ def _synthetic(args, environ, transport, base, out, catalogue, clock):
         raise AuditError("; ".join(problems))
     if not args.case:
         raise AuditError("--case is required for verify")
-    r = SY.verify_case(api, args.case, ledger, users, scope)
+    r = SY.verify_case(api, args.case, ledger, users, scope, now)
     for x in r["findings"]:
         out("  FINDING: " + x)
-    out("case %s: %s" % (args.case, "NOTIFICATION PIPELINE CHECK PASS (synthetic)" if r["ok"] else "FAIL"))
+    out("case %s: %s" % (args.case, {"PASS": "NOTIFICATION PIPELINE CHECK PASS (synthetic)", "FAIL": "FAIL", "INCONCLUSIVE": "INCONCLUSIVE - this is NOT a pass"}[r["verdict"]]))
     if not r["ok"]:
         out("ON ANY FAILURE: DISABLE THE HARDWARE ACTION NOW (run 'synthetic cleanup-plan'; its first step disables the recorded action if it is enabled)")
-    return 0 if r["ok"] else 1
+    return {"PASS": 0, "FAIL": 1, "INCONCLUSIVE": 4}[r["verdict"]]
 
 
 def main(argv=None, environ=None, transport=None, base=None, now=None, out=print, clock=None):

@@ -16,7 +16,7 @@ from hwh import action as A
 from hwh import synthetic as SY
 from hwh.api import AuditError, ZabbixAPI
 from tests.fakes import FakeZabbix
-from tests.helpers import Project, add_evidence, create_owned_action
+from tests.helpers import Project, add_evidence, create_owned_action, seed_audit, seed_history
 from tests.test_synthetic import NOTIF, NOW, fake_lab, scope_dict
 
 T0 = int(NOW.timestamp())
@@ -89,12 +89,26 @@ class TestFix1NegativeCasesNeedEvidence(Mixin, unittest.TestCase):
         args.update(kw)
         add_evidence(self.fz, led, ids, "B", T0, T0 + 60, **args)
 
-    def test_complete_consistent_evidence_passes_B_and_C(self):
+    def test_complete_consistent_evidence_without_server_side_evidence_is_inconclusive_not_a_pass(self):
         led, ids = self.fixtures()
         self.good_B(led, ids)
         add_evidence(self.fz, led, ids, "C", T0 + 100, T0 + 160, sent=T0 + 110)
-        self.assertTrue(self.verify("B", led)["ok"], self.verify("B", led)["findings"])
-        self.assertTrue(self.verify("C", led)["ok"], self.verify("C", led)["findings"])
+        for case in ("B", "C"):
+            r = SY.verify_case(self.api, case, led, ["u1"], None, datetime.datetime.fromtimestamp(T0 + 1000, datetime.timezone.utc))
+            self.assertEqual(r["verdict"], "INCONCLUSIVE", r["findings"])
+            self.assertFalse(r["ok"])
+
+    def test_complete_consistent_local_and_server_side_evidence_passes_B_and_C(self):
+        led, ids = self.fixtures()
+        self.good_B(led, ids)
+        add_evidence(self.fz, led, ids, "C", T0 + 100, T0 + 160, sent=T0 + 110)
+        seed_audit(self.fz, ids["aid"], created=T0 - 1000, enable=T0 - 100, disable=T0 + 500)
+        seed_history(self.fz, ids["iid"], [(T0 + 10, 2), (T0 + 50, 0), (T0 + 110, 5)])
+        late = datetime.datetime.fromtimestamp(T0 + 1000, datetime.timezone.utc)
+        for case in ("B", "C"):
+            r = SY.verify_case(self.api, case, led, ["u1"], None, late)
+            self.assertEqual(r["verdict"], "PASS", r["findings"])
+            self.assertTrue(r["ok"])
 
     def test_an_observation_showing_the_action_disabled_is_rejected(self):
         led, ids = self.fixtures()
@@ -200,18 +214,25 @@ class TestFix1NegativeCasesNeedEvidence(Mixin, unittest.TestCase):
         self.assertEqual(self.cli("ledger-mark", "--ledger", led.path, "--event", "sent", "--case", "B", clock=t + step(seconds=10))[0], 0)
         self.fz.events.append({"eventid": "b1", "r_eventid": "b2", "objectid": ids["tb"], "value": "1", "clock": str(int((t + step(seconds=20)).timestamp()))})
         self.assertEqual(self.cli("observe", "--ledger", led.path, "--case", "B", "--phase", "after", clock=t + step(seconds=60))[0], 0)
+        # a verify straight after the case is too early for the server to have flushed its audit log: INCONCLUSIVE (exit 4), never a pass
         rc, out, err = self.cli("verify", "--ledger", led.path, "--case", "B", clock=t + step(seconds=70))
+        self.assertEqual(rc, 4, out + err)
+        self.assertIn("INCONCLUSIVE - this is NOT a pass", out)
+        # the test ends: the action is disabled (audit rows + item history exist on the server), then B is verified with authoritative evidence
+        base = int(t.timestamp())
+        seed_audit(self.fz, ids["aid"], created=base - 1000, enable=base - 100, disable=base + 150)
+        seed_history(self.fz, ids["iid"], [(base + 10, 2), (base + 50, 0)])
+        rc, out, err = self.cli("verify", "--ledger", led.path, "--case", "B", clock=t + step(seconds=300))
         self.assertEqual(rc, 0, out + err)
-        # the tester now (wrongly) lets the action be disabled before Case C and verifies C without evidence
-        self.fz.actions[ids["aid"]]["status"] = "1"
-        rc, out, err = self.cli("verify", "--ledger", led.path, "--case", "C", clock=t + step(seconds=200))
-        self.assertEqual(rc, 1)
+        # Case C has no observations at all
+        rc, out, err = self.cli("verify", "--ledger", led.path, "--case", "C", clock=t + step(seconds=400))
+        self.assertEqual(rc, 4)
         self.assertIn("INCONCLUSIVE", out)
         # observing while disabled records the fact and the case is then rejected
         self.assertEqual(self.cli("observe", "--ledger", led.path, "--case", "C", "--phase", "before", clock=t + step(seconds=210))[0], 0)
         self.assertEqual(self.cli("observe", "--ledger", led.path, "--case", "C", "--phase", "after", clock=t + step(seconds=230))[0], 0)
         self.assertEqual(self.cli("ledger-mark", "--ledger", led.path, "--event", "sent", "--case", "C", clock=t + step(seconds=220))[0], 0)
-        rc, out, err = self.cli("verify", "--ledger", led.path, "--case", "C", clock=t + step(seconds=240))
+        rc, out, err = self.cli("verify", "--ledger", led.path, "--case", "C", clock=t + step(seconds=500))
         self.assertEqual(rc, 1)
         self.assertIn("DISABLED", out)
 
