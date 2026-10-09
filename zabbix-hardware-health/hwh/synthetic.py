@@ -202,6 +202,12 @@ def preflight(api, scope, notif_spec, now=None, mode="execute", base=None, expec
             "action %s already exists and is not the ledger-recorded one. Resolve it through its own approved change; there is no acknowledgement path" % st["actionid"])
     ifa = interface_actions(api)
     chk("Interface Alerting action present and snapshotted", bool(ifa), "no NETOPS-IaC action found - the exclusion cannot be shown" if not ifa else "%d action(s)" % len(ifa))
+    others = api.call("action.get", {"output": ["actionid", "name", "status", "eventsource"], "selectFilter": "extend", "filter": {"eventsource": 0, "status": 0}})
+    sample = {"netops_hardware": "1", "hardware_component": "fan", "hardware_vendor": "synthetic", "hardware_model": "synthetic", "hardware_site": "LAB", "hardware_slot": "synthetic"}
+    from . import labsim
+    leak = [x["name"] for x in others if str(x.get("status", "0")) == "0" and x["name"] != A.ACTION_NAME and labsim.may_match(x.get("filter") or {}, sample)]
+    chk("no OTHER enabled trigger action can match a synthetic hardware event (it would notify recipients outside the approved list)", not leak,
+        "enabled action(s) that may match: %s" % ", ".join(sorted(leak)) if leak else "")
     a, b = scope["_window"]
     in_window = a <= now <= b
     chk("INSIDE THE APPROVED WINDOW (mandatory to execute)", in_window or mode == "review",

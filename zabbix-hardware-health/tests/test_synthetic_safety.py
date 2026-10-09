@@ -348,3 +348,20 @@ class TestPlanDocumentSafety(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OtherActionIsolation(Safety):
+    def _catch_all(self, status):
+        self.fz.actions["777"] = {"actionid": "777", "name": "Report problems to Zabbix administrators", "status": status, "eventsource": "0",
+                                  "filter": {"evaltype": 0, "conditions": []}, "operations": [], "recovery_operations": []}
+
+    def test_enabled_catch_all_action_blocks_preflight(self):
+        self._catch_all("0")
+        rc, out, err = self.p.run("--env", "lab", "synthetic", "preflight", clock=NOW)
+        self.assertEqual(rc, 1, out + err)
+        self.assertIn("OTHER enabled trigger action", out)
+
+    def test_disabled_catch_all_action_is_fine(self):
+        self._catch_all("1")
+        rc, out, err = self.p.run("--env", "lab", "synthetic", "preflight", clock=NOW)
+        self.assertEqual(rc, 0, out + err)

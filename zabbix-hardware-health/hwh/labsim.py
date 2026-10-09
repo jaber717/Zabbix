@@ -52,9 +52,20 @@ def verify(api, cfg):
     for s in cfg["sensors"]:
         t = next((x for x in snap["triggers"] if x["triggerid"] == s["triggerid"]), None)
         ev = dict((x["tag"], x["value"]) for x in (t or {}).get("tags", []))
-        hit = [a["name"] for a in actions if a["status"] == "0" and A.event_matches(a.get("filter") or {}, ev)]
+        hit = [a["name"] for a in actions if a["status"] == "0" and may_match(a.get("filter") or {}, ev)]
         chk("%s: no ENABLED action matches the trigger's tags" % s["component"], not hit, ", ".join(hit))
     return {"checks": checks, "ok": all(c[1] for c in checks), "snapshot": snap}
+
+
+def may_match(flt, event_tags):
+    """FAIL-CLOSED model: an action with no conditions matches every event; a condition type this tool does not model is assumed to match."""
+    conds = flt.get("conditions") or []
+    if not conds:
+        return True
+    if any(int(c["conditiontype"]) not in (A.COND_TAG, A.COND_TAG_VALUE) for c in conds):
+        flt = dict(flt, conditions=[c for c in conds if int(c["conditiontype"]) in (A.COND_TAG, A.COND_TAG_VALUE)])
+        return True if not flt["conditions"] else (A.event_matches(flt, event_tags) if int(flt.get("evaltype", 0)) == 1 else True)
+    return A.event_matches(flt, event_tags)
 
 
 def tag_plan(cfg, snap):

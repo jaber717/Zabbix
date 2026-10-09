@@ -92,3 +92,19 @@ class Messages(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class IsolationFailsClosed(unittest.TestCase):
+    def test_unconditioned_enabled_action_matches_everything(self):
+        api, _ = make_api(enabled_action_filter={"evaltype": 0, "conditions": []})
+        self.assertFalse(labsim.verify(api, CFG)["ok"])
+
+    def test_unmodelled_condition_only_is_assumed_to_match(self):
+        flt = {"evaltype": 0, "conditions": [{"conditiontype": 4, "operator": 5, "value": "3"}]}
+        api, _ = make_api(enabled_action_filter=flt)
+        self.assertFalse(labsim.verify(api, CFG)["ok"])
+
+    def test_and_with_unmodelled_condition_still_excluded_by_tag_condition(self):
+        flt = {"evaltype": 1, "conditions": [{"conditiontype": 25, "operator": 0, "value": "netops_hardware"}, {"conditiontype": 4, "operator": 5, "value": "3"}]}
+        api, _ = make_api(enabled_action_filter=flt)
+        self.assertTrue(labsim.verify(api, CFG)["ok"])
