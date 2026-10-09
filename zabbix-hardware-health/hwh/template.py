@@ -189,7 +189,7 @@ def _api_sensor(defn, sn):
     return master, None, rule
 
 
-def build_payload(defn, tpl_hash=""):
+def build_payload(defn, tpl_hash="", nonce=""):
     if defn["kind"] == "snmp":
         macros = MACROS
     else:
@@ -212,8 +212,8 @@ def build_payload(defn, tpl_hash=""):
                   "mappings": [{"value": str(k), "newvalue": v["meaning"]} for k, v in sorted(defn["semantics"][s]["states"].items(), key=lambda kv: int(kv[0]))]}
                  for s in used]
     tmpl = {"uuid": uuid_for("template:" + defn["id"]), "template": template_name(defn), "name": template_name(defn),
-            "description": "%s version=%s definition=%s hash=%s. Generated; do not edit in the GUI. Documentation-derived; not device-verified." % (
-                MARKER, TOOL_VERSION, defn["id"], tpl_hash),
+            "description": "%s version=%s definition=%s hash=%s%s. Generated; do not edit in the GUI. Documentation-derived; not device-verified." % (
+                MARKER, TOOL_VERSION, defn["id"], tpl_hash, (" nonce=" + nonce) if nonce else ""),
             "groups": [{"name": TEMPLATE_GROUP}], "items": items, "discovery_rules": rules, "valuemaps": valuemaps,
             "macros": [dict({"macro": m, "value": val, "description": d}, **({"type": "SECRET_TEXT"} if "PASSWORD" in m else {})) for m, val, d in macros]}
     if not rules:
@@ -226,16 +226,18 @@ def content_hash(defn):
     return hashlib.sha256(blob).hexdigest()[:16]
 
 
-def build(defn):
-    """Final import document, with the content hash embedded in the template description (the drift / ownership marker)."""
-    return build_payload(defn, content_hash(defn))
+def build(defn, nonce=""):
+    """Final import document. The description carries the content hash and, once deployed by this tool, the per-deployment nonce. The marker text
+    alone is NOT ownership: ownership is the local record (exact template id + nonce), see tplmgr."""
+    return build_payload(defn, content_hash(defn), nonce)
 
 
 IMPORT_RULES = {
     "template_groups": {"createMissing": True, "updateExisting": False},
     "templates": {"createMissing": True, "updateExisting": True},
-    "valueMaps": {"createMissing": True, "updateExisting": True, "deleteMissing": False},
+    "valueMaps": {"createMissing": True, "updateExisting": True, "deleteMissing": True},
     "discoveryRules": {"createMissing": True, "updateExisting": True, "deleteMissing": True},
     "items": {"createMissing": True, "updateExisting": True, "deleteMissing": True},
     "triggers": {"createMissing": True, "updateExisting": True, "deleteMissing": True},
+    "templateLinkage": {"createMissing": False, "deleteMissing": False},   # this tool never links or unlinks templates
 }
