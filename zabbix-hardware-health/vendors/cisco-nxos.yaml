@@ -1,0 +1,90 @@
+# Cisco Nexus / NX-OS fan, power supply and temperature-sensor health (CISCO-ENTITY-FRU-CONTROL-MIB, CISCO-ENTITY-SENSOR-MIB).
+# OIDs and enumerations copied from the official Zabbix 7.0 template "Cisco Nexus 9000 Series by SNMP"
+# (templates/net/cisco/cisco_nexus_9000_series_snmp, release/7.0, commit 4a89781bcdc9f7cc59c721786baa8f95c3dd7135).
+# Not verified on a physical device.
+schema: 1
+id: cisco-nxos
+vendor: cisco
+families: [cisco-nxos]
+title: Cisco Nexus / NX-OS - CISCO-ENTITY-FRU-CONTROL-MIB, CISCO-ENTITY-SENSOR-MIB
+kind: snmp
+sources:
+  - kind: zabbix-template
+    ref: "Cisco Nexus 9000 Series by SNMP (sensor.fan.status, sensor.psu.status, sensor.temp.status)"
+    url: https://github.com/zabbix/zabbix/tree/release/7.0/templates/net/cisco/cisco_nexus_9000_series_snmp
+    commit: 4a89781bcdc9f7cc59c721786baa8f95c3dd7135
+    tested_on: "Cisco Nexus 93180YC-FX3, NX-OS 9.3.7 (per the template README)"
+  - kind: mib
+    ref: "CISCO-ENTITY-FRU-CONTROL-MIB (cefcFanTrayOperStatus, cefcFRUPowerOperStatus); CISCO-ENTITY-SENSOR-MIB (entSensorStatus)"
+platforms:
+  - {name: "Cisco Nexus 9000 series", support: documented-tested, note: "Reference template tested on Nexus 93180YC-FX3, NX-OS 9.3.7 only."}
+  - {name: "Other Nexus families (3000, 5000, 7000)", support: documented-unverified, note: "Same MIBs are expected but nothing documents them for this definition."}
+semantics:
+  cisco-cefc-fan-tray:
+    object: "CISCO-ENTITY-FRU-CONTROL-MIB::cefcFanTrayOperStatus"
+    description: "Operational state of a fan or fan tray."
+    classification_source: "enumeration from the reference template value map; 'down' is the template's alert state, 'warning' is documented as partial failure"
+    states:
+      "1": {state: unknown, meaning: unknown}
+      "2": {state: normal, meaning: up}
+      "3": {state: failed, meaning: down}
+      "4": {state: degraded, meaning: warning}
+  cisco-cefc-fru-power:
+    object: "CISCO-ENTITY-FRU-CONTROL-MIB::cefcFRUPowerOperStatus"
+    description: "Operational power state of a field-replaceable unit (power supply)."
+    classification_source: "enumeration and meanings from the reference template; 'failed' is the template's alert state. Classification of the other 'off*' and 'onBut*' values follows their documented meaning (powered off because of a fault, or on but impaired) and is MORE sensitive than the reference template, which alerts on 'failed' only"
+    states:
+      "1": {state: degraded, meaning: offEnvOther}
+      "2": {state: normal, meaning: "on"}
+      "3": {state: unknown, meaning: offAdmin}
+      "4": {state: degraded, meaning: offDenied}
+      "5": {state: degraded, meaning: offEnvPower}
+      "6": {state: degraded, meaning: offEnvTemp}
+      "7": {state: degraded, meaning: offEnvFan}
+      "8": {state: failed, meaning: failed}
+      "9": {state: degraded, meaning: onButFanFail}
+      "10": {state: degraded, meaning: offCooling}
+      "11": {state: degraded, meaning: offConnectorRating}
+      "12": {state: degraded, meaning: onButInlinePowerFail}
+  cisco-entsensor-status:
+    object: "CISCO-ENTITY-SENSOR-MIB::entSensorStatus"
+    description: "Whether the agent can read the sensor. This is SENSOR HEALTH, not an over-temperature indication."
+    classification_source: "enumeration from the reference template value map and its trigger severities (unavailable = warning, nonoperational = high)"
+    states:
+      "1": {state: normal, meaning: ok}
+      "2": {state: degraded, meaning: unavailable}
+      "3": {state: failed, meaning: nonoperational}
+sensors:
+  - id: fan
+    category: fan
+    scope: status
+    title: Fan / fan tray operational state
+    table: {name_oid: "1.3.6.1.2.1.47.1.1.1.1.7", name_object: "ENTITY-MIB::entPhysicalName"}
+    value: {oid: "1.3.6.1.4.1.9.9.117.1.4.1.1.1", object: cefcFanTrayOperStatus, type: unsigned, semantics: cisco-cefc-fan-tray}
+    triggers:
+      - {id: failed, severity: high, states: [failed], confirm_samples: 2, recover_samples: 2, title: "Fan down"}
+      - {id: degraded, severity: warning, states: [degraded], confirm_samples: 3, recover_samples: 2, title: "Fan partially failed"}
+    note: "The reference template filters entities by the macro {$CISCO.LLD.FILTER.FAN.NAME.MATCHES}; this definition discovers every entity that answers the column and relies on the walk returning only fan rows. Confirm on a capture."
+  - id: power
+    category: power
+    scope: status
+    title: Power supply (FRU) operational state
+    table: {name_oid: "1.3.6.1.2.1.47.1.1.1.1.7", name_object: "ENTITY-MIB::entPhysicalName"}
+    value: {oid: "1.3.6.1.4.1.9.9.117.1.1.2.1.2", object: cefcFRUPowerOperStatus, type: unsigned, semantics: cisco-cefc-fru-power}
+    triggers:
+      - {id: failed, severity: high, states: [failed], confirm_samples: 2, recover_samples: 2, title: "Power supply failed"}
+      - {id: degraded, severity: warning, states: [degraded], confirm_samples: 3, recover_samples: 2, title: "Power supply impaired or powered off by a fault"}
+    note: "The FRU table also lists non-PSU FRUs (modules, fans) on some platforms; the reference template filters by name macro. Confirm on a capture."
+  - id: temperature
+    category: temperature
+    scope: sensor-health
+    title: Temperature sensor health (NOT an over-temperature alarm)
+    table: {name_oid: "1.3.6.1.2.1.47.1.1.1.1.7", name_object: "ENTITY-MIB::entPhysicalName"}
+    value: {oid: "1.3.6.1.4.1.9.9.91.1.1.1.1.5", object: entSensorStatus, type: unsigned, semantics: cisco-entsensor-status}
+    triggers:
+      - {id: failed, severity: high, states: [failed], confirm_samples: 2, recover_samples: 2, title: "Temperature sensor not operational"}
+      - {id: degraded, severity: warning, states: [degraded], confirm_samples: 3, recover_samples: 2, title: "Temperature sensor unavailable"}
+    note: "entSensorStatus covers every entity sensor type, not only temperature. Over-temperature alarms require entSensorValue with entSensorScale/entSensorPrecision handling (done by JavaScript preprocessing in the reference template) and are NOT implemented here."
+unsupported:
+  - {category: temperature, reason: "Over-temperature alarm (entSensorValue with scale/precision and thresholds) is not implemented; only sensor health is."}
+  - {category: hw_redundancy, reason: "No redundancy object is defined by the reference template; none is defined here."}

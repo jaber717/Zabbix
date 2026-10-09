@@ -2,7 +2,7 @@
 
 PASS = real, fresh, supported sensor with a verified status meaning and a dedicated-tag trigger bound to it. GAP = monitoring missing or unusable. BLOCKED = cannot be judged (no device, unreachable, mock host). N/A = only with model-specific evidence. Nothing here is a claim about what an absent physical model can or cannot expose.
 
-Totals over all vendor x category cells: PASS 0, GAP 4, BLOCKED 31, N/A 0.
+Totals over all vendor x category cells: PASS 0, GAP 5, BLOCKED 33, N/A 0.
 
 ## Cisco
 
@@ -52,6 +52,7 @@ Devices: none
 | temperature | **BLOCKED** | no device of this family is monitored in this environment (NOT TESTABLE) |
 | hw_redundancy | **BLOCKED** | no device of this family is monitored in this environment (NOT TESTABLE) |
 | ha | **BLOCKED** | no device of this family is monitored in this environment (NOT TESTABLE) |
+| sensor | **BLOCKED** | no device of this family is monitored in this environment (NOT TESTABLE) |
 
 ## Fortinet
 
@@ -66,6 +67,7 @@ Devices: DR-FW01 (FortiGate by SNMP template on an intentional MOCK host)
 | temperature | **BLOCKED** | DR-FW01 [BLOCKED]: mock host: no sensor discovered; NOT TESTABLE - Codex LAB discovery 2026-10-09 @281361c |
 | hw_redundancy | **BLOCKED** | DR-FW01 [BLOCKED]: mock host: no hardware-redundancy evidence; NOT TESTABLE - Codex LAB discovery 2026-10-09 @281361c |
 | ha | **BLOCKED** | DR-FW01 [BLOCKED]: seven static HA-related items, all undated, and 0 enabled HA triggers; mock host so HA state is not proven. HA is a separate category from hw_redundancy - Codex LAB discovery 2026-10-09 @281361c |
+| sensor | **GAP** | devices exist but nothing was recorded for this category |
 
 ### Fortinet FortiProxy (`fortinet-fortiproxy`)
 
@@ -78,6 +80,7 @@ Devices: none
 | temperature | **BLOCKED** | no device of this family is monitored in this environment (NOT TESTABLE) |
 | hw_redundancy | **BLOCKED** | no device of this family is monitored in this environment (NOT TESTABLE) |
 | ha | **BLOCKED** | no device of this family is monitored in this environment (NOT TESTABLE) |
+| sensor | **BLOCKED** | no device of this family is monitored in this environment (NOT TESTABLE) |
 
 ## Huawei
 

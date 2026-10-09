@@ -3,9 +3,9 @@ import yaml
 
 from .api import AuditError
 
-CATEGORIES = ("fan", "power", "temperature", "hw_redundancy", "ha")
-STATUS_CATEGORIES = ("fan", "power", "hw_redundancy", "ha")          # interpreted through a verified status mapping
-COMPONENT_TAG = {"fan": "fan", "power": "power", "temperature": "temperature", "hw_redundancy": "redundancy", "ha": "ha"}
+CATEGORIES = ("fan", "power", "temperature", "hw_redundancy", "ha", "sensor")
+STATUS_CATEGORIES = ("fan", "power", "hw_redundancy", "ha", "sensor")          # interpreted through a verified status mapping
+COMPONENT_TAG = {"fan": "fan", "power": "power", "temperature": "temperature", "hw_redundancy": "redundancy", "ha": "ha", "sensor": "sensor"}
 VENDORS = ("cisco", "paloalto", "fortinet", "huawei")
 DEFAULT_AGE_MINUTES = 480
 TOP_KEYS = {"environment", "zabbix", "hosts"}

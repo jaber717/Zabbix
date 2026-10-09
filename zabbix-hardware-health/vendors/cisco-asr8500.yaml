@@ -1,0 +1,19 @@
+# Cisco ASR 8500 / IOS-XR: NO DEFINITION. No official or documented reference was found for this platform in this project's sources,
+# and no OID is guessed. Blocked until a real device and its documentation are available.
+schema: 1
+id: cisco-asr8500
+vendor: cisco
+families: [cisco-asr8500]
+title: Cisco ASR 8500 / IOS-XR - not defined
+kind: snmp
+sources:
+  - {kind: none, ref: "no reference template or MIB document identified for this platform"}
+platforms:
+  - {name: "Cisco ASR 8500 / IOS-XR", support: unknown, note: "No model was available in the LAB and no authoritative OID source was identified. BLOCKED."}
+semantics: {}
+sensors: []
+unsupported:
+  - {category: fan, reason: "No definition: platform not documented in the project's sources."}
+  - {category: power, reason: "No definition."}
+  - {category: temperature, reason: "No definition."}
+  - {category: hw_redundancy, reason: "No definition."}

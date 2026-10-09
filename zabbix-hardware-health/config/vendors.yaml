@@ -6,8 +6,8 @@ families:
   cisco-iosxe:         {vendor: cisco,    title: "Cisco IOS / IOS-XE",           categories: [fan, power, temperature, hw_redundancy]}
   cisco-nxos:          {vendor: cisco,    title: "Cisco Nexus / NX-OS",          categories: [fan, power, temperature, hw_redundancy]}
   cisco-asr8500:       {vendor: cisco,    title: "Cisco ASR 8500 / IOS-XR",      categories: [fan, power, temperature, hw_redundancy]}
-  paloalto-panos:      {vendor: paloalto, title: "Palo Alto PA-Series / PAN-OS", categories: [fan, power, temperature, hw_redundancy, ha]}
-  fortinet-fortigate:  {vendor: fortinet, title: "Fortinet FortiGate",           categories: [fan, power, temperature, hw_redundancy, ha]}
-  fortinet-fortiproxy: {vendor: fortinet, title: "Fortinet FortiProxy",          categories: [fan, power, temperature, hw_redundancy, ha]}
+  paloalto-panos:      {vendor: paloalto, title: "Palo Alto PA-Series / PAN-OS", categories: [fan, power, temperature, hw_redundancy, ha, sensor]}
+  fortinet-fortigate:  {vendor: fortinet, title: "Fortinet FortiGate",           categories: [fan, power, temperature, hw_redundancy, ha, sensor]}
+  fortinet-fortiproxy: {vendor: fortinet, title: "Fortinet FortiProxy",          categories: [fan, power, temperature, hw_redundancy, ha, sensor]}
   huawei-vrp-switch:   {vendor: huawei,   title: "Huawei S-series / VRP switch", categories: [fan, power, temperature, hw_redundancy]}
   huawei-ar8140:       {vendor: huawei,   title: "Huawei AR8140 / VRP router",   categories: [fan, power, temperature, hw_redundancy]}

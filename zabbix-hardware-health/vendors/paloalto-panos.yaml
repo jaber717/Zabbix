@@ -1,0 +1,71 @@
+# Palo Alto PAN-OS: HA state and CPU/system temperature, via the PAN-OS XML API (not SNMP).
+# API commands, response paths and the HA state list copied from the official Zabbix 7.0 template "Palo Alto PA-440 by HTTP"
+# (templates/net/paloalto/paloalto_pa440, release/7.0, commit 4a89781bcdc9f7cc59c721786baa8f95c3dd7135).
+# The template cites the PAN-OS API documentation https://docs.paloaltonetworks.com/pan-os/11-1/pan-os-panorama-api . Not verified on a physical device.
+schema: 1
+id: paloalto-panos
+vendor: paloalto
+families: [paloalto-panos]
+title: Palo Alto PAN-OS - XML API
+kind: http-api
+api:
+  endpoint_macro: "{$NETOPS.HW.API.URL}"
+  user_macro: "{$NETOPS.HW.API.USER}"
+  password_macro: "{$NETOPS.HW.API.PASSWORD}"
+  note: "Credentials are Zabbix host macros (the password macro must be a SECRET macro). Nothing is stored in this repository."
+sources:
+  - kind: zabbix-template
+    ref: "Palo Alto PA-440 by HTTP (items pan.pa440.environmentals.get, pan.pa440.cpu.temp, pan.pa440.ha.get, pan.pa440.ha.local[state])"
+    url: https://github.com/zabbix/zabbix/tree/release/7.0/templates/net/paloalto/paloalto_pa440
+    commit: 4a89781bcdc9f7cc59c721786baa8f95c3dd7135
+    tested_on: "Palo Alto PA-440, PAN-OS 11.2.4-h1 (per the template README)"
+platforms:
+  - {name: "Palo Alto PA-440", support: documented-tested, note: "The only model named by the reference template."}
+  - {name: "Other PA-Series models", support: documented-unverified, note: "The response layout of 'show system environmentals' (e.g. thermal slot names) is model dependent and is not documented here."}
+semantics:
+  paloalto-ha-state:
+    object: "PAN-OS API: show high-availability all -> response.result.group['local-info'].state"
+    description: "High-availability state of the local firewall."
+    classification_source: "state names and order from the reference template's value map; the state list is documented at https://docs.paloaltonetworks.com/pan-os/11-1/pan-os-admin/high-availability/ha-firewall-states . Raw numbers are the reference template's own index (initial 0 ... unknown 8), assigned by its JavaScript preprocessing, not by PAN-OS. Classification: non-functional and suspended are failed; tentative is degraded; initial and unknown are unknown; active/passive/active-primary/active-secondary are normal"
+    states:
+      "0": {state: unknown, meaning: initial}
+      "1": {state: normal, meaning: active}
+      "2": {state: normal, meaning: passive}
+      "3": {state: normal, meaning: active-primary}
+      "4": {state: normal, meaning: active-secondary}
+      "5": {state: degraded, meaning: tentative}
+      "6": {state: failed, meaning: non-functional}
+      "7": {state: failed, meaning: suspended}
+      "8": {state: unknown, meaning: unknown}
+sensors:
+  - id: ha-state
+    category: ha
+    scope: status
+    title: HA state of the local firewall
+    api:
+      command: "<show><high-availability><all></all></high-availability></show>"
+      query: {type: op}
+      json_path: "$.response.result.group['local-info'].state"
+      index_map: [initial, active, passive, active-primary, active-secondary, tentative, non-functional, suspended]
+      unknown_index: 8
+    value: {type: unsigned, semantics: paloalto-ha-state}
+    triggers:
+      - {id: failed, severity: high, states: [failed], confirm_samples: 2, recover_samples: 2, title: "HA state non-functional or suspended"}
+      - {id: degraded, severity: warning, states: [degraded], confirm_samples: 3, recover_samples: 2, title: "HA state tentative"}
+    note: "An active<->passive role change is NOT alarmed here (the reference template alarms it as a 'state changed' event); it needs a transition rule and is not implemented."
+  - id: temperature-reading
+    category: temperature
+    scope: reading
+    title: System temperature reading (informational, PA-440 layout)
+    api:
+      command: "<show><system><environmentals></environmentals></system></show>"
+      query: {type: op}
+      json_path: "$.response.result.thermal.Slot1.entry.DegreesC"
+    value: {type: float, units: "C"}
+    triggers: []
+    note: "Path taken from the PA-440 reference template. No threshold is defined (none is documented there)."
+unsupported:
+  - {category: fan, reason: "Fan state is not in the reference template; the response layout of the environmentals command for fans is not documented here. UNVERIFIED."}
+  - {category: power, reason: "Power-supply state is not in the reference template; the response layout is not documented here. UNVERIFIED."}
+  - {category: temperature, reason: "No alarm: no documented threshold. Reading only."}
+  - {category: hw_redundancy, reason: "Not defined. HA is a separate category."}

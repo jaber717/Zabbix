@@ -1,0 +1,19 @@
+# Fortinet FortiProxy: NO DEFINITION. The official Zabbix 7.0 Fortinet templates cover FortiGate only; no FortiProxy reference was identified.
+schema: 1
+id: fortinet-fortiproxy
+vendor: fortinet
+families: [fortinet-fortiproxy]
+title: Fortinet FortiProxy - not defined
+kind: snmp
+sources:
+  - {kind: none, ref: "no reference template or MIB document identified for FortiProxy"}
+platforms:
+  - {name: "Fortinet FortiProxy", support: unknown, note: "Not deployed in the LAB; no authoritative source identified. BLOCKED. Do not assume FortiGate OIDs apply."}
+semantics: {}
+sensors: []
+unsupported:
+  - {category: fan, reason: "No definition."}
+  - {category: power, reason: "No definition."}
+  - {category: temperature, reason: "No definition."}
+  - {category: hw_redundancy, reason: "No definition."}
+  - {category: ha, reason: "No definition."}

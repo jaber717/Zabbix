@@ -22,7 +22,7 @@ def validate(data):
         raise AuditError("status-semantics: 'semantics' must be a mapping")
     out = {}
     for sid, s in sem.items():
-        if not isinstance(s, dict) or set(s) - {"vendor", "description", "evidence", "verified", "states", "families"}:
+        if not isinstance(s, dict) or set(s) - {"vendor", "description", "evidence", "verified", "states", "families", "device_verified", "origin"}:
             raise AuditError("status-semantics %s: unknown or missing keys" % sid)
         states = s.get("states")
         if not isinstance(states, dict) or not states:
@@ -55,3 +55,18 @@ def usable(reg, sid, vendor, family):
 def interpret(entry, raw_value):
     """Raw item value -> one of STATE_NAMES, or None when the value is not in the verified mapping."""
     return entry["states"].get(str(raw_value).strip())
+
+
+def registry(base):
+    """Documented vendor semantics (from vendors/*.yaml; documentation-derived, NOT device-verified) plus any operator-added entries in
+    config/status-semantics.yaml. An operator entry may not shadow a built-in one."""
+    import os
+    from . import vendordefs
+    from .api import AuditError
+    reg = load(os.path.join(base, "config", "status-semantics.yaml"))
+    merged = vendordefs.registry_entries(vendordefs.load_dir(os.path.join(base, "vendors")))
+    for k in reg:
+        if k in merged:
+            raise AuditError("operator semantics '%s' would shadow the built-in documented mapping of the same id" % k)
+    merged.update(reg)
+    return merged

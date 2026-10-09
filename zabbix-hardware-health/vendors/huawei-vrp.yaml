@@ -1,0 +1,49 @@
+# Huawei VRP: fan state and main-processing-unit temperature (HUAWEI-ENTITY-EXTENT-MIB).
+# OIDs and enumerations copied from the official Zabbix 7.0 template "Huawei VRP by SNMP"
+# (templates/net/huawei_snmp, release/7.0, commit 4a89781bcdc9f7cc59c721786baa8f95c3dd7135). Not verified on a physical device.
+schema: 1
+id: huawei-vrp
+vendor: huawei
+families: [huawei-vrp-switch, huawei-ar8140]
+title: Huawei VRP - HUAWEI-ENTITY-EXTENT-MIB
+kind: snmp
+sources:
+  - kind: zabbix-template
+    ref: "Huawei VRP by SNMP (items sensor.fan.status[hwEntityFanState], sensor.temp.value[hwEntityTemperature])"
+    url: https://github.com/zabbix/zabbix/tree/release/7.0/templates/net/huawei_snmp
+    commit: 4a89781bcdc9f7cc59c721786baa8f95c3dd7135
+    tested_on: "Huawei VRP (no model named in the template README)"
+  - kind: mib
+    ref: "HUAWEI-ENTITY-EXTENT-MIB (hwEntityFanState, hwEntityTemperature)"
+platforms:
+  - {name: "Huawei S-series switches (VRP)", support: documented-unverified, note: "The reference template names only 'Huawei VRP'; no S-series model is documented as tested."}
+  - {name: "Huawei AR8140 (VRP router)", support: documented-unverified, note: "Not named by the reference template; the AR8140 mapping has not been validated."}
+semantics:
+  huawei-fan-state:
+    object: "HUAWEI-ENTITY-EXTENT-MIB::hwEntityFanState"
+    description: "State of a fan."
+    classification_source: "value map of the reference template (1 normal, 2 abnormal; the template alerts on {$FAN_CRIT_STATUS}=2)"
+    states:
+      "1": {state: normal, meaning: normal}
+      "2": {state: failed, meaning: abnormal}
+sensors:
+  - id: fan
+    category: fan
+    scope: status
+    title: Fan state
+    table: {name_oid: "1.3.6.1.4.1.2011.5.25.31.1.1.10.1.1", name_object: "hwEntityFan index column (as used by the reference discovery)"}
+    value: {oid: "1.3.6.1.4.1.2011.5.25.31.1.1.10.1.7", object: hwEntityFanState, type: unsigned, semantics: huawei-fan-state}
+    triggers:
+      - {id: failed, severity: average, states: [failed], confirm_samples: 2, recover_samples: 2, title: "Fan abnormal"}
+  - id: temperature-reading
+    category: temperature
+    scope: reading
+    title: Entity temperature reading (informational)
+    table: {name_oid: "1.3.6.1.2.1.47.1.1.1.1.7", name_object: "ENTITY-MIB::entPhysicalName"}
+    value: {oid: "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.11", object: hwEntityTemperature, type: float, units: "C"}
+    triggers: []
+    note: "The reference template alerts when the average exceeds operator-set macros {$TEMP_CRIT}/{$TEMP_WARN} and limits discovery to entities named MPU*. This definition collects the reading only: NO threshold is invented. A temperature alarm needs thresholds approved from Huawei's documentation for the exact model."
+unsupported:
+  - {category: temperature, reason: "No alarm: requires operator-approved thresholds per model."}
+  - {category: power, reason: "The reference template defines no power-supply object. Not defined."}
+  - {category: hw_redundancy, reason: "Not defined by the reference template."}

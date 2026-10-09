@@ -1,0 +1,73 @@
+# Cisco IOS / IOS-XE environmental monitoring (CISCO-ENVMON-MIB).
+# Every OID and enumeration below is copied from the official Zabbix 7.0 template "Cisco IOS by SNMP"
+# (templates/net/cisco/cisco_snmp, branch release/7.0, commit 4a89781bcdc9f7cc59c721786baa8f95c3dd7135), which cites CISCO-ENVMON-MIB.
+# Nothing here has been verified on a physical device.
+schema: 1
+id: cisco-iosxe
+vendor: cisco
+families: [cisco-iosxe]
+title: Cisco IOS / IOS-XE - CISCO-ENVMON-MIB
+kind: snmp
+sources:
+  - kind: zabbix-template
+    ref: "Cisco IOS by SNMP (items sensor.fans.walk, sensor.psu.status, sensor.temp.status/value)"
+    url: https://github.com/zabbix/zabbix/tree/release/7.0/templates/net/cisco/cisco_snmp
+    commit: 4a89781bcdc9f7cc59c721786baa8f95c3dd7135
+    tested_on: "Cisco IOS Software releases 12.2(3.5) (per the template README)"
+  - kind: mib
+    ref: "CISCO-ENVMON-MIB (ciscoEnvMonFanState, ciscoEnvMonSupplyState, ciscoEnvMonTemperatureValue, ciscoEnvMonTemperatureState)"
+platforms:
+  - {name: "Cisco IOS / IOS-XE routers and switches that implement CISCO-ENVMON-MIB", support: documented-tested, note: "Only IOS 12.2(3.5) is named as tested by the reference template."}
+  - {name: "Cisco IOSv (virtual)", support: unknown, note: "LAB discovery: the environmental walks were never sampled; a virtual platform may not implement the MIB. Not N/A without proof."}
+  - {name: "Cisco IOS-XE on platforms that implement only ENTITY-SENSOR / FRU-CONTROL MIBs", support: documented-unverified, note: "Use the Nexus-style objects only after a capture shows which MIB the platform answers."}
+semantics:
+  cisco-envmon-state:
+    object: "CISCO-ENVMON-MIB::CiscoEnvMonState"
+    description: "State of a fan, power supply or temperature test point."
+    classification_source: "state classes follow the default macros {$FAN_CRIT_STATUS}/{$FAN_WARN_STATUS}/{$PSU_*} of the reference template (critical, shutdown = critical; warning, notFunctioning = warning)"
+    states:
+      "1": {state: normal, meaning: normal}
+      "2": {state: degraded, meaning: warning}
+      "3": {state: failed, meaning: critical}
+      "4": {state: failed, meaning: shutdown}
+      "5": {state: absent, meaning: notPresent}
+      "6": {state: degraded, meaning: notFunctioning}
+sensors:
+  - id: fan
+    category: fan
+    scope: status
+    title: Fan state
+    table: {name_oid: "1.3.6.1.4.1.9.9.13.1.4.1.2", name_object: ciscoEnvMonFanStatusDescr}
+    value: {oid: "1.3.6.1.4.1.9.9.13.1.4.1.3", object: ciscoEnvMonFanState, type: unsigned, semantics: cisco-envmon-state}
+    triggers:
+      - {id: failed, severity: high, states: [failed], confirm_samples: 2, recover_samples: 2, title: "Fan failed"}
+      - {id: degraded, severity: warning, states: [degraded], confirm_samples: 3, recover_samples: 2, title: "Fan degraded"}
+  - id: power
+    category: power
+    scope: status
+    title: Power supply state
+    table: {name_oid: "1.3.6.1.4.1.9.9.13.1.5.1.2", name_object: ciscoEnvMonSupplyStatusDescr}
+    value: {oid: "1.3.6.1.4.1.9.9.13.1.5.1.3", object: ciscoEnvMonSupplyState, type: unsigned, semantics: cisco-envmon-state}
+    triggers:
+      - {id: failed, severity: high, states: [failed], confirm_samples: 2, recover_samples: 2, title: "Power supply failed"}
+      - {id: degraded, severity: warning, states: [degraded], confirm_samples: 3, recover_samples: 2, title: "Power supply degraded"}
+  - id: temperature
+    category: temperature
+    scope: status
+    title: Temperature test point state (device-reported)
+    table: {name_oid: "1.3.6.1.4.1.9.9.13.1.3.1.2", name_object: ciscoEnvMonTemperatureStatusDescr}
+    value: {oid: "1.3.6.1.4.1.9.9.13.1.3.1.6", object: ciscoEnvMonTemperatureState, type: unsigned, semantics: cisco-envmon-state}
+    triggers:
+      - {id: failed, severity: high, states: [failed], confirm_samples: 2, recover_samples: 2, title: "Temperature critical (device-reported)"}
+      - {id: degraded, severity: warning, states: [degraded], confirm_samples: 3, recover_samples: 2, title: "Temperature warning (device-reported)"}
+  - id: temperature-reading
+    category: temperature
+    scope: reading
+    title: Temperature reading (informational)
+    table: {name_oid: "1.3.6.1.4.1.9.9.13.1.3.1.2", name_object: ciscoEnvMonTemperatureStatusDescr}
+    value: {oid: "1.3.6.1.4.1.9.9.13.1.3.1.3", object: ciscoEnvMonTemperatureStatusValue, type: float, units: "C"}
+    triggers: []
+    note: "Collected for history and the audit's unit check. No threshold trigger: alerting uses the device-reported state above, so no threshold is invented."
+unsupported:
+  - {category: hw_redundancy, reason: "No redundancy object is defined by the reference template; none is defined here. Not verified."}
+  - {category: ha, reason: "Not applicable to this definition."}

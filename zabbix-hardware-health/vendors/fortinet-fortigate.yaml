@@ -1,0 +1,58 @@
+# Fortinet FortiGate: generic hardware-sensor alarms and HA member synchronisation (FORTINET-FORTIGATE-MIB).
+# OIDs and enumerations copied from the official Zabbix 7.0 template "FortiGate by SNMP"
+# (templates/net/fortinet/fortigate_snmp, release/7.0, commit 4a89781bcdc9f7cc59c721786baa8f95c3dd7135). Not verified on a physical device.
+schema: 1
+id: fortinet-fortigate
+vendor: fortinet
+families: [fortinet-fortigate]
+title: Fortinet FortiGate - FORTINET-FORTIGATE-MIB
+kind: snmp
+sources:
+  - kind: zabbix-template
+    ref: "FortiGate by SNMP (items hw.sensor.status, ha.sync.status, ha.mode)"
+    url: https://github.com/zabbix/zabbix/tree/release/7.0/templates/net/fortinet/fortigate_snmp
+    commit: 4a89781bcdc9f7cc59c721786baa8f95c3dd7135
+    tested_on: "FortiGate v7.2.5 (per the template README)"
+  - kind: mib
+    ref: "FORTINET-FORTIGATE-MIB (fgHwSensorEntTable, fgHaStatsTable)"
+platforms:
+  - {name: "FortiGate (FortiOS 7.2.x)", support: documented-tested, note: "Reference template tested on FortiGate v7.2.5 only."}
+  - {name: "FortiGate models without hardware sensors", support: unknown, note: "The sensor table is model dependent; an empty table is a finding to evidence, not a pass."}
+semantics:
+  fortinet-sensor-alarm:
+    object: "FORTINET-FORTIGATE-MIB::fgHwSensorEntAlarmStatus"
+    description: "Whether a hardware sensor that has an alarm threshold has exceeded it. Not all sensors have alarms."
+    classification_source: "value map 'Sensor alert status' of the reference template (0 false, 1 true); 'true' is classified as failed because the sensor reports its own alarm threshold exceeded"
+    states:
+      "0": {state: normal, meaning: "false"}
+      "1": {state: failed, meaning: "true"}
+  fortinet-ha-sync:
+    object: "FORTINET-FORTIGATE-MIB::fgHaStatsSyncStatus"
+    description: "Synchronisation status of an HA cluster member."
+    classification_source: "value map 'HA sync status' of the reference template (0 unsynchronized, 1 synchronized); unsynchronized is classified degraded (the cluster is up but not in sync)"
+    states:
+      "0": {state: degraded, meaning: unsynchronized}
+      "1": {state: normal, meaning: synchronized}
+sensors:
+  - id: hw-sensor-alarm
+    category: sensor
+    scope: status
+    title: Hardware sensor alarm (generic - the sensor name decides whether it is a fan, PSU or temperature sensor)
+    table: {name_oid: "1.3.6.1.4.1.12356.101.4.3.2.1.2", name_object: fgHwSensorEntName}
+    value: {oid: "1.3.6.1.4.1.12356.101.4.3.2.1.4", object: fgHwSensorEntAlarmStatus, type: unsigned, semantics: fortinet-sensor-alarm}
+    triggers:
+      - {id: alarm, severity: average, states: [failed], confirm_samples: 2, recover_samples: 2, title: "Hardware sensor alarm"}
+  - id: ha-sync
+    category: ha
+    scope: status
+    title: HA member synchronisation
+    table: {name_oid: "1.3.6.1.4.1.12356.101.13.2.1.1.2", name_object: fgHaStatsSerial}
+    value: {oid: "1.3.6.1.4.1.12356.101.13.2.1.1.12", object: fgHaStatsSyncStatus, type: unsigned, semantics: fortinet-ha-sync}
+    triggers:
+      - {id: unsynchronized, severity: warning, states: [degraded], confirm_samples: 3, recover_samples: 2, title: "HA member not synchronized"}
+    note: "Detects a member that is present but out of sync. Loss of a member (it disappears from the table) and a change of HA mode (fgHaSystemMode 1.3.6.1.4.1.12356.101.13.1.1.0: 1 standalone, 2 activeActive, 3 activePassive) are NOT alarmed: both need an operator-supplied expected member count / mode."
+unsupported:
+  - {category: fan, reason: "FortiGate exposes fans only as generically named rows of fgHwSensorEntTable; which rows are fans is model dependent. Not classified."}
+  - {category: power, reason: "No dedicated PSU object in the reference template. Not defined."}
+  - {category: temperature, reason: "Temperature rows of fgHwSensorEntTable are generic and unit-less strings (fgHwSensorEntValue). Not defined."}
+  - {category: hw_redundancy, reason: "Not defined by the reference template. HA is a separate category."}
