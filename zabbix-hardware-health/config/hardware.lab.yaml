@@ -1,0 +1,10 @@
+# Dedicated hardware-health project. LAB hosts must be explicitly approved.
+environment: lab
+hosts: {}
+# Example:
+# hosts:
+#   PNET-SITE-A:
+#     site: SITE-A
+#     vendor: cisco
+#     expected: [fan, power, temperature]
+#     max_sensor_age_minutes: 480
