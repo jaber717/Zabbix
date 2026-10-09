@@ -76,6 +76,7 @@ def _parser():
     t.add_argument("--out")
     ls = sub.add_parser("labsim", help="READ-ONLY verification of the existing LAB simulator objects")
     ls.add_argument("--config")
+    ls.add_argument("--evidence-since", type=int, help="epoch seconds: instead of verifying, report events and alerts of the simulator triggers since then (read-only)")
     return p
 
 
@@ -345,6 +346,10 @@ def main(argv=None, environ=None, transport=None, base=None, now=None, out=print
             cfg = policy.load_config(os.path.join(base, "config", "hardware.lab.yaml"), "lab", catalogue)
             lcfg = labsim.load(args.config or os.path.join(base, "config", "lab-sim.yaml"))
             api, _ = _open("lab", cfg, environ, transport)
+            if args.evidence_since is not None:
+                ev = labsim.evidence(api, lcfg, args.evidence_since)
+                out(json.dumps(ev, indent=2, sort_keys=True))
+                return 0 if ev["ok"] else 1
             r = labsim.verify(api, lcfg)
             out(labsim.render(r, lcfg))
             return 0 if r["ok"] else 1

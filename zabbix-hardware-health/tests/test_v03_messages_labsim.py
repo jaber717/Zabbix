@@ -108,3 +108,49 @@ class IsolationFailsClosed(unittest.TestCase):
         flt = {"evaltype": 1, "conditions": [{"conditiontype": 25, "operator": 0, "value": "netops_hardware"}, {"conditiontype": 4, "operator": 5, "value": "3"}]}
         api, _ = make_api(enabled_action_filter=flt)
         self.assertTrue(labsim.verify(api, CFG)["ok"])
+
+
+def make_evidence_api(events, alerts, actions):
+    calls = []
+
+    def transport(req, timeout=0):
+        body = json.loads(req.data)
+        m, p = body["method"], body.get("params", {})
+        calls.append((m, p))
+        if m == "event.get":
+            r = events.get(p["objectids"][0], [])
+        elif m == "alert.get":
+            r = [a for a in alerts if a["eventid"] in p["eventids"]]
+        elif m == "action.get":
+            r = actions
+        else:
+            raise AssertionError(m)
+        return _R(json.dumps({"jsonrpc": "2.0", "id": body["id"], "result": r}).encode())
+
+    return ZabbixAPI("http://z", "t", transport=transport), calls
+
+
+class Evidence(unittest.TestCase):
+    ACTIONS = [{"actionid": "9", "name": "NETOPS-HW Hardware Health"}, {"actionid": "3", "name": "NETOPS-IaC Interface Alerting"}]
+
+    def test_problem_and_recovery_alerts_counted_from_hardware_action(self):
+        ev = {"26409": [{"eventid": "10", "value": "1", "r_eventid": "11", "clock": "1"}]}
+        al = [{"alertid": "1", "actionid": "9", "eventid": "10", "status": "1"}, {"alertid": "2", "actionid": "9", "eventid": "11", "status": "1"}]
+        api, calls = make_evidence_api(ev, al, self.ACTIONS)
+        r = labsim.evidence(api, CFG, 0)
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(r["triggers"]["26409"]["alerts_by_action"], {"NETOPS-HW Hardware Health": 2})
+        self.assertEqual(api.writes_made(), [])
+
+    def test_unrecovered_problem_is_reported(self):
+        ev = {"26410": [{"eventid": "20", "value": "1", "r_eventid": "0", "clock": "1"}]}
+        api, _ = make_evidence_api(ev, [], self.ACTIONS)
+        self.assertFalse(labsim.evidence(api, CFG, 0)["ok"])
+
+    def test_alert_from_another_action_is_a_finding(self):
+        ev = {"26411": [{"eventid": "30", "value": "1", "r_eventid": "31", "clock": "1"}]}
+        al = [{"alertid": "5", "actionid": "3", "eventid": "30", "status": "1"}]
+        api, _ = make_evidence_api(ev, al, self.ACTIONS)
+        r = labsim.evidence(api, CFG, 0)
+        self.assertFalse(r["ok"])
+        self.assertTrue(any("Interface" in f for f in r["findings"]))

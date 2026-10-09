@@ -95,3 +95,33 @@ def render(result, cfg):
     lines.append("\nRESTORE plan (exact pre-change tags):")
     lines.append(json.dumps(restore_plan(result["snapshot"]), indent=2, sort_keys=True))
     return "\n".join(lines)
+
+
+def evidence(api, cfg, since):
+    """READ-ONLY event / alert evidence for the three simulator triggers since `since` (epoch seconds).
+    -> {'triggers': {triggerid: {'problems': n, 'recovered': n, 'alerts_by_action': {name: n}}}, 'findings': [...], 'ok': bool}
+    ok means: every Problem has a linked Recovery, and every alert came from the hardware action (nothing from any other action)."""
+    out, findings = {}, []
+    for s in cfg["sensors"]:
+        tid = s["triggerid"]
+        ev = api.call("event.get", {"objectids": [tid], "source": 0, "object": 0, "time_from": int(since), "output": ["eventid", "value", "r_eventid", "clock"],
+                                    "sortfield": ["clock"], "sortorder": "ASC"})
+        problems = [e for e in ev if str(e["value"]) == "1"]
+        recovered = [e for e in problems if str(e.get("r_eventid", "0")) not in ("", "0")]
+        by_action = {}
+        if ev:
+            # a Recovery notification is attached to the RECOVERY event id, so query both ids
+            ids = [e["eventid"] for e in ev] + [e["r_eventid"] for e in recovered]
+            al = api.call("alert.get", {"eventids": ids, "output": ["alertid", "actionid", "status", "error", "eventid"]})
+            for a in al:
+                by_action[str(a["actionid"])] = by_action.get(str(a["actionid"]), 0) + 1
+        out[tid] = {"component": s["component"], "problems": len(problems), "recovered": len(recovered), "alerts_by_actionid": by_action}
+        if len(problems) != len(recovered):
+            findings.append("trigger %s (%s): %d Problem(s) but %d linked Recovery(ies)" % (tid, s["component"], len(problems), len(recovered)))
+    names = dict((str(a["actionid"]), a["name"]) for a in api.call("action.get", {"output": ["actionid", "name"]}))
+    for tid, r in out.items():
+        r["alerts_by_action"] = dict((names.get(k, k), v) for k, v in r.pop("alerts_by_actionid").items())
+        for name in r["alerts_by_action"]:
+            if name != A.ACTION_NAME:
+                findings.append("trigger %s: alert(s) from action %r (only %r may notify for hardware events)" % (tid, name, A.ACTION_NAME))
+    return {"triggers": out, "findings": findings, "ok": not findings}
