@@ -9,7 +9,7 @@ for i in "${!ARGS[@]}"; do [ "${ARGS[$i]}" = "--prefix" ] && PREFIX="${ARGS[$((i
 [ -L "$PREFIX/current" ] || { echo "nothing installed at $PREFIX (use install.sh)" >&2; exit 1; }
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 BK="$PREFIX/backups/pre-upgrade-$STAMP.tar.gz"
-tar -C "$PREFIX" -czf "$BK" config state 2>/dev/null
+( umask 077; tar -C "$PREFIX" -czf "$BK" config state 2>/dev/null )
 chmod 600 "$BK" 2>/dev/null || true
 echo "backup written: $BK (config + state)"
 echo "previous release: $(readlink "$PREFIX/current")"

@@ -232,12 +232,20 @@ def build(defn, nonce=""):
     return build_payload(defn, content_hash(defn), nonce)
 
 
-IMPORT_RULES = {
-    "template_groups": {"createMissing": True, "updateExisting": False},
-    "templates": {"createMissing": True, "updateExisting": True},
-    "valueMaps": {"createMissing": True, "updateExisting": True, "deleteMissing": True},
-    "discoveryRules": {"createMissing": True, "updateExisting": True, "deleteMissing": True},
-    "items": {"createMissing": True, "updateExisting": True, "deleteMissing": True},
-    "triggers": {"createMissing": True, "updateExisting": True, "deleteMissing": True},
-    "templateLinkage": {"createMissing": False, "deleteMissing": False},   # this tool never links or unlinks templates
-}
+def _rules(update, delete):
+    """Import / importcompare rules. `deleteMissing` is spelled out (False) wherever the API supports it, so no code path can delete a child by omission."""
+    r = {"template_groups": {"createMissing": True, "updateExisting": False},
+         "templates": {"createMissing": True, "updateExisting": update},
+         "templateLinkage": {"createMissing": False, "deleteMissing": False}}          # this tool never links or unlinks templates
+    for k in ("valueMaps", "discoveryRules", "items", "triggers"):
+        r[k] = {"createMissing": True, "updateExisting": update, "deleteMissing": delete}
+    return r
+
+
+# DEFAULT for every apply: create / update only, never delete a child (items, discovery rules, triggers, value maps).
+IMPORT_RULES = _rules(update=True, delete=False)
+# CREATE: nothing that already exists may be updated - if something appeared concurrently the import cannot overwrite it.
+CREATE_RULES = _rules(update=False, delete=False)
+# RESTORE: used ONLY by `template rollback` of an owned, unlinked, undrifted template, to remove exactly the objects that this tool's own update added.
+# It is never used by plan/apply (destructive migrations stay outside the automatic apply workflow).
+RESTORE_RULES = _rules(update=True, delete=True)

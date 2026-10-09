@@ -74,9 +74,6 @@ def _parser():
     t.add_argument("what", choices=["build", "check", "plan", "apply", "rollback"])
     t.add_argument("--definition", required=True)
     t.add_argument("--out")
-    t.add_argument("--approve-linked-update", metavar="REF", help="independent approval reference required to update/restore a template that is linked to hosts")
-    t.add_argument("--approve-removals", metavar="REF", help="approval reference required when the import would DELETE items / triggers / rules / value maps")
-    t.add_argument("--accept-drift", action="store_true", help="overwrite a template whose live configuration no longer matches what this tool last wrote")
     ls = sub.add_parser("labsim", help="READ-ONLY verification of the existing LAB simulator objects")
     ls.add_argument("--config")
     ls.add_argument("--evidence-since", type=int, help="epoch seconds: instead of verifying, report events and alerts of the simulator triggers since then (read-only)")
@@ -178,17 +175,16 @@ def _template(args, environ, transport, base, out, catalogue):
     cfg = policy.load_config(os.path.join(base, "config", "hardware.lab.yaml"), "lab", catalogue)
     writing = args.what in ("apply", "rollback")
     api, _ = _open("lab", cfg, environ, transport, write_templates=writing)
-    kw = {"approve_linked": args.approve_linked_update, "approve_removals": args.approve_removals, "accept_drift": args.accept_drift}
     if args.what == "rollback":
-        out(json.dumps(tplmgr.rollback(api, "lab", defn, base, **kw), sort_keys=True))
+        out(json.dumps(tplmgr.rollback(api, "lab", defn, base), sort_keys=True))
         return 0
     if args.what == "plan":
-        p = tplmgr.plan(api, "lab", defn, base, **kw)
+        p = tplmgr.plan(api, "lab", defn, base)
     else:
-        res = tplmgr.apply(api, "lab", defn, base, **kw)
+        res = tplmgr.apply(api, "lab", defn, base)
         p = res["plan"]
         out("result: %s" % res["result"])
-        for k in ("backup", "backup_export_sha256", "record"):
+        for k in ("templateid", "backup", "backup_export_sha256", "record"):
             if res.get(k):
                 out("%s: %s" % (k.replace("_", " "), res[k]))
     out("template %s: %s" % (p["template"], p["action"]))
@@ -198,6 +194,12 @@ def _template(args, environ, transport, base, out, catalogue):
         out("    %s: %d" % (k, v))
     for o in cmp_["operations"]:
         out("    %-8s %-40s %s" % (o["op"], o["path"], o["label"]))
+    for o in cmp_.get("obsolete_left_in_place", []):
+        out("    LEFT IN PLACE (present live, absent from the generated source; apply never deletes): " + o)
+    if p.get("linked_hosts"):
+        out("  linked to %d host(s): %s" % (p["linked_hosts"], ", ".join(p["linked_host_ids"])))
+    for x in (p.get("drift") or []):
+        out("  DRIFT " + x)
     for n in p["notes"]:
         out("  note: " + n)
     for c in p["conflicts"]:

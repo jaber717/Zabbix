@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import stat
 import tempfile
 import unittest
 
@@ -66,13 +67,13 @@ class Lifecycle(unittest.TestCase):
         with open(init) as fh:
             t = fh.read()
         with open(init, "w") as fh:
-            fh.write(t.replace("0.3.0-rc1", "0.3.0-rc2"))
+            fh.write(t.replace("0.3.1-rc2", "0.3.1-rc3"))
         rc, out = sh(os.path.join(work, "release", "build-package.sh"), os.path.join(work, "dist"))
         self.assertEqual(rc, 0, out)
-        pkg2 = os.path.join(work, "dist", "netops-hardware-health-0.3.0-rc2.tar.gz")
+        pkg2 = os.path.join(work, "dist", "netops-hardware-health-0.3.1-rc3.tar.gz")
         rc, out = sh(os.path.join(REL, "upgrade.sh"), pkg2, "--prefix", p)
         self.assertEqual(rc, 0, out)
-        self.assertTrue(os.readlink(os.path.join(p, "current")).endswith("0.3.0-rc2"))
+        self.assertTrue(os.readlink(os.path.join(p, "current")).endswith("0.3.1-rc3"))
         rc, out = sh(os.path.join(REL, "rollback.sh"), "--prefix", p)
         self.assertEqual(rc, 0, out)
         self.assertEqual(os.readlink(os.path.join(p, "current")), first)
@@ -108,3 +109,81 @@ class Lifecycle(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(BASH and os.name == "posix", "release scripts need bash on POSIX")
+class StateAndReproducibility(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp()
+        env = dict(os.environ, SOURCE_DATE_EPOCH="1700000000")
+        for n in ("a", "b"):
+            p = subprocess.run([BASH, os.path.join(REL, "build-package.sh"), os.path.join(cls.tmp, n)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, env=env)
+            assert p.returncode == 0, p.stdout
+        cls.pkg = [os.path.join(cls.tmp, "a", f) for f in os.listdir(os.path.join(cls.tmp, "a")) if f.endswith(".tar.gz")][0]
+        cls.pkg_b = [os.path.join(cls.tmp, "b", f) for f in os.listdir(os.path.join(cls.tmp, "b")) if f.endswith(".tar.gz")][0]
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def test_the_package_is_reproducible(self):
+        with open(self.pkg, "rb") as a, open(self.pkg_b, "rb") as b:
+            self.assertEqual(a.read(), b.read())
+        with open(self.pkg + ".sha256") as a, open(self.pkg_b + ".sha256") as b:
+            self.assertEqual(a.read().split()[0], b.read().split()[0])
+
+    def test_ownership_state_and_immutable_backups_survive_install_upgrade_and_rollback(self):
+        p = os.path.join(self.tmp, "prefix")
+        self.assertEqual(sh(os.path.join(REL, "install.sh"), self.pkg, "--prefix", p)[0], 0)
+        own = os.path.join(p, "state", "ownership")
+        bak = os.path.join(p, "state", "backups")
+        os.makedirs(own, mode=0o700)
+        os.makedirs(bak, mode=0o700)
+        rec = os.path.join(own, "template-lab-cisco-iosxe.json")
+        bf = os.path.join(bak, "template-lab-cisco-iosxe-20261009T000000Z-aaaaaa-update.json")
+        with open(rec, "w") as fh:
+            fh.write('{"nonce":"x"}')
+        os.chmod(rec, 0o600)
+        with open(bf, "w") as fh:
+            fh.write('{"export":"original"}')
+        os.chmod(bf, 0o400)
+        before = {rec: _read(rec), bf: _read(bf)}
+        modes = {rec: stat.S_IMODE(os.stat(rec).st_mode), bf: stat.S_IMODE(os.stat(bf).st_mode)}
+        # a second release (upgrade), then rollback of the code
+        work = os.path.join(self.tmp, "v2")
+        shutil.copytree(ROOT, work, ignore=shutil.ignore_patterns("__pycache__", "state", "dist", ".git"))
+        init = os.path.join(work, "hwh", "__init__.py")
+        with open(init) as fh:
+            t = fh.read()
+        with open(init, "w") as fh:
+            fh.write(t.replace("0.3.1-rc2", "0.3.1-rc9"))
+        self.assertEqual(sh(os.path.join(work, "release", "build-package.sh"), os.path.join(work, "dist"))[0], 0)
+        pkg2 = os.path.join(work, "dist", "netops-hardware-health-0.3.1-rc9.tar.gz")
+        rc, out = sh(os.path.join(REL, "upgrade.sh"), pkg2, "--prefix", p)
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(sh(os.path.join(REL, "rollback.sh"), "--prefix", p)[0], 0)
+        for path, text in before.items():
+            self.assertTrue(os.path.isfile(path), path)
+            self.assertEqual(_read(path), text)
+            self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), modes[path])
+        self.assertEqual(stat.S_IMODE(os.stat(os.path.join(p, "state")).st_mode), 0o700)
+        # the pre-upgrade backup holds the ownership state and the immutable backups
+        bk = [f for f in os.listdir(os.path.join(p, "backups")) if f.startswith("pre-upgrade")]
+        self.assertTrue(bk)
+        listing = subprocess.run(["tar", "-tzf", os.path.join(p, "backups", bk[0])], stdout=subprocess.PIPE, universal_newlines=True).stdout
+        self.assertIn("template-lab-cisco-iosxe.json", listing)
+        self.assertIn("-update.json", listing)
+        self.assertEqual(stat.S_IMODE(os.stat(os.path.join(p, "backups", bk[0])).st_mode), 0o600)
+        # verify-deployment still passes, and flags loosened permissions on ownership state
+        rc, out = sh(os.path.join(p, "current", "release", "verify-deployment.sh"), p)
+        self.assertEqual(rc, 0, out)
+        os.chmod(rec, 0o644)
+        rc, out = sh(os.path.join(p, "current", "release", "verify-deployment.sh"), p)
+        self.assertNotEqual(rc, 0)
+        self.assertIn("ownership", out)
+
+
+def _read(path):
+    with open(path) as fh:
+        return fh.read()

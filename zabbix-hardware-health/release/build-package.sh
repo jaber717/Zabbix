@@ -26,7 +26,14 @@ if grep -rEIl '(api[_-]?token|password|secret)[[:space:]]*[:=][[:space:]]*["'"'"
   exit 1
 fi
 ( cd "$STAGE/$NAME" && find . -type f ! -name MANIFEST.sha256 | LC_ALL=C sort | xargs sha256sum > MANIFEST.sha256 )
-tar -C "$STAGE" -czf "$OUT/$NAME.tar.gz" "$NAME"
+# reproducible archive: fixed modes, owners, mtimes and file order, gzip without a timestamp -> the same sources always give the same SHA-256
+EPOCH="${SOURCE_DATE_EPOCH:-$(git -C "$HERE" log -1 --format=%ct 2>/dev/null || true)}"
+EPOCH="${EPOCH:-1700000000}"
+find "$STAGE/$NAME" -type d -exec chmod 755 {} +
+find "$STAGE/$NAME" -type f -exec chmod 644 {} +
+find "$STAGE/$NAME" -type f \( -name '*.sh' -o -name 'hardware_audit.py' \) -exec chmod 755 {} +
+find "$STAGE/$NAME" -exec touch -h -d "@$EPOCH" {} +
+tar -C "$STAGE" --sort=name --owner=0 --group=0 --numeric-owner --mtime="@$EPOCH" -cf - "$NAME" | gzip -n -9 > "$OUT/$NAME.tar.gz"
 ( cd "$OUT" && sha256sum "$NAME.tar.gz" > "$NAME.tar.gz.sha256" )
 echo "built $OUT/$NAME.tar.gz"
 cat "$OUT/$NAME.tar.gz.sha256"

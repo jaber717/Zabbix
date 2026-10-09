@@ -6,9 +6,9 @@ Cells: SIMULATED TESTED 11, UNVERIFIED / BLOCKED 27.
 
 | Family | Category | Level | Implemented as | Readings only (no alert) | Not available / reason |
 |---|---|---|---|---|---|
-| Cisco ASR 8500 / IOS-XR | fan | UNVERIFIED / BLOCKED | - | - | No definition: platform not documented in the project's sources. |
-| Cisco ASR 8500 / IOS-XR | power | UNVERIFIED / BLOCKED | - | - | No definition. |
-| Cisco ASR 8500 / IOS-XR | temperature | UNVERIFIED / BLOCKED | - | - | No definition. |
+| Cisco ASR 8500 / IOS-XR | fan | UNVERIFIED / BLOCKED | - | - | No definition: the target model is unconfirmed. If it is an ASR 9000 (IOS XR), cefcFanTrayOperStatus is MIB-verified but the rows returned by the chassis are not documented; a device walk is required. |
+| Cisco ASR 8500 / IOS-XR | power | UNVERIFIED / BLOCKED | - | - | No definition: the target model is unconfirmed. On IOS XR, power data is reported as admin-restricted (SystemOwner). |
+| Cisco ASR 8500 / IOS-XR | temperature | UNVERIFIED / BLOCKED | - | - | No definition: the target model is unconfirmed. |
 | Cisco ASR 8500 / IOS-XR | hw_redundancy | UNVERIFIED / BLOCKED | - | - | No definition. |
 | Cisco IOS / IOS-XE | fan | SIMULATED TESTED | Fan state [status] | - | - |
 | Cisco IOS / IOS-XE | power | SIMULATED TESTED | Power supply state [status] | - | - |
@@ -24,11 +24,11 @@ Cells: SIMULATED TESTED 11, UNVERIFIED / BLOCKED 27.
 | Fortinet FortiGate | hw_redundancy | UNVERIFIED / BLOCKED | - | - | Not defined by the reference template. HA is a separate category. |
 | Fortinet FortiGate | ha | SIMULATED TESTED | HA member synchronisation [status] | - | - |
 | Fortinet FortiGate | sensor | SIMULATED TESTED | Hardware sensor alarm (generic - the sensor name decides whether it is a fan, PSU or temperature sensor) [status] | - | - |
-| Fortinet FortiProxy | fan | UNVERIFIED / BLOCKED | - | - | No definition. |
-| Fortinet FortiProxy | power | UNVERIFIED / BLOCKED | - | - | No definition. |
-| Fortinet FortiProxy | temperature | UNVERIFIED / BLOCKED | - | - | No definition. |
+| Fortinet FortiProxy | fan | UNVERIFIED / BLOCKED | - | - | No documented FortiProxy fan object found; MIB not publicly available. Obtain FORTINET-FORTIPROXY-MIB from Fortinet support. |
+| Fortinet FortiProxy | power | UNVERIFIED / BLOCKED | - | - | No documented FortiProxy power-supply object found. |
+| Fortinet FortiProxy | temperature | UNVERIFIED / BLOCKED | - | - | No documented FortiProxy temperature object found. |
 | Fortinet FortiProxy | hw_redundancy | UNVERIFIED / BLOCKED | - | - | No definition. |
-| Fortinet FortiProxy | ha | UNVERIFIED / BLOCKED | - | - | No definition. |
+| Fortinet FortiProxy | ha | UNVERIFIED / BLOCKED | - | - | No documented FortiProxy HA object found; FortiGate's fgHaStatsSyncStatus (12356.101.13) is not assumed. |
 | Fortinet FortiProxy | sensor | UNVERIFIED / BLOCKED | - | - | No definition. |
 | Huawei AR8140 / VRP router | fan | SIMULATED TESTED | Fan state [status] | - | - |
 | Huawei AR8140 / VRP router | power | UNVERIFIED / BLOCKED | - | - | The reference template defines no power-supply object. Not defined. |

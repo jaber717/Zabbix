@@ -14,6 +14,8 @@ CUR="$PREFIX/current"
 [ -d "$PREFIX/state" ] && ok "state directory present" || bad "state directory missing"
 PERM="$(stat -c %a "$PREFIX/state" 2>/dev/null || echo ?)"
 [ "$PERM" = "700" ] && ok "state directory is 0700" || bad "state directory permissions are $PERM (want 700)"
+LOOSE="$(find "$PREFIX/state" "$PREFIX/backups" \( -type f -perm /077 -o -type d -perm /077 \) 2>/dev/null | head -3)"
+[ -z "$LOOSE" ] && ok "ownership records and backups are private (no group/other access)" || bad "ownership/backup state is accessible by group or others: $(echo $LOOSE | tr '\n' ' ')"
 "$PY" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' && ok "Python >= 3.9" || bad "Python 3.9+ missing"
 "$PY" -c 'import yaml' 2>/dev/null && ok "PyYAML importable" || bad "PyYAML missing"
 for sub in "vendors check" "vendors simulate" "vendors messages"; do
