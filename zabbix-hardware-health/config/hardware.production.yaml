@@ -1,0 +1,3 @@
+# Intentionally empty. Never copy LAB devices into Production.
+environment: production
+hosts: {}
