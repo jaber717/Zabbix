@@ -15,7 +15,12 @@ sources:
     commit: 4a89781bcdc9f7cc59c721786baa8f95c3dd7135
     tested_on: "Cisco IOS Software releases 12.2(3.5) (per the template README)"
   - kind: mib
-    ref: "CISCO-ENVMON-MIB (ciscoEnvMonFanState, ciscoEnvMonSupplyState, ciscoEnvMonTemperatureValue, ciscoEnvMonTemperatureState)"
+    ref: "CISCO-ENVMON-MIB (ciscoEnvMonFanState, ciscoEnvMonSupplyState, ciscoEnvMonTemperatureStatusValue, ciscoEnvMonTemperatureState)"
+  - kind: vendor-mib
+    ref: "CISCO-ENVMON-MIB, CISCO-ENTITY-FRU-CONTROL-MIB, CISCO-ENTITY-SENSOR-MIB: every OID and enumeration name checked against the Cisco-published MIB files (tests/test_v03rc2_cisco_mibs.py, docs/sources/cisco-mib-extract.json)"
+    url: https://github.com/cisco/cisco-mibs/tree/c9ab98c03ee051de74edda72f6d5c43ee65cad91/v2
+    commit: c9ab98c03ee051de74edda72f6d5c43ee65cad91
+
 platforms:
   - {name: "Cisco IOS / IOS-XE routers and switches that implement CISCO-ENVMON-MIB", support: documented-tested, note: "Only IOS 12.2(3.5) is named as tested by the reference template."}
   - {name: "Cisco IOSv (virtual)", support: unknown, note: "LAB discovery: the environmental walks were never sampled; a virtual platform may not implement the MIB. Not N/A without proof."}

@@ -16,6 +16,11 @@ sources:
     tested_on: "Cisco Nexus 93180YC-FX3, NX-OS 9.3.7 (per the template README)"
   - kind: mib
     ref: "CISCO-ENTITY-FRU-CONTROL-MIB (cefcFanTrayOperStatus, cefcFRUPowerOperStatus); CISCO-ENTITY-SENSOR-MIB (entSensorStatus)"
+  - kind: vendor-mib
+    ref: "CISCO-ENVMON-MIB, CISCO-ENTITY-FRU-CONTROL-MIB, CISCO-ENTITY-SENSOR-MIB: every OID and enumeration name checked against the Cisco-published MIB files (tests/test_v03rc2_cisco_mibs.py, docs/sources/cisco-mib-extract.json)"
+    url: https://github.com/cisco/cisco-mibs/tree/c9ab98c03ee051de74edda72f6d5c43ee65cad91/v2
+    commit: c9ab98c03ee051de74edda72f6d5c43ee65cad91
+
 platforms:
   - {name: "Cisco Nexus 9000 series", support: documented-tested, note: "Reference template tested on Nexus 93180YC-FX3, NX-OS 9.3.7 only."}
   - {name: "Other Nexus families (3000, 5000, 7000)", support: documented-unverified, note: "Same MIBs are expected but nothing documents them for this definition."}

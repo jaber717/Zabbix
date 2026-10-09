@@ -76,7 +76,7 @@ Or in the Zabbix UI: Alerts -> Actions -> `NETOPS-HW Hardware Health` -> Disable
 
 ```bash
 $H --env lab action rollback --backup state/backups/hardware-action-lab-<stamp>.json   # id- and nonce-verified; deletes the action this tool created, or restores the prior definition
-$H --env lab template rollback --definition <id>                                         # restores the pre-change template export, or deletes a tool-created, unlinked template
+$H --env lab template rollback --definition <id>                                         # exact recorded id only; restores the immutable pre-change export, or deletes the tool-created template; refuses linked / drifted / foreign templates
 ```
 Tag changes made on the simulator triggers are reverted with the saved `RESTORE plan` (operator-applied). Code rollback: `release/rollback.sh`. Rollback never touches an object this deployment cannot prove it owns.
 

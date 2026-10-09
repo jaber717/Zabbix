@@ -19,8 +19,13 @@ Run from a clean checkout of the candidate SHA. Record exact command, exit code 
 |---|---|---|
 | B1 | `$H template build --definition cisco-iosxe --out x.json` for every buildable definition | valid JSON, `importcheck` clean |
 | B2 | Inspect: no `netops_alert` anywhere; six routing tags on every trigger; alarm triggers have recovery expressions; items feeding `last(#n>1)` do not discard unchanged values; PAN password macro is SECRET_TEXT and empty | true |
-| B3 | LAB `template plan` -> `apply` -> inspect in the UI -> `template rollback` | create/applied/deleted; template never linked to any host by the tool; a same-named foreign template is reported as CONFLICT and untouched |
-| B4 | After B3 `apply`, link the template to a **throw-away LAB host only if separately approved**; confirm LLD/items/triggers appear and no expression is rejected | (this is the L3 evidence) |
+| B3 | First run `qa/acceptance_v03_security_repro.py` UNCHANGED (it must stop at its first sequence with a refusal, not print CONFIRMED) and `qa/acceptance_v031_regression.py` (must print ALL FIVE FIXED) | no CONFIRMED line; five FIXED |
+| B4 | LAB `template plan --definition cisco-iosxe` (read-only): CREATE, `added templates: 1`, no updated/removed, `linked_hosts: 0`; then (separately approved) `apply`; `plan` again = `noop`; inspect in the UI | as stated; the template is not linked to any host by the tool |
+| B5 | After B4 try, in the UI: add an item to the template -> `plan` must say DRIFT `ADDED item:...`, `apply` and `rollback` must refuse; remove the item -> `plan` is `noop` again | drift never classified as noop; no override flag exists |
+| B6 | Link the template to a throw-away LAB host only if separately approved: `plan --definition` after a definition change must refuse and list the host id; `rollback` must refuse | linked template never updated or deleted; hosts untouched |
+| B7 | `template rollback` on the unlinked, undrifted template deletes exactly the recorded id; if a same-name template is created by hand first, rollback reports already-absent and leaves it | no deletion by name |
+| B8 | Inspect `state/backups/template-*` (unique, 0400) and `state/ownership/*` (0600); run `release/upgrade.sh` and `rollback.sh`: all remain | immutable, preserved |
+| B9 | Read once, read-only, a real `configuration.export` of the deployed template twice: is the canonical hash stable? | resolves the L17/L19 residual |
 
 ## C. LAB read-only integration (token: LAB only, via environment)
 | # | Check | Expected |

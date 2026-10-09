@@ -25,11 +25,11 @@ $H template check --definition cisco-iosxe                                # stru
 
 ## Deploying a template to the LAB (guarded, reversible)
 ```bash
-$H --env lab template plan  --definition cisco-iosxe     # create | update | noop | CONFLICT
-$H --env lab template apply --definition cisco-iosxe     # backup first, import, read back; never links to a host
-$H --env lab template rollback --definition cisco-iosxe
+$H --env lab template plan  --definition cisco-iosxe     # READ-ONLY: create | update | noop | CONFLICT + every importcompare operation + linked host ids
+$H --env lab template apply --definition cisco-iosxe     # immutable backup first, importcompare-verified import, read-back; never links to a host
+$H --env lab template rollback --definition cisco-iosxe   # exact recorded id only; refuses linked / drifted / foreign templates
 ```
-A same-named template without this tool's ownership marker + definition id is a CONFLICT and is never touched. Updates re-read the live template just before writing. Rollback restores the exact earlier export, or deletes a tool-created template only if it is linked to no host.
+Ownership is a persistent local record (exact template id + nonce + verified export baseline), not a description marker: a same-named template without that record is a CONFLICT and is never touched, a template whose real exported content differs from the verified baseline is DRIFT (a CONFLICT with no override), and a template linked to any host is never updated or rolled back by this tool. Imports never delete children (`deleteMissing` is never set) and are verified with `configuration.importcompare` first. Full design: `docs/TEMPLATE-MANAGEMENT-DESIGN.md`.
 
 ## Putting a device under monitoring (operator steps; the tool does not do these)
 1. Host with an SNMP interface (v2c/v3) in Zabbix; link `NETOPS-HW <definition>`.

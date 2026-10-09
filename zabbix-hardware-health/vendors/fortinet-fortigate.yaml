@@ -15,6 +15,11 @@ sources:
     tested_on: "FortiGate v7.2.5 (per the template README)"
   - kind: mib
     ref: "FORTINET-FORTIGATE-MIB (fgHwSensorEntTable, fgHaStatsTable)"
+  - kind: vendor-mib-mirror
+    ref: "FORTINET-FORTIGATE-MIB: OIDs and enumerations checked against the MIB text as mirrored by LibreNMS (THIRD-PARTY mirror; tests/test_v03rc2_cisco_mibs.py, docs/sources/vendor-mib-extract.json)"
+    url: https://github.com/librenms/librenms/tree/bcfb3b459f9226fcac15c42d8017158969d91445/mibs/fortinet
+    commit: bcfb3b459f9226fcac15c42d8017158969d91445
+
 platforms:
   - {name: "FortiGate (FortiOS 7.2.x)", support: documented-tested, note: "Reference template tested on FortiGate v7.2.5 only."}
   - {name: "FortiGate models without hardware sensors", support: unknown, note: "The sensor table is model dependent; an empty table is a finding to evidence, not a pass."}

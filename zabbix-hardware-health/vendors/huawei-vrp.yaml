@@ -15,6 +15,11 @@ sources:
     tested_on: "Huawei VRP (no model named in the template README)"
   - kind: mib
     ref: "HUAWEI-ENTITY-EXTENT-MIB (hwEntityFanState, hwEntityTemperature)"
+  - kind: vendor-mib-mirror
+    ref: "HUAWEI-ENTITY-EXTENT-MIB: OIDs and enumerations checked against the MIB text as mirrored by LibreNMS (THIRD-PARTY mirror; docs/sources/vendor-mib-extract.json)"
+    url: https://github.com/librenms/librenms/tree/bcfb3b459f9226fcac15c42d8017158969d91445/mibs/huawei
+    commit: bcfb3b459f9226fcac15c42d8017158969d91445
+
 platforms:
   - {name: "Huawei S-series switches (VRP)", support: documented-unverified, note: "The reference template names only 'Huawei VRP'; no S-series model is documented as tested."}
   - {name: "Huawei AR8140 (VRP router)", support: documented-unverified, note: "Not named by the reference template; the AR8140 mapping has not been validated."}
