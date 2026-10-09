@@ -203,13 +203,16 @@ class TestActionLifecycle(ActionBase):
         self.p.run("--env", "lab", "action", "apply")
         self.assertEqual(self.hw()[0]["status"], "1")
 
-    def test_drift_in_the_filter_is_repaired(self):
+    def test_an_edit_of_the_owned_action_by_someone_else_is_refused_not_overwritten(self):
         self.p.run("--env", "lab", "action", "apply")
         self.hw()[0]["filter"]["conditions"] = []
         rc, out, err = self.p.run("--env", "lab", "action", "plan")
-        self.assertIn("UPDATE", out)
-        self.p.run("--env", "lab", "action", "apply")
-        self.assertEqual(len(self.hw()[0]["filter"]["conditions"]), 2)
+        self.assertEqual(rc, 1)
+        self.assertIn("not demonstrably owned", out)
+        before = json.dumps(self.hw()[0], sort_keys=True)
+        rc, out, err = self.p.run("--env", "lab", "action", "apply")
+        self.assertEqual(rc, 3)
+        self.assertEqual(json.dumps(self.hw()[0], sort_keys=True), before)
 
     def test_missing_media_type_or_group_is_a_conflict_and_nothing_is_created(self):
         self.p.write("config/notifications.lab.yaml", "media_type: Nope\nusergroups: [Network Operations]\napproved_by: noc-lead\napproval_reference: T-1\n")

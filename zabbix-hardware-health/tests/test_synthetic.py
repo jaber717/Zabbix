@@ -11,7 +11,7 @@ from hwh import action as A
 from hwh import synthetic as SY
 from hwh.api import AuditError, ZabbixAPI
 from tests.fakes import FakeZabbix
-from tests.helpers import ROOT, Project
+from tests.helpers import ROOT, Project, add_evidence, create_owned_action
 
 NOW = datetime.datetime.now(datetime.timezone.utc)
 FMT = "%Y-%m-%dT%H:%M:%S+00:00"
@@ -49,7 +49,7 @@ class Base(unittest.TestCase):
 
     def tearDown(self):
         self.p.close()
-        self.assertEqual(self.fz.writes(), [], "the synthetic tooling must never write to Zabbix")
+        self.assertEqual([w for w in self.fz.writes() if not w.startswith("action.")], [], "the synthetic tooling must never write to Zabbix (only the test fixture setup may call action apply)")
 
     def pre(self):
         return SY.preflight(self.api, self.scope, NOTIF, now=NOW)
@@ -148,20 +148,20 @@ class TestPreflight(Base):
 
     def test_an_enabled_hardware_action_refuses(self):
         self.fz.add_action(A.ACTION_NAME, A.hardware_filter(), status="0")
-        self.assertIn("hardware action is DISABLED before the test", self.failing(self.pre()))
+        self.assertEqual(len(self.failing(self.pre())), 1)
+        self.assertIn("PRE-EXISTING", self.failing(self.pre())[0])
 
     def test_an_absent_hardware_action_is_fine(self):
         self.assertTrue(self.pre()["ok"])
 
-    def test_a_preexisting_disabled_action_is_not_silently_adopted(self):
+    def test_a_preexisting_disabled_action_blocks_the_test_and_there_is_no_acknowledgement_path(self):
         self.fz.add_action(A.ACTION_NAME, A.hardware_filter(), status="1")
         r = self.pre()
         self.assertFalse(r["ok"])
-        self.assertEqual(self.failing(r), ["a PRE-EXISTING hardware action is explicitly acknowledged (it is never adopted, modified or deleted by the test)"])
-        scope = SY.load_scope(write_scope(self.p.base, existing_hardware_action={"acknowledged": True, "note": "left over from HW-N1"}))
-        r = SY.preflight(self.api, scope, NOTIF, now=NOW)
-        self.assertTrue(r["ok"], r["checks"])
-        self.assertTrue(r["pre_existing_action"])
+        self.assertIn("PRE-EXISTING", self.failing(r)[0])
+        with self.assertRaises(AuditError) as cm:
+            SY.load_scope(write_scope(self.p.base, existing_hardware_action={"acknowledged": True, "note": "left over from HW-N1"}))
+        self.assertIn("cannot be acknowledged", str(cm.exception))
 
     def test_missing_interface_action_refuses(self):
         self.fz.actions.clear()
@@ -259,7 +259,7 @@ class TestLedgerAndCleanup(Base):
         iid = fz.add_item(hid, SY.ITEM_KEY)
         ta = fz.add_trigger(hid, SY.CASE_TRIGGER["A"], [iid], tags=(("netops_hardware", "1"), ("hardware_component", "fan")))
         tb = fz.add_trigger(hid, SY.CASE_TRIGGER["B"], [iid], tags=(("scope", "availability"),))
-        aid = fz.add_action(A.ACTION_NAME, A.hardware_filter(), status="0")
+        aid = create_owned_action(self.p, "0")
         led = SY.Ledger(str(pathlib.Path(self.p.base) / "state" / "synthetic" / "ledger.json"))
         led.record("hostgroup", gid)
         led.record("host", hid)
@@ -274,11 +274,11 @@ class TestLedgerAndCleanup(Base):
 
     def test_empty_ledger_refuses(self):
         with self.assertRaises(AuditError):
-            SY.cleanup_plan(self.api, SY.Ledger(str(pathlib.Path(self.p.base) / "l.json")))
+            SY.cleanup_plan(self.api, SY.Ledger(str(pathlib.Path(self.p.base) / "l.json")), self.p.base)
 
     def test_plan_contains_exactly_the_ledger_ids_in_safe_order(self):
         led, ids = self.make_fixtures()
-        plan = SY.cleanup_plan(self.api, led)
+        plan = SY.cleanup_plan(self.api, led, self.p.base)
         self.assertEqual([s["method"] for s in plan], ["action.update", "trigger.delete", "item.delete", "host.delete", "hostgroup.delete", "(tool)"])
         self.assertEqual(plan[0]["params"], {"actionid": ids["aid"], "status": 1})
         self.assertEqual(plan[1]["params"], sorted([ids["ta"], ids["tb"]]))
@@ -292,14 +292,14 @@ class TestLedgerAndCleanup(Base):
         led, ids = self.make_fixtures()
         self.fz.add_trigger(ids["hid"], SY.TRIGGER_PREFIX + "another operator's trigger", [ids["iid"]])
         with self.assertRaises(AuditError) as cm:
-            SY.cleanup_plan(self.api, led)
+            SY.cleanup_plan(self.api, led, self.p.base)
         self.assertIn("did not create", str(cm.exception))
 
     def test_someone_elses_preexisting_fixture_is_never_planned_for_deletion(self):
         led, ids = self.make_fixtures()
         other_host = self.fz.add_host("UNRELATED")
         other_trig = self.fz.add_trigger(other_host, "unrelated", [])
-        plan = SY.cleanup_plan(self.api, led)
+        plan = SY.cleanup_plan(self.api, led, self.p.base)
         flat = json.dumps(plan)
         self.assertNotIn(other_trig, flat)
         self.assertNotIn(other_host, flat)
@@ -309,15 +309,17 @@ class TestLedgerAndCleanup(Base):
         led.data["disabled_at"] = "t2"
         self.fz.actions[ids["aid"]]["status"] = "1"                              # really disabled on Zabbix
         self.fz.triggers[ids["hid"]] = []
-        plan = SY.cleanup_plan(self.api, led)
+        plan = SY.cleanup_plan(self.api, led, self.p.base)
         methods = [s["method"] for s in plan]
         self.assertNotIn("trigger.delete", methods)
         self.assertNotIn("action.update", methods)
 
-    def test_action_rollback_step_only_when_the_test_created_the_action(self):
+    def test_an_action_the_test_did_not_create_is_never_claimed(self):
         led, ids = self.make_fixtures()
         led.data["action_created_by_test"] = False
-        self.assertNotIn("(tool)", [s["method"] for s in SY.cleanup_plan(self.api, led)])
+        with self.assertRaises(AuditError) as cm:
+            SY.cleanup_plan(self.api, led, self.p.base)
+        self.assertIn("does not say this test created action", str(cm.exception))
 
     def test_ledger_roundtrip_and_private_mode(self):
         led, ids = self.make_fixtures()
@@ -386,8 +388,10 @@ class TestVerifyCases(TestLedgerAndCleanup):
 
     def test_cases_b_c_require_zero_hardware_notifications(self):
         led, ids = self.make_fixtures()
-        self.fz.events = [{"eventid": "e1", "r_eventid": "e2", "objectid": ids["ta"], "value": "1", "clock": "1"},
-                          {"eventid": "b1", "r_eventid": "b2", "objectid": ids["tb"], "value": "1", "clock": "1"}]
+        add_evidence(self.fz, led, ids, "B", 1000, 1100, sent=1010, event_clock=1050)
+        add_evidence(self.fz, led, ids, "C", 1200, 1300, sent=1210)
+        self.fz.events = [{"eventid": "e1", "r_eventid": "e2", "objectid": ids["ta"], "value": "1", "clock": "900"},
+                          {"eventid": "b1", "r_eventid": "b2", "objectid": ids["tb"], "value": "1", "clock": "1050"}]
         self.fz.alerts = [{"alertid": "ctl", "actionid": ids["aid"], "eventid": "e1", "p_eventid": "0", "userid": "u1", "status": "1", "retries": "0", "error": "",
                            "subject": "s", "message": "m", "alerttype": "0"}]                     # positive control: the action was live for Case A
         self.assertTrue(SY.verify_case(self.api, "B", led, ["u1"])["ok"])

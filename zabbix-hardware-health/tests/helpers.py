@@ -59,6 +59,35 @@ def audit_host(fz, settings, reg=SYNTHETIC, name="NX-01", now=NOW):
     return AU.verify_host(api, name, settings, reg, now)
 
 
+def create_owned_action(project, status="1"):
+    """Create the hardware action the way the tool really does (so ownership record + nonce exist); status is then forced for the scenario."""
+    from hwh import action as A
+    project.write("config/notifications.lab.yaml", "media_type: Telegram\nusergroups: [Network Operations]\napproved_by: noc-lead\napproval_reference: T-1\n")
+    rc, out, err = project.run("--env", "lab", "action", "apply")
+    assert rc == 0, out + err
+    aid = [a for a in project.fake.actions.values() if a["name"] == A.ACTION_NAME][0]["actionid"]
+    project.fake.actions[aid]["status"] = status
+    return aid
+
+
+def add_evidence(fz, ledger, ids, case, t_before, t_after, sent=None, event_clock=None, status="0", disabled_between=False):
+    """Record the per-case action-state evidence a tester would capture with `synthetic observe` / `ledger-mark --event sent` (ledger data only)."""
+    from hwh import action as A
+    core = A.core_sha256(fz.actions[ids["aid"]])
+    obs = ledger.data.setdefault("observations", [])
+    obs.append({"case": case, "phase": "before", "utc": t_before, "actionid": ids["aid"], "status": status, "core_sha256": core})
+    if disabled_between:
+        obs.append({"case": "X", "phase": "before", "utc": (t_before + t_after) // 2, "actionid": ids["aid"], "status": "1", "core_sha256": core})
+    obs.append({"case": case, "phase": "after", "utc": t_after, "actionid": ids["aid"], "status": status, "core_sha256": core})
+    if sent is not None:
+        ledger.data.setdefault("sent", {}).setdefault(case, []).append(sent)
+    if event_clock is not None and ids.get("t" + case.lower()):
+        for e in fz.events:
+            pass
+        fz.events.append({"eventid": "x%s1" % case, "r_eventid": "x%s2" % case, "objectid": ids["t" + case.lower()], "value": "1", "clock": str(event_clock)})
+    ledger.save()
+
+
 class Project(object):
     """A temp project directory with the shipped catalogue/registry and an editable policy, driven through the real CLI."""
 

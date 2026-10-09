@@ -69,3 +69,7 @@ Inherited template triggers cannot be re-tagged on the host, and editing stock v
 * **B. Cloning stock triggers** per template with tags added. Simpler per trigger, but forks vendor content.
 
 Neither is built: building tagged triggers before a real device proves what the items return would encode guesses. The audit reports `TRIGGER_NOT_ROUTABLE` until the tags exist.
+
+## Ownership of the action (v0.2.3)
+
+The write path enforces ownership itself. A same-named action that this deployment did not create (no matching local ownership record + deployment nonce in the live message text + unchanged definition hash) is a **conflict**: `plan` shows no UPDATE, `apply` refuses at the write after re-reading the live action by id, `rollback` acts only on the exact id in its backup, and the foreign action stays byte-identical. Editing the owned action by hand also makes it "not ours" until the edit is reverted; the tool does not overwrite it. Details and the emergency-disable path: SYNTHETIC-NOTIFICATION-TEST.md sections 6a and 9a.

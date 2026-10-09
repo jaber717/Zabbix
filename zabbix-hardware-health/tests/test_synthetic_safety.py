@@ -9,7 +9,7 @@ from hwh import action as A
 from hwh import synthetic as SY
 from hwh.api import AuditError, ZabbixAPI
 from tests.fakes import FakeZabbix
-from tests.helpers import Project
+from tests.helpers import Project, create_owned_action
 from tests.test_synthetic import NOTIF, NOW, fake_lab, scope_dict, write_scope
 
 HOUR = datetime.timedelta(hours=1)
@@ -28,7 +28,7 @@ class Safety(unittest.TestCase):
 
     def tearDown(self):
         self.p.close()
-        self.assertEqual(self.fz.writes(), [], "the synthetic tooling must never write to Zabbix")
+        self.assertEqual([w for w in self.fz.writes() if not w.startswith("action.")], [], "the synthetic tooling must never write to Zabbix (only the test fixture setup may call action apply)")
 
     def fixtures(self, action_status="0", created_by_test=True, enabled_at="t", disabled_at=None):
         fz = self.fz
@@ -37,7 +37,7 @@ class Safety(unittest.TestCase):
         iid = fz.add_item(hid, SY.ITEM_KEY)
         ta = fz.add_trigger(hid, SY.CASE_TRIGGER["A"], [iid], tags=(("netops_hardware", "1"),))
         tb = fz.add_trigger(hid, SY.CASE_TRIGGER["B"], [iid], tags=(("scope", "availability"),))
-        aid = fz.add_action(A.ACTION_NAME, A.hardware_filter(), status=action_status)
+        aid = create_owned_action(self.p, action_status)
         led = SY.Ledger(str(pathlib.Path(self.p.base) / "state" / "synthetic" / "ledger.json"))
         for kind, zid in (("hostgroup", "910"), ("host", hid), ("item", iid), ("action", aid)):
             led.record(kind, zid)
@@ -114,51 +114,48 @@ class TestWindowIsAnExecutionGate(Safety):
 class TestCleanupInspectsTheLiveAction(Safety):
     def test_enabled_action_is_disabled_first_even_if_the_ledger_has_no_marks(self):
         led, ids = self.fixtures(action_status="0", enabled_at=None, disabled_at=None)
-        plan = SY.cleanup_plan(self.api, led)
+        plan = SY.cleanup_plan(self.api, led, self.p.base)
         self.assertEqual(plan[0]["method"], "action.update")
         self.assertEqual(plan[0]["params"], {"actionid": ids["aid"], "status": 1})
-        self.assertIn("FIRST STEP", plan[0]["why"])
+        self.assertIn("EMERGENCY DISABLE", plan[0]["why"])
 
     def test_enabled_action_is_disabled_first_even_if_the_ledger_claims_it_was_disabled(self):
         led, ids = self.fixtures(action_status="0", enabled_at="t1", disabled_at="t2")
-        self.assertEqual(SY.cleanup_plan(self.api, led)[0]["method"], "action.update")
+        self.assertEqual(SY.cleanup_plan(self.api, led, self.p.base)[0]["method"], "action.update")
 
     def test_disabled_action_needs_no_disable_step(self):
         led, ids = self.fixtures(action_status="1")
-        self.assertNotIn("action.update", [s["method"] for s in SY.cleanup_plan(self.api, led)])
+        self.assertNotIn("action.update", [s["method"] for s in SY.cleanup_plan(self.api, led, self.p.base)])
 
     def test_enabled_hardware_action_that_is_not_in_the_ledger_blocks_everything(self):
         led, ids = self.fixtures()
         led.data["action"] = None
         led.save()
         with self.assertRaises(AuditError) as cm:
-            SY.cleanup_plan(self.api, led)
-        self.assertIn("not in the ledger", str(cm.exception))
+            SY.cleanup_plan(self.api, led, self.p.base)
+        self.assertIn("NOT being disabled by name", str(cm.exception))
 
     def test_a_different_hardware_action_than_the_recorded_one_blocks(self):
         led, ids = self.fixtures(action_status="1")
         led.data["action"] = "999999"
         led.save()
         with self.assertRaises(AuditError):
-            SY.cleanup_plan(self.api, led)
+            SY.cleanup_plan(self.api, led, self.p.base)
 
     def test_recorded_action_id_that_is_not_the_hardware_action_blocks(self):
         led, ids = self.fixtures(action_status="1")
         led.data["action"] = [a for a in self.fz.actions if a != ids["aid"]][0]           # the Interface Alerting action
         led.save()
         with self.assertRaises(AuditError) as cm:
-            SY.cleanup_plan(self.api, led)
-        self.assertIn("not the hardware action", str(cm.exception))
+            SY.cleanup_plan(self.api, led, self.p.base)
+        self.assertIn("ownership of action", str(cm.exception))
 
-    def test_preexisting_action_is_left_in_place_and_never_rolled_back_or_deleted(self):
+    def test_an_action_not_recorded_as_test_created_is_never_disabled_or_deleted(self):
         led, ids = self.fixtures(action_status="0", created_by_test=False)
-        plan = SY.cleanup_plan(self.api, led)
-        methods = [s["method"] for s in plan]
-        self.assertEqual(methods[0], "action.update")                 # still disabled first
-        self.assertNotIn("(tool)", methods)
-        self.assertNotIn("action.delete", methods)
-        self.assertEqual(plan[-1]["method"], "(none)")
-        self.assertIn("PRE-EXISTED", plan[-1]["why"])
+        with self.assertRaises(AuditError):
+            SY.cleanup_plan(self.api, led, self.p.base)
+        with self.assertRaises(AuditError):
+            SY.emergency_disable_plan(self.api, led, self.p.base)
 
     def test_cli_cleanup_plan_shows_the_disable_first(self):
         led, ids = self.fixtures(action_status="0", enabled_at=None)
@@ -178,7 +175,7 @@ class TestOwnershipVerification(Safety):
         led.data["host"] = other
         led.save()
         with self.assertRaises(AuditError) as cm:
-            SY.cleanup_plan(self.api, led)
+            SY.cleanup_plan(self.api, led, self.p.base)
         self.assertIn("ownership verification failed", str(cm.exception))
         self.assertIn("PRODUCTION-LOOKING-HOST", str(cm.exception))
 
@@ -188,7 +185,7 @@ class TestOwnershipVerification(Safety):
         led.data["triggers"]["A"] = victim
         led.save()
         with self.assertRaises(AuditError) as cm:
-            SY.cleanup_plan(self.api, led)
+            SY.cleanup_plan(self.api, led, self.p.base)
         self.assertIn("someone elses trigger", str(cm.exception))
 
     def test_a_trigger_with_the_right_name_on_the_wrong_host_is_refused(self):
@@ -197,7 +194,7 @@ class TestOwnershipVerification(Safety):
         led.data["triggers"]["A"] = stray
         led.save()
         with self.assertRaises(AuditError):
-            SY.cleanup_plan(self.api, led)
+            SY.cleanup_plan(self.api, led, self.p.base)
 
     def test_a_wrong_item_id_and_a_wrong_group_id_are_refused(self):
         led, ids = self.fixtures()
@@ -205,24 +202,24 @@ class TestOwnershipVerification(Safety):
         led.data["item"] = other_item
         led.save()
         with self.assertRaises(AuditError):
-            SY.cleanup_plan(self.api, led)
+            SY.cleanup_plan(self.api, led, self.p.base)
         led, ids = self.fixtures()
         self.fz.hostgroups["911"] = "Linux servers"
         led.data["hostgroup"] = "911"
         led.save()
         with self.assertRaises(AuditError):
-            SY.cleanup_plan(self.api, led)
+            SY.cleanup_plan(self.api, led, self.p.base)
 
     def test_a_foreign_object_in_the_namespace_still_blocks(self):
         led, ids = self.fixtures()
         self.fz.add_trigger(ids["hid"], SY.TRIGGER_PREFIX + "extra", [ids["iid"]])
         with self.assertRaises(AuditError):
-            SY.cleanup_plan(self.api, led)
+            SY.cleanup_plan(self.api, led, self.p.base)
 
     def test_deletion_params_are_only_recorded_ids(self):
         led, ids = self.fixtures()
         bystander = self.fz.add_host("BYSTANDER")
-        plan = SY.cleanup_plan(self.api, led)
+        plan = SY.cleanup_plan(self.api, led, self.p.base)
         flat = str([s["params"] for s in plan])
         self.assertNotIn(bystander, flat)
         self.assertEqual(plan[1]["params"], sorted([ids["ta"], ids["tb"]]))
@@ -300,15 +297,10 @@ class TestMediaTypeAndPreexistingAction(Safety):
     def test_an_enabled_media_type_is_accepted(self):
         self.assertTrue(SY.preflight(self.api, self.scope, NOTIF, now=NOW)["ok"])
 
-    def test_acknowledgement_without_an_existing_action_is_refused(self):
-        scope = SY.load_scope(write_scope(self.p.base, existing_hardware_action={"acknowledged": True, "note": "n/a really"}))
-        r = SY.preflight(self.api, scope, NOTIF, now=NOW)
-        self.assertFalse(r["ok"])
+    def test_the_acknowledgement_key_no_longer_exists(self):
+        with self.assertRaises(AuditError):
+            SY.load_scope(write_scope(self.p.base, existing_hardware_action={"acknowledged": True, "note": "n/a really"}))
 
-    def test_bad_acknowledgement_shapes_are_rejected(self):
-        for bad in ({"acknowledged": False, "note": "xxx"}, {"acknowledged": True}, {"acknowledged": True, "note": "ok-ish", "extra": 1}, "yes"):
-            with self.assertRaises(AuditError):
-                SY.load_scope(write_scope(self.p.base, existing_hardware_action=bad))
 
 
 class TestVerifyPreconditions(Safety):

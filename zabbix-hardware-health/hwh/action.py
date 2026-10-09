@@ -11,6 +11,7 @@ Design rules
   * Production is refused in this release.
 The condition semantics modelled below are the documented Zabbix 7.0 ones; the live server is the authority (acceptance test HW-N4)."""
 import datetime
+import hashlib
 import json
 import os
 
@@ -68,13 +69,14 @@ def load_spec(path):
     return spec
 
 
-def build_params(mediatypeid, groupids, enabled):
+def build_params(mediatypeid, groupids, enabled, nonce=None):
     mt = str(mediatypeid)
+    footer = ("\r\n" + OWNER_FOOTER + nonce + "\r\n") if nonce else ""
     ops_grp = [{"usrgrpid": str(g)} for g in groupids]
     return {"name": ACTION_NAME, "eventsource": 0, "status": 0 if enabled else 1, "esc_period": "1h", "filter": hardware_filter(),
             "operations": [{"operationtype": 0, "esc_period": "0", "esc_step_from": 1, "esc_step_to": 1, "evaltype": 0,
-                            "opmessage": {"default_msg": 0, "subject": SUBJECT, "message": MESSAGE, "mediatypeid": mt}, "opmessage_grp": ops_grp}],
-            "recovery_operations": [{"operationtype": 0, "opmessage": {"default_msg": 0, "subject": R_SUBJECT, "message": R_MESSAGE, "mediatypeid": mt},
+                            "opmessage": {"default_msg": 0, "subject": SUBJECT, "message": MESSAGE + footer, "mediatypeid": mt}, "opmessage_grp": ops_grp}],
+            "recovery_operations": [{"operationtype": 0, "opmessage": {"default_msg": 0, "subject": R_SUBJECT, "message": R_MESSAGE + footer, "mediatypeid": mt},
                                      "opmessage_grp": ops_grp}]}
 
 
@@ -191,12 +193,104 @@ def get_action(api, name):
     return rows[0] if rows else None
 
 
-def plan(api, env, spec, enable_requested, validation_path):
-    """Read-only. -> dict(changes, conflicts, notes, desired, live, enable_allowed, crossover)"""
-    out = {"changes": [], "conflicts": [], "notes": [], "desired": None, "live": None, "crossover": []}
+def get_action_by_id(api, actionid):
+    rows = api.call("action.get", {"output": "extend", "actionids": [str(actionid)], "selectOperations": "extend", "selectRecoveryOperations": "extend", "selectFilter": "extend"})
+    return rows[0] if rows else None
+
+
+# ----------------------------------------------------------------------------------------------------------------------- ownership
+# A Zabbix action has no description/tag field, so ownership cannot live on the object alone. It is the CONJUNCTION of
+#   (1) a local record written when THIS deployment created the action: exact action id, a random nonce, the definition hash;
+#   (2) the same nonce appearing in the live action's message text (so a same-named operator action cannot match);
+#   (3) the live definition (everything except status) still hashing to what this deployment last applied.
+# Any missing/mismatched piece means "not ours": the tool refuses to update, adopt, roll back or delete it.
+OWNER_FOOTER = "Deployment ref: "
+
+
+def new_nonce():
+    return "hw-" + os.urandom(6).hex()
+
+
+def ownership_path(base, env):
+    return os.path.join(base, "state", "ownership", "hardware-action-%s.json" % env)
+
+
+def load_ownership(base, env):
+    p = ownership_path(base, env)
+    if not os.path.isfile(p):
+        return None
+    with open(p, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def save_ownership(base, env, rec):
+    p = ownership_path(base, env)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    with open(p, "w", encoding="utf-8") as fh:
+        json.dump(rec, fh, indent=2, sort_keys=True)
+    try:
+        os.chmod(p, 0o600)
+    except OSError:
+        pass
+
+
+def _canon_strip(o):
+    if isinstance(o, dict):
+        return dict((k, _canon_strip(v)) for k, v in o.items() if k not in ("operationid", "actionid", "opmessageid", "opmessage_grpid", "opmessage_usrid", "conditionid"))
+    if isinstance(o, list):
+        return [_canon_strip(x) for x in o]
+    return o
+
+
+def core_sha256(live):
+    """Hash of the whole definition EXCEPT status (enabling/disabling is the one change this deployment makes to an owned action on purpose)."""
+    d = _canon_strip(live)
+    d.pop("status", None)
+    return hashlib.sha256(json.dumps(d, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def live_has_nonce(live, nonce):
+    texts = []
+    for o in (live.get("operations") or []) + (live.get("recovery_operations") or []):
+        texts.append((o.get("opmessage") or {}).get("message", ""))
+    return bool(nonce) and bool(texts) and all(OWNER_FOOTER + nonce in t for t in texts)
+
+
+def verify_owned(live, rec, expect_actionid=None):
+    """-> list of problems (empty = demonstrably owned by this deployment)."""
+    p = []
+    if rec is None:
+        return ["no ownership record: this deployment did not create the action"]
+    if str(live.get("actionid")) != str(rec.get("actionid")):
+        p.append("action id %s differs from the id this deployment created (%s)" % (live.get("actionid"), rec.get("actionid")))
+    if expect_actionid is not None and str(live.get("actionid")) != str(expect_actionid):
+        p.append("action id %s is not the expected id %s" % (live.get("actionid"), expect_actionid))
+    if live.get("name") != ACTION_NAME:
+        p.append("action is named %r" % live.get("name"))
+    if not live_has_nonce(live, rec.get("nonce")):
+        p.append("the deployment nonce is not in the live message text")
+    if core_sha256(live) != rec.get("core_sha256"):
+        p.append("the live definition differs from what this deployment last applied (changed by someone else)")
+    return p
+
+
+def ownership_evidence(live, rec):
+    """Detailed evidence for manual recovery when ownership cannot be established. Contains ids and hashes only - no message text, no credentials."""
+    return {"live_exists": live is not None, "live_actionid": None if live is None else str(live.get("actionid")), "live_name": None if live is None else live.get("name"),
+            "live_status": None if live is None else str(live.get("status")), "live_core_sha256": None if live is None else core_sha256(live),
+            "record_present": rec is not None, "record_actionid": None if rec is None else rec.get("actionid"),
+            "record_core_sha256": None if rec is None else rec.get("core_sha256"), "record_created_utc": None if rec is None else rec.get("created_utc"),
+            "nonce_in_live_message": None if (live is None or rec is None) else live_has_nonce(live, rec.get("nonce"))}
+
+
+def plan(api, env, spec, enable_requested, validation_path, base=None):
+    """Read-only. A pre-existing hardware action that this deployment does not demonstrably own is a CONFLICT, never an UPDATE."""
+    out = {"changes": [], "conflicts": [], "notes": [], "desired": None, "live": None, "crossover": [], "nonce": None}
     if env != "lab":
         out["conflicts"].append("hardware action management is LAB only in this release (environment is %s)" % env)
         return out
+    if base is None:
+        raise AuditError("internal error: the action plan needs the project directory to check ownership")
     val = load_validation(validation_path)
     enable_ok = bool(enable_requested and val["ok"])
     if enable_requested and not val["ok"]:
@@ -209,9 +303,17 @@ def plan(api, env, spec, enable_requested, validation_path):
     out["crossover"] = crossover_report([a.get("filter") or {} for a in if_actions])
     if any(not c["ok"] for c in out["crossover"]):
         out["conflicts"].append("an event could reach the wrong action (see crossover report)")
+    rec = load_ownership(base, env)
+    if live is not None:
+        own = verify_owned(live, rec)
+        if own:
+            out["conflicts"].append("REFUSED: an action named '%s' already exists (id %s) and is not demonstrably owned by this deployment (%s). It is never modified, "
+                                    "adopted or rolled back by this tool; it stays byte-identical. Resolve it through its own approved change." % (ACTION_NAME, live.get("actionid"), "; ".join(own)))
     if out["conflicts"]:
         return out
-    desired = build_params(mt["mediatypeid"], [g["usrgrpid"] for g in ug], enabled=enable_ok)
+    nonce = rec["nonce"] if live is not None else new_nonce()
+    out["nonce"] = nonce
+    desired = build_params(mt["mediatypeid"], [g["usrgrpid"] for g in ug], enabled=enable_ok, nonce=nonce)
     out["desired"] = desired
     if live is None:
         out["changes"].append("CREATE action '%s' (%s)" % (ACTION_NAME, "ENABLED" if enable_ok else "disabled"))
@@ -246,50 +348,88 @@ def _stamp():
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-def apply(api, env, spec, enable_requested, validation_path, base):
-    p = plan(api, env, spec, enable_requested, validation_path)
-    if p["conflicts"]:
-        raise AuditError("plan has conflicts: " + "; ".join(p["conflicts"]))
-    if not p["changes"]:
-        return {"plan": p, "backup": None}
+def _write_backup(base, env, data, path=None):
     d = os.path.join(base, "state", "backups")
     os.makedirs(d, exist_ok=True)
-    path = os.path.join(d, "hardware-action-%s-%s.json" % (env, _stamp()))
+    path = path or os.path.join(d, "hardware-action-%s-%s.json" % (env, _stamp()))
     with open(path, "w", encoding="utf-8") as fh:
-        json.dump({"environment": env, "action": ACTION_NAME, "existed": p["live"] is not None,
-                   "previous": params_from_live(p["live"]) if p["live"] else None}, fh, indent=2, sort_keys=True)
+        json.dump(data, fh, indent=2, sort_keys=True)
     try:
         os.chmod(path, 0o600)
     except OSError:
         pass
-    if p["live"] is None:
-        api.call("action.create", p["desired"])
+    return path
+
+
+def apply(api, env, spec, enable_requested, validation_path, base):
+    """The write path enforces ownership ITSELF (it does not rely on any earlier preflight): it re-reads the live action immediately before writing,
+    refuses unless the action is demonstrably this deployment's own, and only ever updates the exact id it created."""
+    p = plan(api, env, spec, enable_requested, validation_path, base)
+    if p["conflicts"]:
+        raise AuditError("plan has conflicts: " + "; ".join(p["conflicts"]))
+    if not p["changes"]:
+        return {"plan": p, "backup": None}
+    rec = load_ownership(base, env)
+    live_before = p["live"]
+    backup_data = {"schema": 2, "environment": env, "action": ACTION_NAME, "existed": live_before is not None, "actionid": None if live_before is None else str(live_before["actionid"]),
+                   "nonce": p["nonce"], "previous": params_from_live(live_before) if live_before else None}
+    path = _write_backup(base, env, backup_data)
+    if live_before is None:
+        res = api.call("action.create", p["desired"])
+        new_id = str((res.get("actionids") or [None])[0])
+        created = get_action_by_id(api, new_id) if new_id != "None" else get_action(api, ACTION_NAME)
+        if created is None:
+            raise AuditError("action.create returned no readable action; backup %s" % path)
+        backup_data["actionid"] = str(created["actionid"])
+        _write_backup(base, env, backup_data, path)
+        save_ownership(base, env, {"schema": 1, "environment": env, "actionid": str(created["actionid"]), "nonce": p["nonce"], "core_sha256": core_sha256(created),
+                                   "created_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "backup": os.path.basename(path)})
     else:
+        fresh = get_action_by_id(api, rec["actionid"]) if rec else None
+        own = ["no ownership record"] if rec is None else (["the owned action disappeared or changed id before the write"] if fresh is None else verify_owned(fresh, rec))
+        if own:
+            raise AuditError("REFUSED at the write: %s. Nothing was changed." % "; ".join(own))
         upd = dict(p["desired"])
-        upd["actionid"] = p["live"]["actionid"]
+        upd["actionid"] = str(rec["actionid"])
         api.call("action.update", upd)
-    again = plan(api, env, spec, enable_requested, validation_path)
-    if again["changes"]:
-        raise AuditError("readback verification failed: " + "; ".join(again["changes"]) + " (restore with rollback --backup %s)" % path)
+        after = get_action_by_id(api, rec["actionid"])
+        rec = dict(rec, core_sha256=core_sha256(after))
+        save_ownership(base, env, rec)
+    again = plan(api, env, spec, enable_requested, validation_path, base)
+    if again["changes"] or again["conflicts"]:
+        raise AuditError("readback verification failed: " + "; ".join(again["changes"] + again["conflicts"]) + " (restore with rollback --backup %s)" % path)
     return {"plan": p, "backup": path}
 
 
-def rollback(api, env, backup_path):
+def rollback(api, env, backup_path, base):
+    """Acts only on the exact action id recorded in the backup AND only if that action is demonstrably this deployment's own. An old or foreign backup
+    can never delete or overwrite a different action that merely has the same name."""
     if env != "lab":
         raise AuditError("hardware action management is LAB only in this release")
     with open(backup_path, encoding="utf-8") as fh:
         b = json.load(fh)
     if b.get("environment") != env or b.get("action") != ACTION_NAME:
         raise AuditError("backup is for a different environment/action - refusing")
-    live = get_action(api, ACTION_NAME)
-    if not b["existed"]:
-        if live:
-            api.call("action.delete", [live["actionid"]])
-        return "removed action created by this tool" if live else "nothing to remove"
-    prev = b["previous"]
+    if b.get("schema") != 2 or not b.get("actionid") or not b.get("nonce"):
+        raise AuditError("REFUSED: this backup carries no action id/nonce (old format, or the create step did not finish). It cannot prove which action it belongs to, so "
+                         "it will not touch any action. Investigate manually.")
+    live = get_action_by_id(api, b["actionid"])
     if live is None:
-        api.call("action.create", prev)
-    else:
-        prev = dict(prev, actionid=live["actionid"])
-        api.call("action.update", prev)
-    return "restored previous definition"
+        return "the recorded action %s no longer exists: nothing to do" % b["actionid"]
+    rec = load_ownership(base, env)
+    own = verify_owned(live, rec, expect_actionid=b["actionid"])
+    if rec is not None and rec.get("nonce") != b["nonce"]:
+        own.append("the backup's nonce does not match the ownership record")
+    if own:
+        raise AuditError("REFUSED: action %s is not demonstrably owned by this deployment (%s). It is left untouched." % (b["actionid"], "; ".join(own)))
+    if not b["existed"]:
+        api.call("action.delete", [str(live["actionid"])])
+        try:
+            os.remove(ownership_path(base, env))
+        except OSError:
+            pass
+        return "removed the action this deployment created (id %s)" % b["actionid"]
+    prev = dict(b["previous"], actionid=str(live["actionid"]))
+    api.call("action.update", prev)
+    save_ownership(base, env, dict(rec, core_sha256=core_sha256(get_action_by_id(api, live["actionid"]))))
+    return "restored the previous definition of the owned action %s" % b["actionid"]

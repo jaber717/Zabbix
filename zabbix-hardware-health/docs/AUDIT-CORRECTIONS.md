@@ -30,3 +30,11 @@ Read-only API allowlist (`apiinfo.version`, `host.get`, `item.get`, `trigger.get
 | 16 | The shipped example silently pointed at a group that does not exist; a tester substituted Zabbix administrators in a temporary plan. | Recipients are explicit and operator-approved: `usergroups`, `approved_by`, `approval_reference` are mandatory; the shipped example is blank and is refused; an absent group is a conflict and is never replaced by another group; the applied action is shown to carry exactly the approved group ids. | `TestExplicitRecipients` (6) |
 
 Preserved: action disabled by default and enable-gated on independent evidence; strict exclusion between the hardware and Interface Alerting actions (model + live-filter check); LAB-only action management; read-only audit allowlist; empty approved inventories; Interface Alerting v1.0.2 byte-identical.
+
+# v0.2.3 security remediation (from the v0.2.2 rejection, evidence 84d1601)
+
+| # | Reproduced defect | Correction | Regression tests |
+|---|---|---|---|
+| 17 | Case B/C passed after the action was disabled (history alert + ledger mark were treated as proof). | Negative cases (B, C, D) need bounded, timestamped before/after observations of the exact action id (status, definition hash), `sent` marks and event clocks inside the interval, no disabled observation in between, window check; otherwise INCONCLUSIVE. A zero alert count alone is never a pass. | `TestFix1NegativeCasesNeedEvidence` |
+| 18 | `action apply` updated an operator-owned same-name action. | Ownership = local record (id, nonce, hash) + nonce in the live message + unchanged definition; enforced in `plan`, in `apply` at the write (fresh re-read by id), and in `rollback` (exact id from the backup). The synthetic workflow refuses a pre-existing action outright; the acknowledgement key was removed. | `TestFix2PreExistingActionOwnership` |
+| 19 | A foreign object in the synthetic namespace left an enabled test action without a disable plan. | `emergency_disable_plan` is independent of fixture cleanup (exact id + ownership evidence only); `cleanup_plan` still blocks every deletion on foreign/mismatched ids and prints the emergency step; unowned actions are never disabled by name; refusal carries manual-recovery evidence (ids/hashes only). | `TestFix3EmergencyDisableIsIndependent`, `TestCombinedSequence` |

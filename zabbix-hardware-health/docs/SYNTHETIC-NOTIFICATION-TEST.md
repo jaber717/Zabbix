@@ -35,7 +35,6 @@ Copy `config/synthetic-test.example.yaml` to `config/synthetic-test.yaml`. The o
 * `media_type` and `usergroups` - exact existing names, and **identical** to `config/notifications.lab.yaml` (one approval, one source of truth). There is no default recipient and the Zabbix administrators group is never substituted.
 * `test_scope`: the fixed namespace `NETOPS-HW-SYNTH` / `NETOPS-HW-SYNTH-01` and the list of cases (default `[A, B, C]`).
 * `case_d` (approver, reference, `interface_recipients_notified: true`) only if D is listed.
-* `existing_hardware_action` (acknowledged, note) only if a disabled hardware action already exists.
 
 ## 4. Readiness review (any time) and preflight (the execution gate)
 
@@ -51,7 +50,7 @@ python3.12 hardware_audit.py --env lab synthetic preflight   # the gate: refused
 
 Both refuse if any of the following is false: scope complete; scope recipients equal the action configuration; the approved media type exists **and is enabled** and the approved user group(s) exist with at least one user who would receive messages; **the synthetic namespace is empty** - no host group `NETOPS-HW-SYNTH`, no host `NETOPS-HW-SYNTH-01`, no item `netops.hw.synthetic.state` on any host, no trigger whose name starts `[NETOPS-HW-SYNTH] `; no trigger anywhere already carries `netops_hardware`; the hardware action is absent or **disabled**; at least one Interface Alerting (`NETOPS-IaC`) action exists to snapshot.
 
-**A pre-existing hardware action is never silently adopted.** If one exists (it must be disabled), the approval record must contain `existing_hardware_action: {acknowledged: true, note: ...}`; otherwise preflight refuses. With the acknowledgement the test does **not** run `action apply` (which would modify it), records it in the ledger *without* `--created-by-test`, and cleanup never deletes or rolls it back; the after-manifest must show it byte-identical.
+**A pre-existing hardware action blocks the test, full stop.** There is no acknowledgement path (the key `existing_hardware_action` is rejected by the approval loader). An action named `NETOPS-HW Hardware Health` that this deployment did not create is never adopted, updated, enabled, disabled, rolled back or deleted by this tooling, at any stage: it must be resolved through its own separately approved change before the test. `action apply` itself enforces this at the write (section 6a), so the protection does not depend on preflight having been run.
 
 ## 5. Before manifest
 
@@ -83,7 +82,17 @@ python3.12 hardware_audit.py --env lab action apply            # prints the back
 python3.12 hardware_audit.py --env lab synthetic ledger-record --ledger $L --kind action --id <action id> --created-by-test
 ```
 
-## 7. Temporary enablement - an explicitly approved test exception
+## 6a. Ownership of the hardware action (enforced inside the write path)
+
+A Zabbix action has no description or tag, so ownership is a conjunction of three facts, all of which must hold before the tool will update, roll back or disable an action:
+
+1. a local ownership record, written when **this deployment created the action**, holds the exact action id, a random nonce and the hash of the definition it applied (`state/ownership/`, mode 0600, Git-ignored);
+2. the same nonce appears in the live action's Problem and Recovery message text (a same-named operator action cannot contain it);
+3. the live definition (everything except status) still hashes to what this deployment last applied.
+
+`action apply` re-reads the live action by the recorded id **immediately before** `action.update` and refuses (`REFUSED at the write`) if any fact fails, so a swap between planning and writing is caught. A pre-existing or edited action is reported as a conflict and left byte-identical. `action rollback` only acts on the exact action id recorded in the backup and only if ownership holds; an old backup, a backup without an id/nonce, or a backup whose id now belongs to a different action is refused. Nothing is ever selected by name.
+
+## 7. Temporary enablement and per-case evidence - an explicitly approved test exception
 
 The action is **disabled at all times outside the approved test window**. The tool correctly refuses `--enable` because `config/action-validation.yaml` is all-false; that gate is not bypassed. Enabling for the test is a separate, manual, approved exception made by the tester on the recorded action id only.
 
@@ -93,7 +102,18 @@ For Cases B and C to prove that filtering works, the action must be live while t
 2. run Cases A, B and C (and D only if separately approved) with the action still enabled;
 3. **immediately after the last case**, set the recorded action back to disabled and `ledger-mark --event disabled`; confirm in the UI.
 
-**On any failure** (section 8) disable the action at once - do not finish the remaining cases first. `verify` prints the instruction on a failure, and `cleanup-plan` always begins with the disable step whenever the recorded action is enabled on Zabbix. B and C results are only accepted when Case A's Problem was delivered by the same action (a positive control), because a zero is meaningless from an action that was not live.
+**On any failure** (section 8) disable the action at once - do not finish the remaining cases first (section 9a gives the independent emergency path).
+
+**A negative case (B, C, D) is only accepted with independent, timestamped evidence that the action was enabled for that case.** A zero-alert result alone, an earlier Case A alert, or the ledger's `enabled_at` are not evidence. For each negative case the tester brackets the case:
+
+```bash
+python3.12 hardware_audit.py --env lab synthetic observe --ledger $L --case B --phase before    # reads the recorded action live: id, status, definition hash; ownership must hold
+python3.12 hardware_audit.py --env lab synthetic ledger-mark --ledger $L --event sent --case B   # immediately after zabbix_sender sends the value (window-gated)
+# ... let the event be processed ...
+python3.12 hardware_audit.py --env lab synthetic observe --ledger $L --case B --phase after
+```
+
+`verify` rejects the case, as **inconclusive**, unless: exactly one `before` and one `after` observation exist; both are for the recorded action id, both show it **enabled**, with an unchanged definition hash that still matches the live action; the interval is positive and at most 900 seconds (a longer gap could hide an unseen toggle); the recorded `sent` time(s) and every event of the case trigger lie inside the interval; no other observation inside the interval shows the action disabled; the ledger does not claim a disable before the interval ended; and (when the scope is supplied) the observations fall inside the approved window. B and C additionally need Case A's Problem delivered by the same action (a positive control). Observations are never overwritten or duplicated.
 
 ## 8. Run the cases, then verify (read-only)
 
@@ -113,6 +133,16 @@ python3.12 hardware_audit.py --env lab synthetic verify --ledger $L --case A    
 
 Stop at the first failure and go to section 9: a message from the hardware action in B/C/D, more than one Problem or Recovery per recipient, an unexpanded macro, a recipient outside the approved list, a delivery error, or any change in an Interface Alerting action. If a macro does not expand, record the exact rendered text and hand it back; do not improvise another syntax live.
 
+## 9a. Emergency disable - independent of cleanup
+
+```bash
+python3.12 hardware_audit.py --env lab synthetic emergency-disable-plan --ledger $L
+```
+
+This is separate from fixture cleanup and **does not look at the synthetic namespace or at the completeness of the fixture ids**. It needs only the exact action id in the ledger, `created-by-test`, and the ownership facts of section 6a. It prints a single `action.update` (`status` 1) for that exact id with preconditions to re-check immediately before executing (id and definition hash), or says nothing needs doing if the action is already disabled. If ownership cannot be established it prints **no** disable step and refuses with manual-recovery evidence (live id/name/status/definition hash, the record's id/hash/age, whether the nonce is in the live message - ids and hashes only, never message text). It never disables an action by name alone, and never one the ledger does not claim.
+
+If `cleanup-plan` is refused (foreign or mismatched fixture ids, an unrecorded hardware action, an incomplete namespace) it plans **no deletion at all** but still prints this emergency step.
+
 ## 9. Cleanup - recorded ids only, ownership-verified, never by name
 
 ```bash
@@ -121,19 +151,19 @@ python3.12 hardware_audit.py --env lab synthetic cleanup-plan --ledger $L
 
 Cleanup inspects the **live** state first and prints the exact calls:
 
-1. **FIRST STEP, always:** if the recorded hardware action id is enabled on Zabbix *right now*, disable it - regardless of what the ledger's `enabled_at` / `disabled_at` say (they may be missing or inconsistent);
+1. **FIRST STEP, always:** the emergency disable (9a) whenever the recorded, owned hardware action is enabled on Zabbix *right now* - regardless of what the ledger's `enabled_at` / `disabled_at` say;
 2. `trigger.delete` with the **recorded trigger ids**; `item.delete`, `host.delete`, `hostgroup.delete` with the **recorded ids**;
-3. if the test created the action: the tool rollback using its backup (not its name). A pre-existing action gets no deletion and no rollback.
+3. the tool rollback of the action it created, using its backup (id- and ownership-checked, never by name).
 
-The plan is **refused** - the tester stops and investigates, nothing is planned - if: the ledger is empty; **ownership verification fails** (every recorded id is read back and must still be the synthetic object it was recorded as: host group name, host name, item key on the recorded host, trigger description on the recorded host, action name); the synthetic namespace holds an object whose id is not in the ledger; an enabled hardware action exists that is not in the ledger; or the hardware action on Zabbix is not the recorded one. It never selects anything by name prefix, and an object already gone is simply omitted. The tester executes the printed calls with the approved token, then:
+The plan is **refused** - no deletion is planned and the tester investigates - if: the ledger is empty; **ownership verification fails** (every recorded id is read back and must still be the synthetic object it was recorded as: host group name, host name, item key on the recorded host, trigger description on the recorded host); the synthetic namespace holds an object whose id is not in the ledger; or a hardware action exists that is not the recorded one. It never selects anything by name prefix, and an object already gone is simply omitted. The tester executes the printed calls with the approved token, then:
 
 ```bash
-python3.12 hardware_audit.py --env lab action rollback --backup state/backups/hardware-action-lab-<stamp>.json    # only if this test created the action
+python3.12 hardware_audit.py --env lab action rollback --backup state/backups/hardware-action-lab-<stamp>.json    # id- and ownership-verified
 python3.12 hardware_audit.py --env lab synthetic snapshot --out evidence/synth-after.json
 python3.12 hardware_audit.py --env lab synthetic diff --before evidence/synth-before.json --after evidence/synth-after.json
 ```
 
-`diff` must print no differences: Interface Alerting action definitions byte-identical (hash); synthetic namespace empty; the hardware action in its before-state - same existence, id and status **and the same signature and definition hash** (an unexpected change of its filter, recipients, message text or any other field is reported, as is delete-and-recreate); not left enabled; `netops_hardware` trigger count unchanged. Event and alert history rows and messages already delivered remain; they are listed in the evidence.
+`diff` must print no differences: Interface Alerting action definitions byte-identical (hash); synthetic namespace empty; the hardware action in its before-state - same existence, id and status **and the same signature and definition hash**; not left enabled; `netops_hardware` trigger count unchanged. Event and alert history rows and messages already delivered remain; they are listed in the evidence.
 
 ## 10. Recording the outcome
 

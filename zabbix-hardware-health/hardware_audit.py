@@ -48,7 +48,7 @@ def _parser():
     m.add_argument("--out")
     m.add_argument("--json")
     syn = sub.add_parser("synthetic", help="READ-ONLY support for the approved LAB synthetic notification test")
-    syn.add_argument("what", choices=["review", "preflight", "snapshot", "diff", "verify", "cleanup-plan", "ledger-record", "ledger-mark"])
+    syn.add_argument("what", choices=["review", "preflight", "snapshot", "diff", "verify", "cleanup-plan", "emergency-disable-plan", "observe", "ledger-record", "ledger-mark"])
     syn.add_argument("--scope")
     syn.add_argument("--notifications")
     syn.add_argument("--out")
@@ -59,7 +59,8 @@ def _parser():
     syn.add_argument("--kind", choices=["hostgroup", "host", "item", "trigger", "action"])
     syn.add_argument("--id")
     syn.add_argument("--created-by-test", action="store_true", help="ledger-record --kind action: this test created the action (so cleanup may roll it back)")
-    syn.add_argument("--event", choices=["enabled", "disabled"], help="ledger-mark: when the temporary approved enablement started/ended")
+    syn.add_argument("--phase", choices=["before", "after"], help="observe: before or after the case")
+    syn.add_argument("--event", choices=["enabled", "disabled", "sent"], help="ledger-mark: enablement started/ended, or (with --case) the time a case value was sent")
     act = sub.add_parser("action")
     act.add_argument("what", choices=["plan", "apply", "rollback"])
     act.add_argument("--notifications")
@@ -82,6 +83,20 @@ def _write_json(path, obj):
             fh.write("\n")
 
 
+def _emergency(SY, api, ledger, base, out):
+    try:
+        steps = SY.emergency_disable_plan(api, ledger, base)
+    except AuditError as exc:
+        out("EMERGENCY DISABLE NOT AVAILABLE: " + str(exc))
+        return 1
+    if not steps:
+        out("  nothing to disable: the recorded hardware action is already disabled (or no longer exists)")
+    for step in steps:
+        out("  %s  %s  -- %s" % (step["method"], json.dumps(step["params"]), step["why"]))
+        out("  preconditions to re-check immediately before executing: %s" % json.dumps(step["preconditions"], sort_keys=True))
+    return 0
+
+
 def _synthetic(args, environ, transport, base, out, catalogue, clock):
     from hwh import synthetic as SY
     if args.env != "lab":
@@ -94,7 +109,7 @@ def _synthetic(args, environ, transport, base, out, catalogue, clock):
             raise AuditError("--ledger is required")
         # starting or advancing the test (recording a created fixture, marking the action ENABLED) is gated by the approved window;
         # recording that the action was DISABLED is never gated, so a test can always be wound down.
-        if args.what == "ledger-record" or args.event == "enabled":
+        if args.what == "ledger-record" or args.event in ("enabled", "sent"):
             SY.require_window(SY.load_scope(scope_path), now)
         led = SY.Ledger.load(args.ledger) if os.path.isfile(args.ledger) else SY.Ledger(args.ledger)
         if args.what == "ledger-record":
@@ -102,12 +117,19 @@ def _synthetic(args, environ, transport, base, out, catalogue, clock):
                 raise AuditError("ledger-record needs --kind and a numeric Zabbix --id (the exact id returned by the create call)")
             led.record(args.kind, args.id, args.case)
             if args.kind == "action":
-                led.data["action_created_by_test"] = bool(args.created_by_test)
+                if not args.created_by_test:
+                    raise AuditError("a hardware action may only be recorded with --created-by-test: a pre-existing action is never part of this test")
+                led.data["action_created_by_test"] = True
                 led.save()
         else:
             if not args.event:
-                raise AuditError("ledger-mark needs --event enabled|disabled")
-            led.data[args.event + "_at"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+                raise AuditError("ledger-mark needs --event enabled|disabled|sent")
+            if args.event == "sent":
+                if args.case not in ("A", "B", "C", "D"):
+                    raise AuditError("ledger-mark --event sent needs --case")
+                led.data.setdefault("sent", {}).setdefault(args.case, []).append(int(now.timestamp()))
+            else:
+                led.data[args.event + "_at"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
             led.save()
         out("ledger updated: " + json.dumps(led.ids(), sort_keys=True))
         return 0
@@ -126,7 +148,8 @@ def _synthetic(args, environ, transport, base, out, catalogue, clock):
     api, version = _open("lab", cfg, environ, transport, write=False)
     if args.what in ("preflight", "review"):
         mode = "execute" if args.what == "preflight" else "review"
-        r = SY.preflight(api, scope, spec, now=now, mode=mode)
+        expected = SY.Ledger.load(args.ledger).data.get("action") if (args.ledger and os.path.isfile(args.ledger)) else None
+        r = SY.preflight(api, scope, spec, now=now, mode=mode, base=base, expected_actionid=expected)
         for c in r["checks"]:
             out("  %s  %s%s" % ("ok  " if c["ok"] else "FAIL", c["check"], ("  - " + c["detail"]) if c["detail"] else ""))
         if mode == "review":
@@ -146,8 +169,24 @@ def _synthetic(args, environ, transport, base, out, catalogue, clock):
     if not args.ledger:
         raise AuditError("--ledger is required (the file recording the exact ids this test created)")
     ledger = SY.Ledger.load(args.ledger)
+    if args.what == "observe":
+        SY.require_window(scope, now)
+        o = SY.record_observation(api, ledger, args.case, args.phase, base, now)
+        out("observation recorded: " + json.dumps(o, sort_keys=True))
+        if o["status"] != "0":
+            out("WARNING: the hardware action is DISABLED in this observation; negative cases will be rejected as inconclusive")
+        return 0
+    if args.what == "emergency-disable-plan":
+        return _emergency(SY, api, ledger, base, out)
     if args.what == "cleanup-plan":
-        for step in SY.cleanup_plan(api, ledger):
+        try:
+            steps = SY.cleanup_plan(api, ledger, base)
+        except AuditError as exc:
+            out("CLEANUP REFUSED (no deletion is planned): " + str(exc))
+            out("-- the emergency disable path is independent of fixture cleanup:")
+            _emergency(SY, api, ledger, base, out)
+            return 1
+        for step in steps:
             out("  %s  %s  -- %s" % (step["method"], json.dumps(step["params"]), step["why"]))
         return 0
     users, problems = SY.recipients(api, scope)
@@ -155,7 +194,7 @@ def _synthetic(args, environ, transport, base, out, catalogue, clock):
         raise AuditError("; ".join(problems))
     if not args.case:
         raise AuditError("--case is required for verify")
-    r = SY.verify_case(api, args.case, ledger, users)
+    r = SY.verify_case(api, args.case, ledger, users, scope)
     for x in r["findings"]:
         out("  FINDING: " + x)
     out("case %s: %s" % (args.case, "NOTIFICATION PIPELINE CHECK PASS (synthetic)" if r["ok"] else "FAIL"))
@@ -221,11 +260,11 @@ def main(argv=None, environ=None, transport=None, base=None, now=None, out=print
             if args.what == "rollback":
                 if not args.backup:
                     raise AuditError("--backup is required")
-                out(A.rollback(api, args.env, args.backup))
+                out(A.rollback(api, args.env, args.backup, base))
                 return 0
             spec = A.load_spec(nfile)
             if args.what == "plan":
-                p = A.plan(api, args.env, spec, args.enable, val_path)
+                p = A.plan(api, args.env, spec, args.enable, val_path, base)
             else:
                 res = A.apply(api, args.env, spec, args.enable, val_path, base)
                 p = res["plan"]

@@ -40,7 +40,10 @@ def load_scope(path):
     """The explicit approval record. Every field is mandatory; there is no default recipient, media type, reference or scope."""
     with open(path, encoding="utf-8") as fh:
         s = yaml.safe_load(fh) or {}
-    allowed = {"approved_by", "approval_reference", "window_start", "window_end", "media_type", "usergroups", "test_scope", "case_d", "existing_hardware_action"}
+    allowed = {"approved_by", "approval_reference", "window_start", "window_end", "media_type", "usergroups", "test_scope", "case_d"}
+    if "existing_hardware_action" in s:
+        raise AuditError("synthetic scope: a pre-existing hardware action cannot be acknowledged into this test. It is never adopted, modified or rolled back: "
+                         "remove it through its own approved change, then run the test against an empty namespace")
     if set(s) - allowed:
         raise AuditError("synthetic scope: unknown keys " + ", ".join(sorted(set(s) - allowed)))
     for k in ("approved_by", "approval_reference", "media_type"):
@@ -64,9 +67,6 @@ def load_scope(path):
                              "and case_d.interface_recipients_notified: true. It is not part of the default test")
     elif s.get("case_d"):
         raise AuditError("synthetic scope: case_d approval given but D is not listed in test_scope.cases")
-    eh = s.get("existing_hardware_action")
-    if eh is not None and (not isinstance(eh, dict) or eh.get("acknowledged") is not True or len(str(eh.get("note") or "").strip()) < 3 or set(eh) - {"acknowledged", "note"}):
-        raise AuditError("synthetic scope: existing_hardware_action needs acknowledged: true and a note")
     try:
         a, b = _dt(s.get("window_start")), _dt(s.get("window_end"))
     except (ValueError, TypeError) as exc:
@@ -166,7 +166,7 @@ def recipients(api, scope):
 
 
 # ----------------------------------------------------------------------------------------------------------------- preflight / manifest
-def preflight(api, scope, notif_spec, now=None, mode="execute"):
+def preflight(api, scope, notif_spec, now=None, mode="execute", base=None, expected_actionid=None):
     """-> {"ok", "checks", "recipients", "in_window", "execution_allowed"}.
     mode "review": read-only readiness check that may run at any time (before the window). It can say READY but never authorises execution.
     mode "execute": the EXECUTION GATE - the approved window is mandatory; outside it ok is False and nothing may start."""
@@ -190,14 +190,16 @@ def preflight(api, scope, notif_spec, now=None, mode="execute"):
     chk("no trigger carries netops_hardware (nothing else can fire through the hardware action)", not hw, "%d trigger(s) carry it" % len(hw) if hw else "")
     st = hardware_action_state(api)
     pre_existing = st["exists"]
-    if pre_existing:
-        chk("hardware action is DISABLED before the test", st["status"] == "1", "action %s is enabled" % st["actionid"] if st["status"] != "1" else "")
-        ack = (scope.get("existing_hardware_action") or {}).get("acknowledged") is True
-        chk("a PRE-EXISTING hardware action is explicitly acknowledged (it is never adopted, modified or deleted by the test)", ack,
-            "" if ack else "action %s already exists. Add existing_hardware_action: {acknowledged: true, note: ...} to the approval, or remove it through its own approved change" % st["actionid"])
+    if not pre_existing:
+        chk("no hardware action exists yet (this test creates its own, disabled, with 'action apply')", True)
+    elif expected_actionid is not None and st["actionid"] == str(expected_actionid):
+        live = A.get_action_by_id(api, st["actionid"])
+        own = A.verify_owned(live, A.load_ownership(base, "lab") if base else None, expect_actionid=expected_actionid)
+        chk("the hardware action is the ledger-recorded one, demonstrably owned by this deployment, and DISABLED", not own and st["status"] == "1",
+            "; ".join(own) or ("action %s is enabled" % st["actionid"] if st["status"] != "1" else ""))
     else:
-        chk("hardware action absent (will be created disabled by 'action apply')", True)
-        chk("no existing_hardware_action acknowledgement without an existing action", "existing_hardware_action" not in scope, "")
+        chk("no PRE-EXISTING hardware action (a pre-existing action blocks the test; it is never adopted, modified, rolled back or deleted)", False,
+            "action %s already exists and is not the ledger-recorded one. Resolve it through its own approved change; there is no acknowledgement path" % st["actionid"])
     ifa = interface_actions(api)
     chk("Interface Alerting action present and snapshotted", bool(ifa), "no NETOPS-IaC action found - the exclusion cannot be shown" if not ifa else "%d action(s)" % len(ifa))
     a, b = scope["_window"]
@@ -258,7 +260,7 @@ class Ledger(object):
     def __init__(self, path, data=None):
         self.path = path
         self.data = data or {"schema": 1, "hostgroup": None, "host": None, "item": None, "triggers": {}, "action": None, "action_created_by_test": False,
-                             "enabled_at": None, "disabled_at": None}
+                             "enabled_at": None, "disabled_at": None, "observations": [], "sent": {}}
 
     @classmethod
     def load(cls, path):
@@ -324,13 +326,53 @@ def _action_by_id(api, actionid):
     return rows[0] if rows else None
 
 
-def cleanup_plan(api, ledger):
-    """Exact cleanup calls, ledger ids only, ownership-verified. Refuses (stop and investigate, never delete) if: the ledger is empty; a recorded id is
-    not the synthetic object it claims to be; the namespace holds anything the ledger does not know; or an ENABLED hardware action is not in the ledger.
-    The hardware action is inspected LIVE by its recorded id: if it is enabled, disabling it is always the first step, whatever enabled_at/disabled_at say."""
+def emergency_disable_plan(api, ledger, base):
+    """EMERGENCY path, independent of fixture cleanup. Returns the steps (possibly empty) that make the TEST-CREATED hardware action safe (disabled).
+    It deliberately does not look at the synthetic namespace or at the completeness of the fixture ids, so a foreign or missing fixture can never
+    leave an enabled action without a disable plan. It needs two things and nothing else: the exact action id in the ledger, and trustworthy evidence that
+    this deployment owns that action. Without both it refuses and raises with the evidence a human needs for manual recovery. It never disables an action
+    by name alone."""
+    aid = ledger.data.get("action")
+    rec = A.load_ownership(base, "lab")
+    if not aid:
+        live_any = A.get_action(api, A.ACTION_NAME)
+        ev = A.ownership_evidence(live_any, rec)
+        if live_any is not None and str(live_any.get("status")) != "1":
+            raise AuditError("EMERGENCY: a hardware action named '%s' is ENABLED but the ledger has no action id, so this test cannot claim it. It is NOT being disabled by name. "
+                             "Manual recovery evidence: %s" % (A.ACTION_NAME, json.dumps(ev, sort_keys=True)))
+        return []
+    if ledger.data.get("action_created_by_test") is not True:
+        raise AuditError("EMERGENCY: the ledger does not say this test created action %s, so it is not treated as owned and will not be disabled by this tool. "
+                         "Manual recovery evidence: %s" % (aid, json.dumps(A.ownership_evidence(A.get_action_by_id(api, aid), rec), sort_keys=True)))
+    live = A.get_action_by_id(api, aid)
+    if live is None:
+        other = A.get_action(api, A.ACTION_NAME)
+        if other is not None and str(other.get("status")) != "1":
+            raise AuditError("EMERGENCY: the recorded action %s is gone but a different hardware action (id %s) is ENABLED. It is NOT being disabled by name. "
+                             "Manual recovery evidence: %s" % (aid, other.get("actionid"), json.dumps(A.ownership_evidence(other, rec), sort_keys=True)))
+        return []
+    problems = A.verify_owned(live, rec, expect_actionid=aid)
+    if problems:
+        raise AuditError("EMERGENCY: ownership of action %s cannot be established (%s). It is NOT being disabled by this tool. Manual recovery evidence: %s"
+                         % (aid, "; ".join(problems), json.dumps(A.ownership_evidence(live, rec), sort_keys=True)))
+    if str(live["status"]) == "1":
+        return []
+    return [{"method": "action.update", "params": {"actionid": str(aid), "status": 1},
+             "why": "EMERGENCY DISABLE: action %s is verifiably this deployment's own (id, nonce, definition hash) and is ENABLED right now" % aid,
+             "preconditions": {"actionid": str(aid), "core_sha256": A.core_sha256(live)}}]
+
+
+def cleanup_plan(api, ledger, base):
+    """Destructive fixture cleanup, ledger ids only, ownership-verified. It is separate from the emergency disable: foreign, mismatched or incomplete
+    fixtures block EVERY deletion here, while `emergency_disable_plan` still works. If the recorded action is owned and enabled its disable is
+    the first step of this plan too."""
     ids = ledger.ids()
     if not (ids["host"] or ids["hostgroup"] or ids["item"] or ids["triggers"] or ids["action"]):
         raise AuditError("the ledger is empty: nothing to clean up (and nothing may be deleted by name)")
+    plan = list(emergency_disable_plan(api, ledger, base))
+    hw_now = hardware_action_state(api)
+    if hw_now["exists"] and ids["action"] != hw_now["actionid"]:
+        raise AuditError("a hardware action (id %s) exists that is not the one recorded in the ledger (%s): refusing to plan any deletion. Investigate." % (hw_now["actionid"], ids["action"]))
     own = verify_ownership(api, ledger)
     if own:
         raise AuditError("ownership verification failed - refusing to plan any deletion: " + "; ".join(own))
@@ -339,21 +381,8 @@ def cleanup_plan(api, ledger):
     for kind in ("triggers", "items", "hosts", "hostgroups"):
         extra = [i for i, _ in live[kind] if i not in known[kind]]
         if extra:
-            raise AuditError("the synthetic namespace contains %s %s that this test did not create: refusing to clean up. Investigate." % (kind, extra))
+            raise AuditError("the synthetic namespace contains %s %s that this test did not create: refusing to plan ANY deletion. Investigate." % (kind, extra))
     on_zabbix = dict((kind, set(i for i, _ in live[kind])) for kind in live)
-    plan = []
-    hw = hardware_action_state(api)
-    if ids["action"]:
-        rec = _action_by_id(api, ids["action"])
-        if rec is not None and rec["name"] != A.ACTION_NAME:
-            raise AuditError("recorded action id %s is named %r, not the hardware action: refusing" % (ids["action"], rec["name"]))
-        if rec is not None and str(rec["status"]) != "1":
-            plan.append({"method": "action.update", "params": {"actionid": ids["action"], "status": 1}, "why": "FIRST STEP: the recorded hardware action is ENABLED on Zabbix right now - disable it"})
-        if hw["exists"] and hw["actionid"] != ids["action"]:
-            raise AuditError("a hardware action (id %s) exists that is not the recorded one (%s): refusing. Investigate." % (hw["actionid"], ids["action"]))
-    elif hw["exists"] and hw["status"] != "1":
-        raise AuditError("the hardware action (id %s) is ENABLED but is not in the ledger, so this test cannot claim it. Disable it through its own approved change and "
-                         "investigate; nothing was planned." % hw["actionid"])
     if ids["triggers"]:
         present = [i for i in ids["triggers"] if i in on_zabbix["triggers"]]
         if present:
@@ -364,12 +393,107 @@ def cleanup_plan(api, ledger):
         plan.append({"method": "host.delete", "params": [ids["host"]], "why": "synthetic host (recorded id)"})
     if ids["hostgroup"] and ids["hostgroup"] in on_zabbix["hostgroups"]:
         plan.append({"method": "hostgroup.delete", "params": [ids["hostgroup"]], "why": "synthetic host group (recorded id)"})
-    if ids["action"] and ledger.data.get("action_created_by_test") is True:
-        plan.append({"method": "(tool)", "params": "hardware_audit.py --env lab action rollback --backup <backup printed by action apply>",
-                     "why": "remove the action created by this test, using its backup (not by name)"})
-    elif ids["action"]:
-        plan.append({"method": "(none)", "params": None, "why": "the hardware action PRE-EXISTED: it is left in place, disabled, and must be byte-identical in the after-manifest"})
+    if ids["action"]:
+        plan.append({"method": "(tool)", "params": "hardware_audit.py --env lab action rollback --backup <backup printed by 'action apply'>",
+                     "why": "remove the action this test created: the tool re-verifies ownership and the exact id from the backup; it never deletes by name"})
     return plan
+
+
+# ----------------------------------------------------------------------------------------------------------------- per-case action-state evidence
+MAX_CASE_SECONDS = 900
+
+
+def _epoch(v):
+    if isinstance(v, (int, float)):
+        return int(v)
+    s = str(v)
+    if s.isdigit():
+        return int(s)
+    return int(datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc).timestamp())
+
+
+def record_observation(api, ledger, case, phase, base, now):
+    """Read-only against Zabbix. Records a timestamped observation of the recorded hardware action (exact id, status, definition hash). Takes one
+    'before' and one 'after' per case; a duplicate is refused because an ambiguous record is worthless as evidence. Refuses unless ownership holds."""
+    if phase not in ("before", "after") or case not in ("A", "B", "C", "D"):
+        raise AuditError("observe needs --case A|B|C|D and --phase before|after")
+    aid = ledger.data.get("action")
+    if not aid:
+        raise AuditError("the ledger has no recorded hardware action id")
+    live = A.get_action_by_id(api, aid)
+    if live is None:
+        raise AuditError("the recorded hardware action %s does not exist on Zabbix" % aid)
+    own = A.verify_owned(live, A.load_ownership(base, "lab"), expect_actionid=aid)
+    if own:
+        raise AuditError("cannot record evidence for an action this deployment does not demonstrably own: " + "; ".join(own))
+    obs = ledger.data.setdefault("observations", [])
+    if any(o["case"] == case and o["phase"] == phase for o in obs):
+        raise AuditError("an observation for case %s phase %s already exists; evidence is never overwritten or duplicated" % (case, phase))
+    o = {"case": case, "phase": phase, "utc": int(now.timestamp()), "actionid": str(aid), "status": str(live["status"]), "core_sha256": A.core_sha256(live)}
+    obs.append(o)
+    ledger.save()
+    return o
+
+
+NEGATIVE_CASES = ("B", "C", "D")
+
+
+def negative_case_evidence(api, ledger, case, live, scope=None):
+    """Independent evidence that the hardware action was ENABLED for the whole of this negative case. Zero alerts only mean something if the action
+    was live: a missing, inconsistent or inconclusive record is a finding, and a clean zero is never enough on its own."""
+    f = []
+    d = ledger.data
+    aid = d.get("action")
+    obs = d.get("observations") or []
+    mine = [o for o in obs if o["case"] == case]
+    before = [o for o in mine if o["phase"] == "before"]
+    after = [o for o in mine if o["phase"] == "after"]
+    if len(before) != 1 or len(after) != 1:
+        return ["no usable action-state evidence for case %s: need exactly one 'before' and one 'after' observation (found %d and %d). A zero-notification "
+                "result without proof that the action was enabled during the case is INCONCLUSIVE, not a pass" % (case, len(before), len(after))]
+    b, a = before[0], after[0]
+    for o in (b, a):
+        if str(o["actionid"]) != str(aid):
+            f.append("%s observation is for action %s, not the recorded %s" % (o["phase"], o["actionid"], aid))
+        if str(o["status"]) != "0":
+            f.append("%s observation shows the hardware action DISABLED" % o["phase"])
+    live_core = A.core_sha256(live)
+    if not (b["core_sha256"] == a["core_sha256"] == live_core):
+        f.append("the action definition changed between the observations or since (core hash mismatch)")
+    span = a["utc"] - b["utc"]
+    if span <= 0:
+        f.append("the 'after' observation is not later than the 'before' observation")
+    elif span > MAX_CASE_SECONDS:
+        f.append("the observed interval is %ds, longer than the %ds bound: the action could have been toggled unseen" % (span, MAX_CASE_SECONDS))
+    sent = (d.get("sent") or {}).get(case) or []
+    if not sent:
+        f.append("no 'sent' mark for case %s: the time the value was sent is not tied to the observed interval" % case)
+    for t in sent:
+        if not b["utc"] <= _epoch(t) <= a["utc"]:
+            f.append("a value was sent at %s, outside the observed interval %d..%d" % (t, b["utc"], a["utc"]))
+    for o in obs:
+        if o is not b and o is not a and b["utc"] < o["utc"] < a["utc"] and str(o["status"]) != "0":
+            f.append("another observation inside the interval shows the action DISABLED")
+    tid = d["triggers"].get(case)
+    if tid:
+        clocks = [int(e["clock"]) for e in _events(api, tid)]
+        if not clocks:
+            f.append("no event exists for the case trigger: the case did not run")
+        for c in clocks:
+            if not b["utc"] <= c <= a["utc"]:
+                f.append("an event at %d is outside the observed interval %d..%d" % (c, b["utc"], a["utc"]))
+    elif case != "C":
+        f.append("no trigger recorded for case %s" % case)
+    da = d.get("disabled_at")
+    if da and _epoch(da) < a["utc"]:
+        f.append("the ledger records the action as disabled at %s, before the end of the observed interval" % da)
+    if scope is not None:
+        w0, w1 = scope["_window"]
+        for o in (b, a):
+            t = datetime.datetime.fromtimestamp(o["utc"], datetime.timezone.utc)
+            if not w0 <= t <= w1:
+                f.append("the %s observation is outside the approved window" % o["phase"])
+    return f
 
 
 # ----------------------------------------------------------------------------------------------------------------- verification
@@ -384,7 +508,7 @@ def _alerts(api, actionid, eventids):
                                   "actionids": [actionid], "eventids": sorted(eventids)})
 
 
-def verify_case(api, case, ledger, recipients_expected):
+def verify_case(api, case, ledger, recipients_expected, scope=None):
     """Read-only. Returns {"case", "ok", "findings": [...]}. Expectations PER APPROVED RECIPIENT: A = 1 Problem + 1 Recovery; B, C, D(hardware action) = 0."""
     f = []
     hw = hardware_action_state(api)
@@ -393,6 +517,9 @@ def verify_case(api, case, ledger, recipients_expected):
     n = len(recipients_expected)
     if not ledger.data.get("enabled_at"):
         return {"case": case, "ok": False, "findings": ["no enabled_at mark: the hardware action is not recorded as enabled during the cases, so a zero-notification result proves nothing"]}
+    if case in NEGATIVE_CASES:
+        live_action = A.get_action_by_id(api, hw["actionid"])
+        f.extend(negative_case_evidence(api, ledger, case, live_action, scope))
     tid = ledger.data["triggers"].get(case)
     if case == "C":
         if tid:
