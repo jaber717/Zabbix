@@ -1,14 +1,14 @@
-# NETOPS Hardware Health - release candidate 0.3.0-rc1
+# NETOPS Hardware Health - release candidate 0.3.1-rc2
 
-**Engineering verdict: RELEASE CANDIDATE READY for independent LAB acceptance. NOT production-ready.** Real-device validation and live delivery acceptance are outstanding (see `KNOWN-LIMITATIONS.md`).
+**Status: v0.3.1-rc2 - the five defects that got v0.3.0-rc1 rejected (Codex NO-GO, `5529012`) are fixed; independent re-acceptance is pending.** Engineering verdict: RELEASE CANDIDATE for independent LAB re-acceptance. NOT production-ready: real-device validation, a live template import and live delivery acceptance are outstanding (see `KNOWN-LIMITATIONS.md`). Template management design: `TEMPLATE-MANAGEMENT-DESIGN.md`; evidence: `ACCEPTANCE-V0.3.1-EVIDENCE.md`.
 
-Branch `claude/hardware-health-v0.3-rc`, built on v0.2.4 (`ca84bde`). The exact tip SHA is given in `HANDOFF-V0.3.md` / the delivery message.
+Branch `claude/hardware-health-v0.3.1-rc2`, built on the rejected candidate `c1f96cb` (v0.3.0-rc1, branch `claude/hardware-health-v0.3-rc`, left untouched). The exact tip SHA is given in the delivery message (a commit cannot contain its own hash).
 
 ## What is complete
 | Area | Delivered |
 |---|---|
 | Engine (Phase 1) | Vendor definitions (`vendors/*.yaml`) -> generated Zabbix 7.0 templates: SNMP walk + dependent LLD + item/trigger prototypes (PAN-OS via HTTP agent), vendor value maps, confirm/recover sample protection, separate `sensor_stale` monitoring-quality trigger, unsupported sensors recorded with reasons, routing tags, no thresholds invented |
-| Verification | `importcheck` (structure/uuid/expression/valuemap/tags/recovery/secret macro), `simulate` (generated expressions run against normal, fault, glitch, recovery, flap, wrong-state, stale series), 359 unit tests |
+| Verification | `importcheck` (structure/uuid/expression/valuemap/tags/recovery/secret macro), `simulate` (generated expressions run against normal, fault, glitch, recovery, flap, wrong-state, stale series), 442 unit tests |
 | LAB integration (Phase 2) | `labsim` read-only verification of the existing sim objects + notification isolation (fail-closed), print-only tag plan and exact restore plan, read-only event/alert evidence collector. The existing objects are never created, modified or re-tagged by the tool |
 | Telegram (Phase 3) | Message contract (Problem/Recovery fields, 4096 limit) checked from the real action templates; routing table; preflight/execution/verification/emergency-disable/rollback in `TELEGRAM-RUNBOOK.md`; action stays disabled, validation file all `false` |
 | Vendors (Phase 4) | Cisco IOS-XE, Cisco Nexus, Fortinet FortiGate, Huawei VRP, Palo Alto PAN-OS definitions with sources; ASR 8500 and FortiProxy recorded as BLOCKED. Four evidence levels in `VENDOR-COVERAGE.md` |

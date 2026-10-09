@@ -30,3 +30,16 @@ Method: for each risk class in the brief I looked for a concrete way the code co
 
 ## Residual risks
 L1-L17 in `KNOWN-LIMITATIONS.md`. The two that matter most for go-live: no real-device evidence (L1) and no live template import / Telegram delivery (L3, L4).
+
+## v0.3.1-rc2 addendum - what Codex found that my own review missed
+
+Codex rejected rc1 for five template-management defects (ownership by copyable marker, hash-only drift, rollback by name, linked-template update, `deleteMissing=true`). My v0.3 self-review (S1-S7) looked at the alert logic and the action path and did not attack the *template write path*; the rc1 table row "Unsafe action updates ... Template writes follow the same pattern" was an assertion, not a test. The same-pattern claim was wrong because the action has an unforgeable third factor (nonce in text **and** exact id **and** unchanged definition) that the template path lacked. Lessons applied: every new write path now gets its own adversarial sequences before it is called safe; "marker present" is never an authorization; an override flag is a vulnerability unless a person is in the loop (all removed); a verdict that depends on a fake must say so.
+
+| ID | Class | Finding during the fix | Fix + guard |
+|---|---|---|---|
+| S8 | inherited assumption | `auditlog_mode` was read as "log all changes"; Zabbix 7.0 defines it as logging of LLD / network discovery / autoregistration by the server | only `auditlog_enabled` gates evidence; tests added |
+| S9 | PAN-OS false alarms | HA item created unconditionally (unsupported on non-HA firewalls); `suspended` treated as High although the reference suppresses user-requested suspension | discovery singleton gate; `suspended` = degraded; contract tests against the pinned template |
+| S10 | TOCTOU | first hardening still read the link state *before* the last export, so a link added during the final check slipped through | the last read before every write/delete is a fresh `template.get` (tests with hooks inject the change at that exact call) |
+| S11 | restore fidelity | a restore without `deleteMissing` cannot reproduce an original export; with it, it is destructive | `RESTORE_RULES` only in rollback, only unlinked/owned/un-drifted, removals bounded by what the rolled-back operation added; result must equal the original hash |
+| S12 | recoverability | a crash between import and record left no way to tell "ours" from "foreign" | `pending` record + intent backup before the import; recovery requires nonce + UUID + intended content; post-import hash recorded immediately |
+| S13 | test infra | the Codex script imports `FakeTpl` from the tests | kept compatible; a regression script runs the same sequences individually |

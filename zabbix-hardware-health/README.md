@@ -1,6 +1,6 @@
 # NETOPS Hardware Health (independent project)
 
-**Status: release candidate 0.3.0-rc1 (LAB). 359 offline tests. NOT production-ready: no real device has been polled, generated templates are not yet imported into a live Zabbix, Telegram delivery is NOT tested and the Hardware action is disabled.** See [docs/RELEASE-CANDIDATE.md](docs/RELEASE-CANDIDATE.md).
+**Status: release candidate 0.3.1-rc2 (LAB). 442 offline tests. v0.3.0-rc1 was rejected by Codex for five template-management defects; all five are fixed (docs/ACCEPTANCE-V0.3.1-EVIDENCE.md). NOT production-ready: no real device has been polled, generated templates are not yet imported into a live Zabbix, Telegram delivery is NOT tested and the Hardware action is disabled.** See [docs/RELEASE-CANDIDATE.md](docs/RELEASE-CANDIDATE.md).
 
 Separate from the frozen `zabbix-alerting` v1.0.2 interface project (unchanged by this work).
 
@@ -52,6 +52,7 @@ release/build-package.sh | install.sh | upgrade.sh | rollback.sh | verify-deploy
 
 | | |
 |---|---|
+| [docs/TEMPLATE-MANAGEMENT-DESIGN.md](docs/TEMPLATE-MANAGEMENT-DESIGN.md), [docs/ACCEPTANCE-V0.3.1-EVIDENCE.md](docs/ACCEPTANCE-V0.3.1-EVIDENCE.md), [docs/VENDOR-SOURCES-REVIEW.md](docs/VENDOR-SOURCES-REVIEW.md) | template ownership / drift / rollback design, rc2 evidence, verified vendor sources |
 | [docs/RELEASE-CANDIDATE.md](docs/RELEASE-CANDIDATE.md), [docs/HANDOFF-V0.3.md](docs/HANDOFF-V0.3.md) | the v0.3 candidate, blockers, verdict |
 | [docs/VENDOR-COVERAGE.md](docs/VENDOR-COVERAGE.md) | generated vendor coverage matrix, four evidence levels |
 | [docs/OPERATOR-GUIDE.md](docs/OPERATOR-GUIDE.md), [docs/INSTALL-UPGRADE-ROLLBACK.md](docs/INSTALL-UPGRADE-ROLLBACK.md), [docs/TELEGRAM-RUNBOOK.md](docs/TELEGRAM-RUNBOOK.md) | operation |
