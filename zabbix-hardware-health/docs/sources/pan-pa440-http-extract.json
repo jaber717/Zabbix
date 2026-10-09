@@ -1,0 +1,102 @@
+{
+  "items": {
+    "pan.pa440.environmentals.get": {
+      "authtype": "BASIC",
+      "http_proxy": "{$PAN.PA440.HTTP_PROXY}",
+      "password": "{$PAN.PA440.PASSWORD}",
+      "post_type": null,
+      "preprocessing": [
+        {
+          "parameters": [
+            ""
+          ],
+          "type": "XML_TO_JSON"
+        }
+      ],
+      "query_fields": [
+        {
+          "name": "type",
+          "value": "op"
+        },
+        {
+          "name": "cmd",
+          "value": "<show><system><environmentals></environmentals></system></show>"
+        }
+      ],
+      "request_method": null,
+      "status_codes": "",
+      "timeout": "{$PAN.PA440.TIMEOUT}",
+      "type": "HTTP_AGENT",
+      "url": "{$PAN.PA440.API.URL}",
+      "username": "{$PAN.PA440.USER}",
+      "verify_host": null,
+      "verify_peer": null
+    },
+    "pan.pa440.ha.get": {
+      "authtype": "BASIC",
+      "http_proxy": "{$PAN.PA440.HTTP_PROXY}",
+      "password": "{$PAN.PA440.PASSWORD}",
+      "post_type": null,
+      "preprocessing": [
+        {
+          "parameters": [
+            ""
+          ],
+          "type": "XML_TO_JSON"
+        }
+      ],
+      "query_fields": [
+        {
+          "name": "type",
+          "value": "op"
+        },
+        {
+          "name": "cmd",
+          "value": "<show><high-availability><all></all></high-availability></show>"
+        }
+      ],
+      "request_method": null,
+      "status_codes": "",
+      "timeout": "{$PAN.PA440.TIMEOUT}",
+      "type": "HTTP_AGENT",
+      "url": "{$PAN.PA440.API.URL}",
+      "username": "{$PAN.PA440.USER}",
+      "verify_host": null,
+      "verify_peer": null
+    }
+  },
+  "macros": {
+    "{$PAN.PA440.API.URL}": {
+      "description": "The firewall XML API endpoint in the format `<scheme>://<host>[:port]/api` (port is optional).",
+      "type": null,
+      "value": null
+    },
+    "{$PAN.PA440.HTTP_PROXY}": {
+      "description": "The HTTP proxy for HTTP agent items (set if needed). If the macro is empty, then no proxy is used.",
+      "type": null,
+      "value": null
+    },
+    "{$PAN.PA440.PASSWORD}": {
+      "description": "The password of the user that is used for monitoring.",
+      "type": "SECRET_TEXT",
+      "value": null
+    },
+    "{$PAN.PA440.TIMEOUT}": {
+      "description": "The timeout threshold for the HTTP items that retrieve data from the API.",
+      "type": null,
+      "value": "15s"
+    },
+    "{$PAN.PA440.USER}": {
+      "description": "The name of the user that is used for monitoring.",
+      "type": null,
+      "value": "zbx_monitor"
+    }
+  },
+  "source": {
+    "commit": "4a89781bcdc9f7cc59c721786baa8f95c3dd7135",
+    "extracted_by": "docs/sources/extract-pan-auth.py equivalent (yaml.safe_load, fields below verbatim)",
+    "file": "templates/net/paloalto/paloalto_pa440/template_net_paloalto_pa440_http.yaml",
+    "sha256_of_file": "483fe338aed30e2f3506e3a109e086e5744a7c44422f9fec678f7b29e275c8fb",
+    "template_name": "Palo Alto PA-440 by HTTP"
+  }
+}

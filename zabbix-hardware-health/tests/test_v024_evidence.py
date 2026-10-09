@@ -99,8 +99,18 @@ class TestAuditEvidenceUnavailableOrIncomplete(EvBase):
         r = self.v("B", led)
         self.verdict(r, "INCONCLUSIVE")
         self.has(r, "audit logging is not enabled")
+        self.fz.settings.update(auditlog_enabled="1")
+
+    def test_auditlog_mode_is_not_an_evidence_gate(self):
+        # Zabbix 7.0: auditlog_mode only controls LLD / network-discovery / autoregistration logging by the server; it says nothing about user changes
+        led, ids = self.ready("B")
         self.fz.settings.update(auditlog_enabled="1", auditlog_mode="0")
-        self.verdict(self.v("B", led), "INCONCLUSIVE")
+        self.verdict(self.v("B", led), "PASS")
+
+    def test_auditlog_mode_change_record_does_not_break_continuity(self):
+        led, ids = self.ready("B")
+        self.fz.auditlog.append(row(0, T0 - 500, 1, {"settings.auditlog_mode": ["update", "1", "0"]}, rtype="39", rid="1", name=""))
+        self.verdict(self.v("B", led), "PASS")
 
     def test_an_empty_audit_response_is_never_read_as_no_changes(self):
         led, ids = self.ready("B", audit=False)

@@ -30,6 +30,7 @@ API_MACROS = [
     ("{$NETOPS.HW.API.USER}", "", "Read-only API user, set on the HOST."),
     ("{$NETOPS.HW.API.PASSWORD}", "", "Password of that user, set on the HOST as a SECRET macro. Never stored in this repository."),
     ("{$NETOPS.HW.API.TIMEOUT}", "15s", "API timeout."),
+    ("{$NETOPS.HW.API.HTTP_PROXY}", "", "HTTP proxy for the API items (set if needed; empty = no proxy)."),
 ]
 
 
@@ -133,11 +134,13 @@ def _api_sensor(defn, sn):
     tpl = template_name(defn)
     sid = sn["id"]
     a = sn["api"]
-    get_key, key = "netops.hw.%s.get" % sid, "netops.hw.%s" % sid
+    gate = a.get("gate")
+    get_key = "netops.hw.%s.get" % sid
+    key = ("netops.hw.%s[state{#HW.SINGLETON}]" if gate else "netops.hw.%s") % sid
     master = {
         "uuid": uuid_for("get:%s:%s" % (defn["id"], sid)), "name": "%s: API %s" % (defn["id"], sn["title"]), "type": "HTTP_AGENT", "key": get_key,
         "delay": "{$NETOPS.HW.POLL}", "history": "1h", "value_type": "TEXT", "trends": "0", "authtype": "BASIC",
-        "username": "{$NETOPS.HW.API.USER}", "password": "{$NETOPS.HW.API.PASSWORD}", "timeout": "{$NETOPS.HW.API.TIMEOUT}",
+        "username": "{$NETOPS.HW.API.USER}", "password": "{$NETOPS.HW.API.PASSWORD}", "timeout": "{$NETOPS.HW.API.TIMEOUT}", "status_codes": "", "http_proxy": "{$NETOPS.HW.API.HTTP_PROXY}",
         "url": "{$NETOPS.HW.API.URL}", "query_fields": [{"name": k, "value": v} for k, v in sorted(a["query"].items())] + [{"name": "cmd", "value": a["command"]}],
         "description": "Raw API response (read-only operational command). A raw input, not a sensor.",
         "preprocessing": [{"type": "XML_TO_JSON", "parameters": [""]}], "tags": [{"tag": "component", "value": "raw"}],
@@ -161,10 +164,29 @@ def _api_sensor(defn, sn):
         dep["units"] = v["units"]
     if sn["scope"] != "reading":
         dep["valuemap"] = {"name": valuemap_name(v["semantics"])}
-        dep["triggers"] = _trigger_protos(defn, sn, key, sid)
-        for t in dep["triggers"]:
-            t.pop("event_name", None)
-    return master, dep
+        trig = _trigger_protos(defn, sn, key, sid)
+        if gate:
+            dep["trigger_prototypes"] = trig
+        else:
+            dep["triggers"] = trig
+            for t in trig:
+                t.pop("event_name", None)
+    if not gate:
+        return master, dep, None
+    # the item exists only while the gate holds (e.g. HA enabled): a discovery singleton, as in the reference template, so a device without the
+    # feature produces NO unsupported item. ES5-only JavaScript (Zabbix uses Duktape): no for-of, no arrow functions.
+    js = "\n".join([
+        "var d = JSON.parse(value), v = d, p = %s, i;" % json.dumps(gate["path"]),
+        "for (i = 0; i < p.length; i++) {",
+        "    if (v === null || typeof v !== 'object' || !(p[i] in v)) { return JSON.stringify([]); }",
+        "    v = v[p[i]];",
+        "}",
+        "return JSON.stringify(v === %s ? [{'{#HW.SINGLETON}': ''}] : []);" % json.dumps(gate["equals"])])
+    rule = {"uuid": uuid_for("lld:%s:%s" % (defn["id"], sid)), "name": "%s: %s discovery" % (defn["id"], sn["title"]), "type": "DEPENDENT", "key": "netops.hw.%s.discovery" % sid,
+            "delay": "0", "description": "Creates the item only when %s = %s in the API response; otherwise nothing is created." % (".".join(gate["path"]), gate["equals"]),
+            "item_prototypes": [dep], "master_item": {"key": get_key},
+            "preprocessing": [{"type": "JAVASCRIPT", "parameters": [js]}, {"type": "DISCARD_UNCHANGED_HEARTBEAT", "parameters": ["1h"]}]}
+    return master, None, rule
 
 
 def build_payload(defn, tpl_hash=""):
@@ -179,8 +201,12 @@ def build_payload(defn, tpl_hash=""):
             items.append(master)
             rules.append(rule)
         else:
-            master, dep = _api_sensor(defn, sn)
-            items.extend([master, dep])
+            master, dep, rule = _api_sensor(defn, sn)
+            items.append(master)
+            if dep is not None:
+                items.append(dep)
+            if rule is not None:
+                rules.append(rule)
     used = sorted({sn["value"]["semantics"] for sn in defn.get("sensors") or [] if sn["scope"] != "reading"})
     valuemaps = [{"uuid": uuid_for("valuemap:" + s), "name": valuemap_name(s),
                   "mappings": [{"value": str(k), "newvalue": v["meaning"]} for k, v in sorted(defn["semantics"][s]["states"].items(), key=lambda kv: int(kv[0]))]}

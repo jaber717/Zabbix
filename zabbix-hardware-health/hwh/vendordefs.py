@@ -98,6 +98,10 @@ def validate(d, where="definition"):
             a = sn.get("api") or {}
             if not a.get("command") or not a.get("json_path"):
                 bad("sensor %s: api.command and api.json_path are required" % sn["id"])
+            g = a.get("gate")
+            if g is not None and (not isinstance(g, dict) or set(g) != {"path", "equals"} or not isinstance(g["path"], list) or not g["path"]
+                                  or not all(isinstance(k, str) and re.match(r"^[A-Za-z0-9_-]+$", k) for k in g["path"]) or not isinstance(g["equals"], str)):
+                bad("sensor %s: api.gate must be {path: [keys...], equals: text}" % sn["id"])
         if v.get("type") not in ("unsigned", "float"):
             bad("sensor %s: value.type must be unsigned or float" % sn["id"])
         trig = sn.get("triggers") or []

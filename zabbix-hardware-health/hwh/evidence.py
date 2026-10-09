@@ -85,12 +85,10 @@ def audit_evidence(api, ledger, case, b, a, live_status, relevant_times, now_ts)
     if now_ts < a + SETTLE:
         return fails, ["INCONCLUSIVE: audit records are written asynchronously; verify at least %ds after the 'after' observation (now is %ds after it)" % (SETTLE, now_ts - a)]
     try:
-        st = _call(api, "settings.get", {"output": ["auditlog_enabled", "auditlog_mode"]})
+        st = _call(api, "settings.get", {"output": ["auditlog_enabled"]})
         st = st[0] if isinstance(st, list) and st else st
         if not isinstance(st, dict) or str(st.get("auditlog_enabled", "")) != "1":
             return fails, ["INCONCLUSIVE: audit logging is not enabled on this Zabbix (auditlog_enabled=%r): there is no configuration history to rely on" % (st.get("auditlog_enabled") if isinstance(st, dict) else st)]
-        if "auditlog_mode" in st and str(st["auditlog_mode"]) != "1":
-            return fails, ["INCONCLUSIVE: audit logging mode is %r, not 'log all changes'" % st["auditlog_mode"]]
         base = {"filter": {"resourcetype": [AUDIT_RESOURCE_ACTION], "resourceid": [aid]}}
         rows = _audit_query(api, base)
         if not _complete(api, base, rows, "action %s" % aid, inc):
@@ -166,7 +164,9 @@ def audit_evidence(api, ledger, case, b, a, live_status, relevant_times, now_ts)
                 if str(r.get("action")) == "0" and str(r.get("resourceid")) != aid:
                     fails.append("another action named %s was created at %s (id %s): recreate/duplicate" % (A.ACTION_NAME, r["clock"], r.get("resourceid")))
         # audit settings changes since creation (logging could have been switched off and on)
-        q3 = {"search": {"details": "auditlog"}, "time_from": add_clock}
+        # only auditlog_enabled gates the evidence. auditlog_mode (Zabbix 7.0) controls logging of LLD / network discovery / autoregistration by the
+        # server (System user) - it does not affect logging of user changes to actions, so a mode change is irrelevant here (v0.3-rc2 correction).
+        q3 = {"search": {"details": "auditlog_enabled"}, "time_from": add_clock}
         rows3 = _audit_query(api, q3)
         if _complete(api, q3, rows3, "audit-settings changes", inc) and rows3:
             inc.append("INCONCLUSIVE: audit logging settings were changed since the action was created (%d record(s)): continuity of the log is not established" % len(rows3))
@@ -180,7 +180,7 @@ def probe(api):
     """Read-only capability check for the authoritative evidence sources. Writes nothing, creates nothing, changes no setting."""
     out = {"settings_readable": False, "auditlog_enabled": None, "auditlog_readable": False, "history_readable": False, "detail": []}
     try:
-        st = _call(api, "settings.get", {"output": ["auditlog_enabled", "auditlog_mode"]})
+        st = _call(api, "settings.get", {"output": ["auditlog_enabled"]})
         st = st[0] if isinstance(st, list) and st else st
         out["settings_readable"] = isinstance(st, dict)
         out["auditlog_enabled"] = str(st.get("auditlog_enabled")) == "1" if isinstance(st, dict) else None

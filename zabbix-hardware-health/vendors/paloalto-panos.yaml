@@ -26,7 +26,7 @@ semantics:
   paloalto-ha-state:
     object: "PAN-OS API: show high-availability all -> response.result.group['local-info'].state"
     description: "High-availability state of the local firewall."
-    classification_source: "state names and order from the reference template's value map; the state list is documented at https://docs.paloaltonetworks.com/pan-os/11-1/pan-os-admin/high-availability/ha-firewall-states . Raw numbers are the reference template's own index (initial 0 ... unknown 8), assigned by its JavaScript preprocessing, not by PAN-OS. Classification: non-functional and suspended are failed; tentative is degraded; initial and unknown are unknown; active/passive/active-primary/active-secondary are normal"
+    classification_source: "state names and order from the reference template's value map; the state list is documented at https://docs.paloaltonetworks.com/pan-os/11-1/pan-os-admin/high-availability/ha-firewall-states . Raw numbers are the reference template's own index (initial 0 ... unknown 8), assigned by its JavaScript preprocessing, not by PAN-OS. Classification: non-functional is failed; tentative and suspended are degraded (suspended: see the sensor note); initial and unknown are unknown; active/passive/active-primary/active-secondary are normal"
     states:
       "0": {state: unknown, meaning: initial}
       "1": {state: normal, meaning: active}
@@ -35,7 +35,7 @@ semantics:
       "4": {state: normal, meaning: active-secondary}
       "5": {state: degraded, meaning: tentative}
       "6": {state: failed, meaning: non-functional}
-      "7": {state: failed, meaning: suspended}
+      "7": {state: degraded, meaning: suspended}
       "8": {state: unknown, meaning: unknown}
 sensors:
   - id: ha-state
@@ -48,11 +48,12 @@ sensors:
       json_path: "$.response.result.group['local-info'].state"
       index_map: [initial, active, passive, active-primary, active-secondary, tentative, non-functional, suspended]
       unknown_index: 8
+      gate: {path: [response, result, enabled], equals: "yes"}
     value: {type: unsigned, semantics: paloalto-ha-state}
     triggers:
-      - {id: failed, severity: high, states: [failed], confirm_samples: 2, recover_samples: 2, title: "HA state non-functional or suspended"}
-      - {id: degraded, severity: warning, states: [degraded], confirm_samples: 3, recover_samples: 2, title: "HA state tentative"}
-    note: "An active<->passive role change is NOT alarmed here (the reference template alarms it as a 'state changed' event); it needs a transition rule and is not implemented."
+      - {id: failed, severity: high, states: [failed], confirm_samples: 2, recover_samples: 2, title: "HA state non-functional"}
+      - {id: degraded, severity: warning, states: [degraded], confirm_samples: 3, recover_samples: 2, title: "HA state tentative or suspended"}
+    note: "The item exists only when HA is enabled (discovery singleton gated on response.result.enabled = yes, as in the reference template), so a standalone firewall produces no unsupported item. SUSPENDED is classified as degraded (Warning), not failed: the reference template raises High for it but suppresses a suspension caused by an administrator request (state-reason 'User requested', macro default), and this definition does not read the state reason - so a maintenance suspension also alerts, at Warning. An active<->passive role change is NOT alarmed here (the reference template alarms it as a 'state changed' event); it needs a transition rule and is not implemented."
   - id: temperature-reading
     category: temperature
     scope: reading
