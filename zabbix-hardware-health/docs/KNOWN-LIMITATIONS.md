@@ -1,0 +1,23 @@
+# Known limitations (v0.3.0-rc1)
+
+**Not production-ready.** Real-device validation and live delivery acceptance are outstanding.
+
+| # | Limitation | Consequence / mitigation |
+|---|---|---|
+| L1 | **No real Cisco / Fortinet / Palo Alto / Huawei device has been polled.** All OIDs, enumerations and PAN-OS XML paths are copied from vendor MIB object names or official Zabbix 7.0 templates (commit-pinned in each definition) and labelled DOCUMENTATION-DERIVED. | Coverage level is at most SIMULATED TESTED. REAL DEVICE VERIFIED stays empty until `config/device-evidence.yaml` has captured evidence. |
+| L2 | **The SNMP Simulator verifies the pipeline, not a vendor.** The three LAB objects (fan/PSU/temperature) use whatever OIDs and values the simulator serves. | Never cite them as proof of any vendor behaviour. |
+| L3 | **Generated templates have not been imported into a live Zabbix 7.0.30.** They pass `importcheck` (structure, uuids, expression grammar, value maps, tags, recovery, password macro) and follow the shape of the official templates, but only a live `configuration.import` proves acceptance. | Codex acceptance step: `template plan` then `apply` in the LAB (guarded, reversible). |
+| L4 | **Telegram delivery NOT TESTED**, Hardware action disabled, validation file all `false`. | See `TELEGRAM-RUNBOOK.md`. |
+| L5 | Simulation evaluates a **subset** of the Zabbix expression language (`last(#n)`, `nodata`, comparisons, `and`/`or`) - exactly what is generated. It models recovery-expression mode and "cannot evaluate keeps state". It does not model server timing, queueing or LLD timing. | Parser rejects anything outside the subset, so a generated expression can't silently be something else. |
+| L6 | Cisco IOS temperature alerts on the device's own state only; Huawei, PAN-OS and Nexus **temperature has no over-temperature alert** (needs per-model thresholds; none are invented). Nexus `entSensorValue` scaling not implemented. | Readings are collected where documented; thresholds are an operator decision with device evidence. |
+| L7 | Fortinet FortiGate: **no fan/PSU/temperature objects** in the documented MIB set - only generic sensor alarms and HA sync. PAN-OS: HA state and a PA-440 temperature layout only; no fan/PSU. Huawei: fan and entity temperature; **no PSU object**. | Marked `unsupported` with reasons; these cells are UNVERIFIED / BLOCKED, not N/A. Alternatives (e.g. REST APIs) are unevaluated. |
+| L8 | **Cisco ASR 8500 / IOS-XR and FortiProxy: no documented source** - no definition exists. | BLOCKED. Will not be invented. |
+| L9 | Hardware redundancy (`hw_redundancy`) has no implemented sensor for any vendor. | BLOCKED/unsupported with reasons. |
+| L10 | Nexus entity-sensor name table may include rows that are not sensors of the intended class. | The discovery filter is "value column present"; a model-specific filter needs device evidence. |
+| L11 | Palo Alto uses an XML API with a credential; secret macro handling and API user privileges are untested. | Read-only API user, secret macro, documented. |
+| L12 | Stale trigger fires after `{$NETOPS.HW.STALE}` (15m) of silence, so a power-cycled device produces a stale event as well as sensor events. | By design: monitoring-quality, separate tag value. |
+| L13 | The LAB isolation model fails closed on condition types it does not understand: a legitimate unrelated action using e.g. a severity condition without a tag condition will block preflight until reviewed by a human. | Safe direction; resolve by review. |
+| L14 | `auditlog.get` needs Super Admin; with a lesser token negative synthetic cases are INCONCLUSIVE (never PASS). | `synthetic audit-probe` tells you first. |
+| L15 | Offline package ships no wheels (no pip in the release environment). PyYAML must be provided. | `install.sh` checks and explains. |
+| L16 | F5 deferred; no GUI; Production management refused; Python-side tests ran on the LAB VM only (no local interpreter on the build workstation). | Per scope. |
+| L17 | `template plan` decides noop/update from the ownership marker + content hash in the template description. A hand edit of items/triggers in the GUI that leaves the description alone is **not detected** (no live export diff). | Re-run `template apply` to re-impose the generated content; treat GUI edits of NETOPS-HW templates as unsupported. |
