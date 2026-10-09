@@ -1,0 +1,7 @@
+# REAL-DEVICE evidence register. EMPTY in this release: no real Cisco / Fortinet / Palo Alto / Huawei device has been polled.
+# An entry may only be added by a person who captured raw output from the physical device, e.g.
+#   verified:
+#     "cisco-iosxe:fan": {device: "Catalyst 9300-48P, IOS-XE 17.9.4", recorded_by: "name", raw_capture: "evidence/c9300-fan-walk.txt"}
+# The coverage matrix promotes a cell to REAL DEVICE VERIFIED only from here.
+schema: 1
+verified: {}

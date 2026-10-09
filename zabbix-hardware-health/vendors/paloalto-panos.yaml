@@ -69,3 +69,4 @@ unsupported:
   - {category: power, reason: "Power-supply state is not in the reference template; the response layout is not documented here. UNVERIFIED."}
   - {category: temperature, reason: "No alarm: no documented threshold. Reading only."}
   - {category: hw_redundancy, reason: "Not defined. HA is a separate category."}
+  - {category: sensor, reason: "Generic hardware-sensor alarm is not defined for PAN-OS; fan/power/temperature are covered by their own categories above."}

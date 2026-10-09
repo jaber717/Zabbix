@@ -1,0 +1,17 @@
+# The EXISTING, Codex-validated LAB SNMP-simulator objects (Zabbix 7.0.30 @ 192.168.1.91, simulator 192.168.1.74:1161, LXC 211).
+# This file only DESCRIBES them so they can be verified read-only. Nothing in this project creates, recreates or edits them.
+# These are SYNTHETIC sensors: their OIDs and value meanings are whatever the simulator serves. They are NOT a vendor MIB and prove nothing about real equipment.
+schema: 1
+environment: lab
+host: {name: LAB-SNMPSIM-HW-01, hostid: "10696"}
+sensors:
+  - {component: fan,         itemid: "52108", triggerid: "26409"}
+  - {component: power,       itemid: "52109", triggerid: "26410"}
+  - {component: temperature, itemid: "52110", triggerid: "26411"}
+# The tags the test triggers carry today must NOT be changed silently. `expected_tag_state` is what the read-only verification compares against;
+# `proposed_tags` is only PRINTED as a plan for operator approval.
+proposed_tags:
+  netops_hardware: "1"
+  hardware_vendor: lab-snmpsim
+  hardware_model: SNMP-Simulator
+  hardware_site: LAB

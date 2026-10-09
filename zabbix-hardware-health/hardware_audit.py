@@ -33,6 +33,7 @@ except ImportError:                                       # pragma: no cover
 def _parser():
     p = argparse.ArgumentParser(description="NETOPS Hardware Health")
     p.add_argument("--env", choices=["lab", "production"])
+    p.add_argument("--base", help="project / installation directory (default: the directory of this script)")
     p.add_argument("--version", action="version", version="hardware-health " + VERSION)
     sub = p.add_subparsers(dest="cmd", required=True)
     a = sub.add_parser("audit")
@@ -66,12 +67,21 @@ def _parser():
     act.add_argument("--notifications")
     act.add_argument("--enable", action="store_true", help="enable the action - allowed only with independently verified delivery evidence")
     act.add_argument("--backup")
+    v = sub.add_parser("vendors", help="offline: list vendor definitions, the coverage matrix, simulation and the message contract")
+    v.add_argument("what", choices=["list", "coverage", "simulate", "messages", "check"])
+    v.add_argument("--out")
+    t = sub.add_parser("template", help="generate / check (offline) or plan/apply/rollback (LAB, guarded) a NETOPS-HW template")
+    t.add_argument("what", choices=["build", "check", "plan", "apply", "rollback"])
+    t.add_argument("--definition", required=True)
+    t.add_argument("--out")
+    ls = sub.add_parser("labsim", help="READ-ONLY verification of the existing LAB simulator objects")
+    ls.add_argument("--config")
     return p
 
 
-def _open(env, policy_cfg, environ, transport, write=False):
+def _open(env, policy_cfg, environ, transport, write=False, write_templates=False):
     url, token = identity.resolve_target(env, environ)
-    api = ZabbixAPI(url, token, transport=transport, write=write)
+    api = ZabbixAPI(url, token, transport=transport, write=write, write_templates=write_templates)
     version = identity.verify(api, env, url, policy_cfg)
     return api, version
 
@@ -95,6 +105,93 @@ def _emergency(SY, api, ledger, base, out):
         out("  %s  %s  -- %s" % (step["method"], json.dumps(step["params"]), step["why"]))
         out("  preconditions to re-check immediately before executing: %s" % json.dumps(step["preconditions"], sort_keys=True))
     return 0
+
+
+def _vendors(args, base, catalogue, out):
+    from hwh import coverage, messages, simulate, vendordefs
+    defs = vendordefs.load_dir(os.path.join(base, "vendors"))
+    if args.what == "list":
+        for d in sorted(defs.values(), key=lambda x: x["id"]):
+            out("%-22s %-9s sensors=%d unsupported=%d" % (d["id"], d["vendor"], len(d.get("sensors") or []), len(d.get("unsupported") or [])))
+        return 0
+    if args.what == "simulate":
+        bad = 0
+        for did, s in sorted(simulate.summary(defs).items()):
+            out("%-22s %3d scenario checks, %d failed" % (did, s["cases"], len(s["failed"])))
+            for f in s["failed"]:
+                out("   FAILED: %s" % json.dumps(f, sort_keys=True))
+            bad += len(s["failed"])
+        return 1 if bad else 0
+    if args.what == "messages":
+        problems = messages.check()
+        out(messages.render_examples())
+        for p in problems:
+            out("VIOLATION: " + p)
+        return 1 if problems else 0
+    m = coverage.build(defs, catalogue, coverage.load_device_evidence(os.path.join(base, "config", "device-evidence.yaml")))
+    text = coverage.render_markdown(m)
+    if args.what == "check":
+        from hwh import template, importcheck
+        bad = 0
+        for d in defs.values():
+            if d.get("sensors"):
+                for pr in importcheck.check(template.build(d)):
+                    out("%s: %s" % (d["id"], pr))
+                    bad += 1
+        out("template import check: %s" % ("PASS" if not bad else "%d problem(s)" % bad))
+        return 1 if bad else 0
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as fh:
+            fh.write(text)
+    else:
+        out(text)
+    return 0
+
+
+def _template(args, environ, transport, base, out, catalogue):
+    from hwh import importcheck, template, tplmgr, vendordefs
+    defs = vendordefs.load_dir(os.path.join(base, "vendors"))
+    defn = defs.get(args.definition)
+    if defn is None or not defn.get("sensors"):
+        raise AuditError("no buildable definition %r (known with sensors: %s)" % (args.definition, ", ".join(sorted(k for k, v in defs.items() if v.get("sensors")))))
+    doc = template.build(defn)
+    if args.what in ("build", "check"):
+        problems = importcheck.check(doc)
+        for pr in problems:
+            out("PROBLEM: " + pr)
+        if args.what == "build" and not problems:
+            text = json.dumps(doc, indent=2, sort_keys=True)
+            if args.out:
+                with open(args.out, "w", encoding="utf-8") as fh:
+                    fh.write(text + "\n")
+            else:
+                out(text)
+        else:
+            out("template %s: %s" % (args.definition, "import check PASS" if not problems else "import check FAILED"))
+        return 1 if problems else 0
+    if args.env != "lab":
+        raise AuditError("template management is LAB only in this release (refused before contacting any server)")
+    cfg = policy.load_config(os.path.join(base, "config", "hardware.lab.yaml"), "lab", catalogue)
+    writing = args.what in ("apply", "rollback")
+    api, _ = _open("lab", cfg, environ, transport, write_templates=writing)
+    if args.what == "rollback":
+        out(json.dumps(tplmgr.rollback(api, "lab", template.template_name(defn), base)))
+        return 0
+    if args.what == "plan":
+        p = tplmgr.plan(api, "lab", defn)
+    else:
+        res = tplmgr.apply(api, "lab", defn, base)
+        p = res["plan"]
+        out("result: %s" % res["result"])
+        if res.get("backup"):
+            out("backup written: " + res["backup"])
+    out("template %s: %s" % (p["template"], p["action"]))
+    for n in p["notes"]:
+        out("  note: " + n)
+    for c in p["conflicts"]:
+        out("  CONFLICT: " + c)
+    out("  the template is NOT linked to any host by this tool")
+    return 1 if p["conflicts"] else 0
 
 
 def _synthetic(args, environ, transport, base, out, catalogue, clock):
@@ -216,7 +313,7 @@ def _synthetic(args, environ, transport, base, out, catalogue, clock):
 def main(argv=None, environ=None, transport=None, base=None, now=None, out=print, clock=None):
     args = _parser().parse_args(argv)
     environ = os.environ if environ is None else environ
-    base = base or HERE
+    base = args.base or base or HERE
     try:
         catalogue = policy.load_catalogue(os.path.join(base, "config", "vendors.yaml"))
         if args.cmd == "matrix":
@@ -235,8 +332,22 @@ def main(argv=None, environ=None, transport=None, base=None, now=None, out=print
                 out(text)
             _write_json(args.json, m)
             return 0
-        if not args.env:
+        if args.cmd == "vendors":
+            return _vendors(args, base, catalogue, out)
+        if not args.env and not (args.cmd == "template" and args.what in ("build", "check")):
             raise AuditError("--env lab|production is required for this command")
+        if args.cmd == "template":
+            return _template(args, environ, transport, base, out, catalogue)
+        if args.cmd == "labsim":
+            from hwh import labsim
+            if args.env != "lab":
+                raise AuditError("the LAB simulator objects are LAB only")
+            cfg = policy.load_config(os.path.join(base, "config", "hardware.lab.yaml"), "lab", catalogue)
+            lcfg = labsim.load(args.config or os.path.join(base, "config", "lab-sim.yaml"))
+            api, _ = _open("lab", cfg, environ, transport)
+            r = labsim.verify(api, lcfg)
+            out(labsim.render(r, lcfg))
+            return 0 if r["ok"] else 1
         if args.cmd in ("audit", "discover"):
             cfg = policy.load_config(args.config or os.path.join(base, "config", "hardware.%s.yaml" % args.env), args.env, catalogue)
             reg = semantics.load(os.path.join(base, "config", "status-semantics.yaml"))

@@ -17,3 +17,4 @@ unsupported:
   - {category: temperature, reason: "No definition."}
   - {category: hw_redundancy, reason: "No definition."}
   - {category: ha, reason: "No definition."}
+  - {category: sensor, reason: "No definition."}

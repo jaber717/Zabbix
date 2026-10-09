@@ -6,7 +6,8 @@ import urllib.request
 
 READ_METHODS = frozenset(["apiinfo.version", "host.get", "item.get", "trigger.get", "usermacro.get",
                           "action.get", "usergroup.get", "mediatype.get", "hostgroup.get", "user.get", "alert.get", "event.get",
-                          "auditlog.get", "history.get", "settings.get"])
+                          "auditlog.get", "history.get", "settings.get", "template.get", "configuration.export"])
+TEMPLATE_WRITE_METHODS = frozenset(["configuration.import", "template.delete"])
 ACTION_WRITE_METHODS = frozenset(["action.create", "action.update", "action.delete"])
 
 
@@ -15,7 +16,7 @@ class AuditError(Exception):
 
 
 class ZabbixAPI(object):
-    def __init__(self, url, token, transport=None, write=False):
+    def __init__(self, url, token, transport=None, write=False, write_templates=False):
         if not url.startswith("https://") and not url.startswith("http://"):
             raise AuditError("Zabbix URL must include http:// or https://")
         self.base_url = url.rstrip("/")
@@ -25,12 +26,14 @@ class ZabbixAPI(object):
         self.token = token
         self.transport = transport or urllib.request.urlopen
         self.write = write
+        self.write_templates = write_templates
         self.seq = 0
         self.log = []                      # [(method, is_write)] - audit trail, never params
 
     def call(self, method, params=None):
-        is_write = method in ACTION_WRITE_METHODS
-        if method not in READ_METHODS and not (is_write and self.write):
+        is_write = method in ACTION_WRITE_METHODS or method in TEMPLATE_WRITE_METHODS
+        allowed = (method in ACTION_WRITE_METHODS and self.write) or (method in TEMPLATE_WRITE_METHODS and self.write_templates)
+        if method not in READ_METHODS and not allowed:
             raise AuditError("API allowlist refused " + method)
         self.seq += 1
         self.log.append((method, is_write))
