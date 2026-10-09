@@ -1,93 +1,123 @@
-# LAB synthetic notification test procedure (HW-N4 / HW-N6, optional HW-N5)
+# LAB synthetic notification test (HW-N4 / HW-N6)
 
-**NOT EXECUTED. Requires explicit written approval before any step. LAB only.** Nothing in this repository performs these steps; they are carried out by the independent tester with a LAB token that may write hosts, triggers and actions.
+**NOT EXECUTED. Needs explicit written authorization from the operator before any Zabbix write. LAB only. No Production, no Interface Alerting change.**
+Nothing in this repository writes to Zabbix for this test. The tooling added for it (`hardware_audit.py --env lab synthetic ...`) is **read-only against Zabbix** (preflight, snapshot, diff, cleanup-plan, verify) plus two commands that write only a local ledger file (`ledger-record`, `ledger-mark`). The fixtures are created and deleted by the independent tester with an approved LAB token.
 
-## What this test can and cannot prove
+## 1. Three results that must never be confused
 
-| Can prove | Cannot prove |
-|---|---|
-| The separate action `NETOPS-HW Hardware Health` delivers one Problem and one Recovery message to the approved recipients with the intended content, including the quoted `{EVENT.TAGS."..."}` macros | That any real fan, PSU, temperature or HA sensor is monitored or that a vendor status code means what a trigger assumes |
-| Events without the dedicated tags are not delivered by this action | Physical Hardware Health coverage (the matrix stays 0 PASS) |
-| The Interface Alerting action does not deliver a hardware-tagged event | Production readiness |
+| Label | Meaning | Status today |
+|---|---|---|
+| **AUDIT PASS** | the read-only audit (`hardware_audit.py audit`) found declared sensors readable, mapped and trigger-bound | not achieved: the approved inventory is empty (`hosts: {}`), no real sensor is verified |
+| **NOTIFICATION PIPELINE PASS (synthetic)** | the separate action delivered one Problem and one Recovery with expanded macros for a synthetic event, and did not act on unrelated events | this test; not yet run |
+| **REAL HARDWARE COVERAGE PASS** | real fan/PSU/temperature/redundancy/HA sensors on real vendor devices, verified status mappings, dedicated-tag triggers, real or safely simulated state changes delivered | not achieved; needs real devices (VENDOR-GAPS-AND-TEST-DEVICES.md) |
 
-If it succeeds, the only permitted label is **NOTIFICATION PIPELINE PASS (synthetic)**. It is never "Hardware Health PASS".
+A synthetic pass proves the plumbing only. It must be reported as `NOTIFICATION PIPELINE PASS (synthetic)`, never as hardware coverage and never as production readiness.
 
-## 0. Approval record (fill in BEFORE starting; no approval, no test)
+## 2. Expected notifications - per approved recipient
 
-```text
-Approved by: ____________   Reference: ____________   Date/time window (Asia/Riyadh): ____________
-Approved recipient group(s) (exact names): ____________      Approved media type (exact): ____________
-Message volume accepted: exactly 1 Problem + 1 Recovery per test case (cases A, B, C = 6 messages; D optional +1)
-Tester: ____________     Rollback owner: ____________
-```
+"Recipient" = a user in an approved user group who has an enabled medium of the approved media type. Totals scale with the number of recipients; they are not a fixed number.
 
-The recipients go into `config/notifications.lab.yaml` (`usergroups`, `approved_by`, `approval_reference`). They are never defaulted, and the Zabbix administrators group is not a substitute for an unapproved choice.
+| Case | What is sent to the trapper item | Hardware-action messages | Interface Alerting exposure |
+|---|---|---|---|
+| **Case A** - hardware-tagged trigger | `1` then `0` | **1 Problem + 1 Recovery per approved recipient** (2 per recipient) | none |
+| **Case B** - stock-style tags (`scope`, `component` only) | `2` then `0` | **zero** hardware notifications (the event shows in Problems only) | none |
+| **Case C** - value no trigger matches | `5` | **zero** notifications of any kind | none |
+| **Case D** - tagged for both families | `3` then `0` | zero from the hardware action | **Case D is excluded from the default test.** It would produce an Interface Alerting Problem and Recovery for that action's recipients. It needs its own approval (`case_d`), including confirmation that those recipients were told |
 
-## 1. Preconditions (read-only checks)
+Default test = A + B + C = **2 hardware messages per approved recipient in total** (all from Case A). Example: two approved recipients -> 4 messages.
 
-1. `hardware_audit.py --env lab action plan` shows `CREATE ... (disabled)`, 0 conflicts, crossover model 0 wrong.
-2. LAB identity macro `{$NETOPS.ENVIRONMENT}` = `lab` (the tool already checks).
-3. `trigger.get` filtered by tag `netops_hardware` returns **nothing** (no other trigger can fire through the action during the window).
-4. Note the current state of every object that will be touched: the Interface Alerting action (must stay untouched and enabled), the NETOPS-HW action (absent), and the list of recent problems.
-5. Telegram/e-mail recipients know a test is running.
+## 3. Authorization record (no fallback of any kind)
 
-## 2. Create the synthetic fixtures (isolated, clearly named, all deletable)
+Copy `config/synthetic-test.example.yaml` to `config/synthetic-test.yaml`. The operator fills in **every** field; a blank or missing field makes `synthetic preflight` refuse:
 
-Created by the tester with the API; every object name starts with `NETOPS-HW-SYNTH`.
+* `approved_by`, `approval_reference`
+* `window_start`, `window_end` (ISO-8601 with offset; at most 4 hours)
+* `media_type` and `usergroups` - exact existing names, and **identical** to `config/notifications.lab.yaml` (one approval, one source of truth). There is no default recipient and the Zabbix administrators group is never substituted.
+* `test_scope`: the fixed namespace `NETOPS-HW-SYNTH` / `NETOPS-HW-SYNTH-01` and the list of cases (default `[A, B, C]`).
+* `case_d` (approver, reference, `interface_recipients_notified: true`) only if D is listed.
 
-| Object | Definition |
-|---|---|
-| host group | `NETOPS-HW-SYNTH` |
-| host | `NETOPS-HW-SYNTH-01`, in that group, **no interfaces**, no templates, monitored |
-| item (trapper) | key `netops.hw.synthetic.state`, type trapper (2), numeric unsigned, no preprocessing |
-| trigger A (hardware, correct tags) | expression `last(/NETOPS-HW-SYNTH-01/netops.hw.synthetic.state)=1`, severity Average; tags `netops_hardware=1`, `hardware_component=fan`, `hardware_vendor=synthetic`, `hardware_model=SYNTHETIC-NOT-A-DEVICE`, `hardware_site=LAB`, `hardware_slot=synthetic-1` |
-| trigger B (stock-style, must not notify) | expression `last(/NETOPS-HW-SYNTH-01/netops.hw.synthetic.state)=2`, tags `scope=availability`, `component=fan` only |
-| trigger C (mis-tagged, must not notify via this action) | expression `last(...)=3`, tags `netops_hardware=1` **and** `netops_alert=synthetic_test` - **see the HW-N5 warning: this one also matches the Interface Alerting action** |
-
-Create trigger C only if case D is separately approved.
-
-## 3. Create the action (disabled) with the tool
+## 4. Preflight (read-only) - execution is refused unless it passes
 
 ```bash
-cp config/notifications.example.yaml config/notifications.lab.yaml    # fill in the APPROVED values only
-python3.12 hardware_audit.py --env lab action plan
-python3.12 hardware_audit.py --env lab action apply                  # creates 'NETOPS-HW Hardware Health', DISABLED; note the printed backup path
+python3.12 hardware_audit.py --env lab synthetic preflight
 ```
 
-## 4. Enable for the test window only
+It **refuses** if any of the following is false: scope complete; scope recipients equal the action configuration; approved media type and user group(s) exist and at least one user would receive messages; **the synthetic namespace is empty** - no host group `NETOPS-HW-SYNTH`, no host `NETOPS-HW-SYNTH-01`, no item `netops.hw.synthetic.state` on any host, no trigger whose name starts `[NETOPS-HW-SYNTH] `; no trigger anywhere already carries `netops_hardware`; the hardware action is absent or **disabled**; at least one Interface Alerting (`NETOPS-IaC`) action exists to snapshot. A pre-existing object is never adopted and never deleted.
 
-The tool will (correctly) refuse `--enable`: the validation record is still all-false. Enabling for the window is therefore a **manual, approved change by the tester** in the Zabbix UI or API (`action.update` status 0 on the `NETOPS-HW Hardware Health` action only). Record the time. The tool's `config/action-validation.yaml` is filled in only after the evidence below exists.
+## 5. Before manifest
 
-## 5. Cases (values are sent with `zabbix_sender` from the LAB Zabbix host to host `NETOPS-HW-SYNTH-01`)
+```bash
+python3.12 hardware_audit.py --env lab synthetic snapshot --out evidence/synth-before.json
+```
 
-| Case | Action | Expected | Evidence |
-|---|---|---|---|
-| A. Problem | send value `1` | trigger A fires; exactly **one** hardware Problem message to the approved recipients; subject `[HARDWARE PROBLEM] ...`; body shows host, severity, date/time, event ID, and resolved `Model/Vendor/Site/Component/slot` values (`SYNTHETIC-NOT-A-DEVICE`, `synthetic`, `LAB`, `fan`, `synthetic-1`) - **no literal `*UNKNOWN*`** | message screenshot/text, event ID, alert history row |
-| A. Recovery | send value `0` | trigger A recovers; exactly one Recovery message with recovery date/time and duration | same |
-| B. Stock-style tags | send `2`, then `0` | event appears in Monitoring -> Problems; **no** message from this action; no message at all | alert history shows none |
-| C. Unknown value | send `5` | nothing fires (no trigger matches) - sanity | none |
-| D. (optional, separate approval) tags on both families | send `3`, then `0` | the hardware action sends **nothing**. **Warning:** the Interface Alerting action will legitimately deliver one interface-style message and one recovery to its own recipients, because the event carries `netops_alert`. Warn those recipients first. | alert history for both actions |
+The manifest holds, for every Interface Alerting action: id, name, status and a SHA-256 of its full definition (ids stripped) plus the definition itself; the hardware action's existence/status/signature; the (empty) synthetic object lists; the count of `netops_hardware` triggers; the recipient user ids; and a manifest hash.
 
-Failure criteria (stop at once, go to section 6): a message from this action for case B/C/D; more than one Problem or Recovery message; an unresolved macro (`*UNKNOWN*`) in the body; a message to anyone outside the approved recipients; any change in the Interface Alerting action; a delivery error/retry in the alert history.
+## 6. Create fixtures and RECORD EVERY ID
 
-If `*UNKNOWN*` appears for the `{EVENT.TAGS."..."}` values, record the exact rendered text. That is a macro-syntax finding to hand back to the developer, not a reason to improvise another syntax live.
+The tester creates, with the approved LAB token, in this order: host group `NETOPS-HW-SYNTH`; host `NETOPS-HW-SYNTH-01` (no interfaces, no templates); trapper item `netops.hw.synthetic.state` (unsigned numeric); trigger A `[NETOPS-HW-SYNTH] case A hardware-tagged` (`last(...)=1`, Average, tags `netops_hardware=1`, `hardware_component=fan`, `hardware_vendor=synthetic`, `hardware_model=SYNTHETIC-NOT-A-DEVICE`, `hardware_site=LAB`, `hardware_slot=synthetic-1`); trigger B `[NETOPS-HW-SYNTH] case B stock-style tags` (`last(...)=2`, tags `scope=availability`, `component=fan`); trigger D only if approved (`last(...)=3`, tags `netops_hardware=1` and `netops_alert=synthetic_test`). Case C has no trigger.
 
-## 6. Roll back (always, pass or fail)
+**Immediately after each create call**, write the exact id returned into the ledger (a local file, mode 0600, Git-ignored):
 
-1. Disable the NETOPS-HW action (manual, restoring `status=1`) and confirm in the UI.
-2. Delete trigger(s), item, host, host group (in that order) - verify `trigger.get`/`host.get`/`hostgroup.get` return none of the `NETOPS-HW-SYNTH*` objects.
-3. `python3.12 hardware_audit.py --env lab action rollback --backup state/backups/hardware-action-lab-<stamp>.json` - removes the action this tool created (or restores the previous definition if one existed).
-4. Verify: `action plan` shows `CREATE` again (the action is gone), the Interface Alerting action is byte-identical to the note taken in step 1.4, no trigger carries `netops_hardware`.
-5. Problem/event history rows created by the test remain in Zabbix history (events cannot be deleted); they are identifiable by the host name and are documented in the evidence.
+```bash
+L=state/synthetic/ledger-<approval_reference>.json
+python3.12 hardware_audit.py --env lab synthetic ledger-record --ledger $L --kind hostgroup --id <id>
+python3.12 hardware_audit.py --env lab synthetic ledger-record --ledger $L --kind host      --id <id>
+python3.12 hardware_audit.py --env lab synthetic ledger-record --ledger $L --kind item      --id <id>
+python3.12 hardware_audit.py --env lab synthetic ledger-record --ledger $L --kind trigger   --id <id> --case A
+python3.12 hardware_audit.py --env lab synthetic ledger-record --ledger $L --kind trigger   --id <id> --case B
+```
 
-Rollback is reversible and complete except for those history rows and the messages already delivered.
+Then create the hardware action (disabled) with the tool and record it:
 
-## 7. Record the result
+```bash
+python3.12 hardware_audit.py --env lab action apply            # prints the backup path; creates 'NETOPS-HW Hardware Health', DISABLED
+python3.12 hardware_audit.py --env lab synthetic ledger-record --ledger $L --kind action --id <action id> --created-by-test
+```
 
-Only after cases A and B (and C/D if approved) are evidenced, and rollback verified, fill in `config/action-validation.yaml` **truthfully**:
+## 7. Temporary enablement - an explicitly approved test exception
 
-* `problem_delivery`, `recovery_delivery`: verified true with the evidence reference **for the synthetic pipeline**;
-* `interface_exclusion`: true only if case D was run; otherwise leave false and say so;
-* `validated_by`.
+The action is **disabled at all times outside the approved window**. The tool correctly refuses `--enable` because `config/action-validation.yaml` is all-false; that gate is not bypassed. Enabling for the test is a separate, manual, approved exception made by the tester on the recorded action id only, inside `window_start..window_end`:
 
-Even then: a synthetic result does not make the action ready for real devices. Hardware coverage stays 0 PASS until real sensors with verified status mappings and dedicated-tag triggers exist (see VENDOR-GAPS-AND-TEST-DEVICES.md). Report the outcome as `NOTIFICATION PIPELINE PASS (synthetic)` or `FAIL` with the failing criterion.
+1. immediately before Case A: set the recorded action to enabled; `ledger-mark --event enabled`;
+2. run the cases;
+3. immediately after Case A: set the action back to disabled; `ledger-mark --event disabled`; confirm in the UI.
+
+If the window ends with the action enabled, disabling it is the first cleanup step (the cleanup plan includes it automatically while `enabled_at` is set and `disabled_at` is not).
+
+## 8. Run the cases, then verify (read-only)
+
+Send the values with `zabbix_sender` from the LAB Zabbix host to host `NETOPS-HW-SYNTH-01`, key `netops.hw.synthetic.state`, and wait for the trigger/alert processing between values.
+
+```bash
+python3.12 hardware_audit.py --env lab synthetic verify --ledger $L --case A    # also B, C (and D only if approved)
+```
+
+`verify` checks, using only event/alert/action reads:
+
+* **Problem and Recovery** - exactly one Problem event for the case trigger, recovered; Case A: each approved recipient has exactly one Problem alert and one Recovery alert from the hardware action (`p_eventid` distinguishes them), nobody else, all delivered (`status` sent, no `error`);
+* **Message macro expansion** - the Problem message contains the expanded values `SYNTHETIC-NOT-A-DEVICE`, `synthetic-1`, `LAB`, `fan`; neither message contains `*UNKNOWN*` or a literal `{EVENT.TAGS`; the Recovery carries the recovery wording;
+* **Alert history** - the exact alert rows (ids, users, status, retries, errors) are in the report;
+* **Hardware-action exclusion** - Cases B/C: zero hardware-action alerts; across the whole action, no alert exists for any event except Case A's Problem/Recovery;
+* **Interface Alerting exclusion** - no alert of any `NETOPS-IaC` action for any synthetic event (except Case D, where it is expected and checked by hand).
+
+Stop at the first failure and go to section 9: a message from the hardware action in B/C/D, more than one Problem or Recovery per recipient, an unexpanded macro, a recipient outside the approved list, a delivery error, or any change in an Interface Alerting action. If a macro does not expand, record the exact rendered text and hand it back; do not improvise another syntax live.
+
+## 9. Cleanup - ledger ids only, never by name
+
+```bash
+python3.12 hardware_audit.py --env lab synthetic cleanup-plan --ledger $L
+```
+
+prints the exact calls: disable the recorded action (if still enabled); `trigger.delete` with the **recorded trigger ids**; `item.delete`, `host.delete`, `hostgroup.delete` with the **recorded ids**; and the tool rollback of the action it created (using its backup, not its name). The plan is refused - and the tester must stop and investigate - if the ledger is empty, or if the synthetic namespace contains any object whose id is not in the ledger (it belongs to someone else). It never selects anything by name prefix, and an object already gone is simply omitted. The tester executes the printed calls with the approved token, then:
+
+```bash
+python3.12 hardware_audit.py --env lab action rollback --backup state/backups/hardware-action-lab-<stamp>.json
+python3.12 hardware_audit.py --env lab synthetic snapshot --out evidence/synth-after.json
+python3.12 hardware_audit.py --env lab synthetic diff --before evidence/synth-before.json --after evidence/synth-after.json
+```
+
+`diff` must print no differences: Interface Alerting action definitions byte-identical (hash), synthetic namespace empty, hardware action in its before-state and not enabled, `netops_hardware` trigger count unchanged. Event and alert history rows and messages already delivered remain; they are listed in the evidence.
+
+## 10. Recording the outcome
+
+Fill `config/action-validation.yaml` truthfully and only from evidence: `problem_delivery` and `recovery_delivery` (for the synthetic pipeline) after Case A; `interface_exclusion` only if Case D was approved and run, otherwise leave it false and say so; `validated_by`. Report exactly one of: `NOTIFICATION PIPELINE PASS (synthetic)` or `FAIL (<criterion>)`. Hardware coverage stays at 0 PASS and the action stays disabled until real devices are validated.

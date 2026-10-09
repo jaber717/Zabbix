@@ -1,0 +1,6 @@
+state/
+config/notifications.lab.yaml
+config/notifications.production.yaml
+config/synthetic-test.yaml
+__pycache__/
+*.pyc

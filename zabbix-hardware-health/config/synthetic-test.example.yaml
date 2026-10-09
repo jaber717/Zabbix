@@ -1,0 +1,16 @@
+# Explicit approval record for the LAB synthetic notification test. Copy to config/synthetic-test.yaml and have a person fill EVERY field.
+# There is no default recipient, media type, reference, window or scope: a blank or missing field makes `synthetic preflight` refuse.
+approved_by: ""                  # who approves this test
+approval_reference: ""           # ticket / change reference
+window_start: ""                 # ISO-8601 with offset, e.g. 2026-10-10T10:00:00+03:00
+window_end: ""                   # at most 4 hours after window_start
+media_type: ""                   # exact existing media type; must equal config/notifications.lab.yaml
+usergroups: []                   # exact existing group(s); must equal config/notifications.lab.yaml
+test_scope:
+  hostgroup: NETOPS-HW-SYNTH     # fixed synthetic namespace - do not change
+  host: NETOPS-HW-SYNTH-01
+  cases: [A, B, C]               # default test. Add D ONLY with the separate case_d approval below
+# case_d:                        # case D can notify Interface Alerting recipients; it needs its own approval
+#   approved_by: ""
+#   approval_reference: ""
+#   interface_recipients_notified: true

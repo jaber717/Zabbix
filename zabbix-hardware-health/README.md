@@ -1,6 +1,6 @@
 # NETOPS Hardware Health (independent project)
 
-**Status: v0.2 LAB tooling. Audit corrected and offline-tested (125 tests, v0.2.1). Hardware coverage is NOT accepted anywhere and hardware notifications are NOT operational.**
+**Status: v0.2 LAB tooling. Audit corrected and offline-tested (176 tests, v0.2.1). Hardware coverage is NOT accepted anywhere and hardware notifications are NOT operational.**
 
 Separate from the frozen `zabbix-alerting` v1.0.2 interface project (unchanged by this work).
 
@@ -47,9 +47,16 @@ python3 hardware_audit.py --env lab action plan|apply|rollback               # t
 | [docs/VENDOR-GAPS-AND-TEST-DEVICES.md](docs/VENDOR-GAPS-AND-TEST-DEVICES.md) | per-vendor gaps, required real devices, HW-1..HW-8 |
 | [docs/NOTIFICATION-ACTION.md](docs/NOTIFICATION-ACTION.md) | separate action design, tag contract, safety, HW-N1..N6 |
 | [docs/HANDOFF-TO-CODEX.md](docs/HANDOFF-TO-CODEX.md), [docs/HANDOFF-V0.2.1.md](docs/HANDOFF-V0.2.1.md) | what to run next, blockers |
-| [docs/SYNTHETIC-NOTIFICATION-TEST.md](docs/SYNTHETIC-NOTIFICATION-TEST.md) | reversible LAB synthetic delivery test (needs explicit approval; not executed) |
+| [docs/SYNTHETIC-NOTIFICATION-TEST.md](docs/SYNTHETIC-NOTIFICATION-TEST.md) | LAB synthetic delivery test plan: per-recipient message counts, preflight, id ledger, before/after manifest, ID-scoped cleanup (NOT executed; needs explicit operator authorization) |
 | [docs/LAB-DISCOVERY-2026-10-09.md](docs/LAB-DISCOVERY-2026-10-09.md) | Codex's discovery report (unchanged) |
 | [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) | mandatory four-vendor acceptance gates (unchanged) |
 
 ## Not done, deliberately
 Building tagged hardware triggers (needs a real device to prove what each item returns); populating the LAB inventory; enabling the action; anything in Production; changes to Interface Alerting v1.0.2.
+
+### Synthetic-test support (read-only against Zabbix)
+```bash
+python3 hardware_audit.py --env lab synthetic preflight|snapshot|cleanup-plan|verify   # reads only; refuses on any pre-existing synthetic object
+python3 hardware_audit.py --env lab synthetic diff --before B.json --after A.json
+python3 hardware_audit.py --env lab synthetic ledger-record|ledger-mark ...            # local ledger file only
+```

@@ -25,6 +25,10 @@ class FakeZabbix(object):
         self.usergroups = [{"usrgrpid": "7", "name": "Network Operations"}]
         self.mediatypes = [{"mediatypeid": "3", "name": "Telegram", "status": "0"}]
         self.calls = []
+        self.hostgroups = {}     # groupid -> name
+        self.users = []          # {"userid", "usrgrpids": [...], "medias": [...]}
+        self.events = []         # {"eventid","r_eventid","objectid","value","clock"}
+        self.alerts = []         # alert.get rows
         self._n = 100
 
     # ---------------------------------------------------------------- seeding
@@ -102,8 +106,13 @@ class FakeZabbix(object):
             return rows
         if method == "item.get":
             rows = []
-            for hid in p.get("hostids", []):
+            for hid in (p.get("hostids") or list(self.items)):
+                if not p.get("hostids") and not (p.get("filter") or {}).get("key_"):
+                    continue
+                flt = (p.get("filter") or {}).get("key_")
                 for it in self.items.get(hid, []):
+                    if flt and it["key_"] != flt:
+                        continue
                     r = dict((k, v) for k, v in it.items() if k in (p.get("output") or it) or k in ("valuemap", "preprocessing", "tags"))
                     if "selectValueMap" not in p:
                         r.pop("valuemap", None)
@@ -115,8 +124,27 @@ class FakeZabbix(object):
             return rows
         if method == "trigger.get":
             rows = []
-            for hid in p.get("hostids", []):
+            for hid in (p.get("hostids") or list(self.triggers)):
                 rows += copy.deepcopy(self.triggers.get(hid, []))
+            sr = (p.get("search") or {}).get("description")
+            if sr:
+                rows = [t for t in rows if t["description"].startswith(sr)]
+            for tg in p.get("tags") or []:
+                if int(tg.get("operator", 0)) == 4:
+                    rows = [t for t in rows if any(x["tag"] == tg["tag"] for x in t.get("tags", []))]
+            return rows
+        if method == "hostgroup.get":
+            names = (p.get("filter") or {}).get("name")
+            return [{"groupid": g, "name": n} for g, n in self.hostgroups.items() if not names or n in names]
+        if method == "user.get":
+            return [dict(userid=u["userid"], medias=copy.deepcopy(u["medias"])) for u in self.users if set(u["usrgrpids"]) & set(p.get("usrgrpids", []))]
+        if method == "event.get":
+            ids = p.get("objectids") or []
+            return [dict(e) for e in self.events if e["objectid"] in ids]
+        if method == "alert.get":
+            rows = [dict(a) for a in self.alerts if a["actionid"] in p.get("actionids", [a["actionid"]])]
+            if p.get("eventids"):
+                rows = [a for a in rows if a["eventid"] in p["eventids"]]
             return rows
         if method == "mediatype.get":
             names = (p.get("filter") or {}).get("name")
