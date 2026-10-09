@@ -15,7 +15,7 @@ IDENTITY_KEY_RE = re.compile(r"system\.(?:descr|objectid|hw\.model|sw\.os|sw\.na
 HINTS = {
     "fan": re.compile(r"\b(?:fans?|blowers?|fantray|fan.tray)\b", re.I),
     "power": re.compile(r"\b(?:psu|ps[12]|power[\s_-]*suppl(?:y|ies)|power[\s_-]*modules?|pwr)\b", re.I),
-    "temperature": re.compile(r"\b(?:temperatures?|thermal|overheat|thermometer)\b", re.I),
+    "temperature": re.compile(r"\b(?:temperatures?|temp|thermal|overheat|thermometer)\b", re.I),
     "hw_redundancy": re.compile(r"\b(?:redundan(?:t|cy)|lost[\s_-]*redundancy)\b", re.I),
     "ha": re.compile(r"\b(?:ha|high[\s_-]*availability|cluster|ha[\s_-]*(?:member|peer|state|mode|sync|priority|group))\b", re.I),
 }

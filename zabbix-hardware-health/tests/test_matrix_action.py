@@ -117,7 +117,7 @@ class TestActionDesign(unittest.TestCase):
         self.assertEqual(len(p["operations"]), 1)
         self.assertEqual(len(p["recovery_operations"]), 1)
         self.assertTrue(p["name"].startswith("NETOPS-HW "))
-        for k in ("{EVENT.NAME}", "{HOST.NAME}", "{EVENT.SEVERITY}", "{EVENT.ID}", "{EVENT.STATUS}", "{EVENT.TAGS.hardware_component}", "{EVENT.TAGS.hardware_slot}", "{EVENT.DATE}"):
+        for k in ("{EVENT.NAME}", "{HOST.NAME}", "{EVENT.SEVERITY}", "{EVENT.ID}", "{EVENT.STATUS}", '{EVENT.TAGS."hardware_component"}', '{EVENT.TAGS."hardware_slot"}', "{EVENT.DATE}"):
             self.assertIn(k, p["operations"][0]["opmessage"]["message"] + p["operations"][0]["opmessage"]["subject"])
         self.assertIn("{EVENT.RECOVERY.DATE}", p["recovery_operations"][0]["opmessage"]["message"])
 
@@ -141,7 +141,7 @@ class ActionBase(unittest.TestCase):
         self.fz = FakeZabbix()
         self.iface = self.fz.add_action("NETOPS-IaC Interface Alerts", {"evaltype": 0, "conditions": [{"conditiontype": 25, "operator": 0, "value": "netops_alert"}]})
         self.p = Project(fake=self.fz)
-        self.p.write("config/notifications.lab.yaml", "media_type: Telegram\nusergroups: [Network Operations]\n")
+        self.p.write("config/notifications.lab.yaml", "media_type: Telegram\nusergroups: [Network Operations]\napproved_by: noc-lead\napproval_reference: T-1\n")
 
     def tearDown(self):
         self.p.close()
@@ -212,7 +212,7 @@ class TestActionLifecycle(ActionBase):
         self.assertEqual(len(self.hw()[0]["filter"]["conditions"]), 2)
 
     def test_missing_media_type_or_group_is_a_conflict_and_nothing_is_created(self):
-        self.p.write("config/notifications.lab.yaml", "media_type: Nope\nusergroups: [Network Operations]\n")
+        self.p.write("config/notifications.lab.yaml", "media_type: Nope\nusergroups: [Network Operations]\napproved_by: noc-lead\napproval_reference: T-1\n")
         rc, out, err = self.p.run("--env", "lab", "action", "apply")
         self.assertEqual(rc, 3)
         self.assertEqual(self.hw(), [])
@@ -267,9 +267,9 @@ class TestShippedConfig(unittest.TestCase):
     def test_validation_record_ships_unvalidated_so_the_action_cannot_be_enabled(self):
         self.assertFalse(A.load_validation(str(ROOT / "config" / "action-validation.yaml"))["ok"])
 
-    def test_example_notifications_parse(self):
-        spec = A.load_spec(str(ROOT / "config" / "notifications.example.yaml"))
-        self.assertTrue(spec["usergroups"])
+    def test_example_notifications_are_refused_until_approved_by_an_operator(self):
+        with self.assertRaises(AuditError):
+            A.load_spec(str(ROOT / "config" / "notifications.example.yaml"))
 
     def test_action_name_is_fixed(self):
         d = tempfile.mkdtemp()

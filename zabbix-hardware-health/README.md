@@ -1,6 +1,6 @@
 # NETOPS Hardware Health (independent project)
 
-**Status: v0.2 LAB tooling. Audit corrected and offline-tested (96 tests). Hardware coverage is NOT accepted anywhere and hardware notifications are NOT operational.**
+**Status: v0.2 LAB tooling. Audit corrected and offline-tested (125 tests, v0.2.1). Hardware coverage is NOT accepted anywhere and hardware notifications are NOT operational.**
 
 Separate from the frozen `zabbix-alerting` v1.0.2 interface project (unchanged by this work).
 
@@ -46,7 +46,8 @@ python3 hardware_audit.py --env lab action plan|apply|rollback               # t
 | [docs/COVERAGE-MATRIX.md](docs/COVERAGE-MATRIX.md) | four-vendor matrix from the 2026-10-09 discovery |
 | [docs/VENDOR-GAPS-AND-TEST-DEVICES.md](docs/VENDOR-GAPS-AND-TEST-DEVICES.md) | per-vendor gaps, required real devices, HW-1..HW-8 |
 | [docs/NOTIFICATION-ACTION.md](docs/NOTIFICATION-ACTION.md) | separate action design, tag contract, safety, HW-N1..N6 |
-| [docs/HANDOFF-TO-CODEX.md](docs/HANDOFF-TO-CODEX.md) | what to run next, blockers |
+| [docs/HANDOFF-TO-CODEX.md](docs/HANDOFF-TO-CODEX.md), [docs/HANDOFF-V0.2.1.md](docs/HANDOFF-V0.2.1.md) | what to run next, blockers |
+| [docs/SYNTHETIC-NOTIFICATION-TEST.md](docs/SYNTHETIC-NOTIFICATION-TEST.md) | reversible LAB synthetic delivery test (needs explicit approval; not executed) |
 | [docs/LAB-DISCOVERY-2026-10-09.md](docs/LAB-DISCOVERY-2026-10-09.md) | Codex's discovery report (unchanged) |
 | [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) | mandatory four-vendor acceptance gates (unchanged) |
 

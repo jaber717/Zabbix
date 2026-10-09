@@ -25,10 +25,21 @@ TAG_HW, TAG_INTERFACE = "netops_hardware", "netops_alert"
 COND_TAG, COND_TAG_VALUE = 25, 26
 OP_EQUALS, OP_NOT_EQUALS = 0, 1
 
+def tag_macro(name):
+    """{EVENT.TAGS."name"} - the documented Zabbix 7.0 form for an event-tag value. Tag names that contain anything other than letters and digits
+    (every hardware_* name has an underscore) must be double-quoted; a quote or backslash inside the name is escaped with a backslash."""
+    if not name or any(ord(c) < 32 for c in name):
+        raise AuditError("invalid event tag name for a macro: %r" % (name,))
+    return '{EVENT.TAGS."%s"}' % name.replace("\\", "\\\\").replace('"', '\\"')
+
+
+TAG_MODEL, TAG_VENDOR, TAG_SITE, TAG_COMPONENT, TAG_SLOT = ("hardware_model", "hardware_vendor", "hardware_site", "hardware_component", "hardware_slot")
+PAYLOAD_TAGS = (TAG_VENDOR, TAG_MODEL, TAG_SITE, TAG_COMPONENT, TAG_SLOT)
+
 SUBJECT = "[HARDWARE {EVENT.STATUS}] {EVENT.NAME} on {HOST.NAME}"
 MESSAGE = ("Status:      {EVENT.STATUS}\r\nSeverity:    {EVENT.SEVERITY}\r\nHost:        {HOST.NAME}\r\n"
-           "Model:       {INVENTORY.MODEL} / {EVENT.TAGS.hardware_model}\r\nVendor:      {EVENT.TAGS.hardware_vendor}\r\n"
-           "Site:        {EVENT.TAGS.hardware_site}\r\nComponent:   {EVENT.TAGS.hardware_component}  slot {EVENT.TAGS.hardware_slot}\r\n"
+           "Model:       " + tag_macro(TAG_MODEL) + "\r\nVendor:      " + tag_macro(TAG_VENDOR) + "\r\n"
+           "Site:        " + tag_macro(TAG_SITE) + "\r\nComponent:   " + tag_macro(TAG_COMPONENT) + "  slot " + tag_macro(TAG_SLOT) + "\r\n"
            "Time:        {EVENT.DATE} {EVENT.TIME}\r\nEvent ID:    {EVENT.ID}\r\nTags:        {EVENT.TAGS}\r\n")
 R_SUBJECT = "[HARDWARE RESOLVED] {EVENT.NAME} on {HOST.NAME}"
 R_MESSAGE = "Resolved:    {EVENT.RECOVERY.DATE} {EVENT.RECOVERY.TIME}\r\nDuration:    {EVENT.DURATION}\r\n" + MESSAGE
@@ -43,12 +54,17 @@ def hardware_filter():
 def load_spec(path):
     with open(path, encoding="utf-8") as fh:
         spec = yaml.safe_load(fh) or {}
-    if set(spec) - {"name", "media_type", "usergroups", "environment"}:
+    if set(spec) - {"name", "media_type", "usergroups", "environment", "approved_by", "approval_reference"}:
         raise AuditError("notifications config: unknown keys")
     if spec.get("name", ACTION_NAME) != ACTION_NAME:
         raise AuditError("the action name is fixed to '%s' (ownership marker)" % ACTION_NAME)
     if not spec.get("media_type") or not isinstance(spec.get("usergroups"), list) or not spec["usergroups"]:
         raise AuditError("notifications config needs media_type and a non-empty usergroups list (operator-owned names)")
+    for k in ("approved_by", "approval_reference"):
+        if len(str(spec.get(k) or "").strip()) < 3:
+            raise AuditError("notifications config: '%s' is required. The recipient group(s) must be explicitly approved by an operator; they are never defaulted or substituted (not even with the Zabbix administrators)" % k)
+    if any(not isinstance(g, str) or not g.strip() for g in spec["usergroups"]):
+        raise AuditError("notifications config: usergroups must be exact, non-empty group names")
     return spec
 
 
@@ -207,6 +223,23 @@ def plan(api, env, spec, enable_requested, validation_path):
         if diff:
             out["changes"].append("UPDATE action '%s' [%s]" % (ACTION_NAME, ", ".join(diff)))
     return out
+
+
+def readiness(api, validation_path, alert_pass_count):
+    """Notification readiness, independent of telemetry and alert coverage. States: NOT_READY | VALIDATED. There is no 'delivery PASS' here:
+    VALIDATED only means an independent tester recorded verified Problem+Recovery delivery and interface exclusion."""
+    reasons = []
+    if alert_pass_count == 0:
+        reasons.append("no declared sensor has a routable hardware trigger (nothing can raise a hardware event)")
+    live = get_action(api, ACTION_NAME)
+    if live is None:
+        reasons.append("action '%s' does not exist" % ACTION_NAME)
+    elif str(live.get("status")) != "0":
+        reasons.append("action '%s' is disabled" % ACTION_NAME)
+    val = load_validation(validation_path)
+    if not val["ok"]:
+        reasons.append("delivery is not validated: " + val["why"])
+    return {"state": "NOT_READY" if reasons else "VALIDATED", "reasons": reasons, "delivery_tested": val["ok"], "action_exists": live is not None}
 
 
 def _stamp():

@@ -193,7 +193,7 @@ class TestCli(unittest.TestCase):
             rc, out, err = p.run("--env", "lab", "audit", "--output", outfile)
             self.assertEqual(rc, 0, err + out)
             rep = json.loads(pathlib.Path(outfile).read_text(encoding="utf-8"))
-            self.assertEqual(rep["schema"], 2)
+            self.assertEqual(rep["schema"], 3)
             self.assertTrue(rep["identity_verified"])
             self.assertEqual(rep["summary"]["PASS"], 1)
             self.assertEqual(fz.writes(), [])

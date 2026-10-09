@@ -36,7 +36,21 @@ def monitoring_quality(host):
     snmp = [i for i in ifs if i["type"] == "2"]
     pool = snmp or ifs
     # available: 0 unknown, 1 available, 2 unavailable. Only when EVERY polling interface is unavailable is the device unreachable.
-    return {"interfaces": ifs, "unreachable": bool(pool) and all(i["available"] == "2" for i in pool)}
+    unreachable = bool(pool) and all(i["available"] == "2" for i in pool)
+    if not pool:
+        state = "none"                                  # no polling interface (API/HTTP-only host): reachability is not inferable
+    elif unreachable:
+        state = "unreachable"
+    elif any(i["available"] == "1" for i in pool):
+        state = "available"
+    else:
+        state = "unknown"                               # availability 0 = not yet determined
+    return {"interfaces": ifs, "unreachable": unreachable, "state": state}
+
+
+def _env_raw(e):
+    """True when a raw input is an ENVIRONMENTAL one (fan/PSU/temperature/redundancy/HA by name, key or OID text)."""
+    return bool(I.classify(e["name"] + " " + e["key"] + " " + e["snmp_oid"]))
 
 
 def _identity(host, items, now, masters):
@@ -85,7 +99,9 @@ def discover_host(api, name, now=None):
     return {"host": name, "found": True, "status": "MONITORED" if str(host["status"]) == "0" else "HOST_DISABLED",
             "templates": sorted(t["name"] for t in host.get("parentTemplates", [])), "identity": _identity(host, items, now, masters),
             "monitoring_quality": monitoring_quality(host),
-            "raw_input_count": len(raw), "raw_inputs": [dict((k, e[k]) for k in ("itemid", "key", "snmp_oid", "lastclock", "lastclock_utc", "raw_input")) for e in raw],
+            "raw_input_count": len(raw),
+            "environmental_raw_input_count": sum(1 for e in raw if _env_raw(e)),
+            "raw_inputs": [dict(dict((k, e[k]) for k in ("itemid", "key", "snmp_oid", "lastclock", "lastclock_utc", "raw_input")), environmental=_env_raw(e)) for e in raw],
             "candidate_sensor_count": len(cands), "candidate_counts": counts, "candidates": cands, "candidate_triggers": trig,
             "note": "Candidates are nominated from names/keys only. They are NOT coverage; declare verified sensors in the policy and run the audit."}
 
@@ -96,30 +112,38 @@ def _norm_unit(u):
     return "c" if u in ("c", "degc", "celsius", "deg c") else u
 
 
-def verify_sensor(decl, cat, item, masters, triggers, unreachable, now, age_limit, reg, vendor, family):
+def verify_sensor(decl, cat, item, masters, triggers, reach, now, age_limit, reg, vendor, family):
     v = {"key": decl["key"], "category": cat, "slot": decl.get("slot", ""), "verdict": GAP, "reason": "", "detail": "", "current_state": None,
-         "evidence": None, "triggers": []}
+         "evidence": None, "triggers": [], "reachability": reach,
+         "telemetry_coverage": GAP, "alert_coverage": NOT_EVALUATED}
+    stage = {"telemetry_ok": False}
 
     def done(verdict, reason, detail=""):
+        # telemetry = can the sensor be read, fresh and understood?   alert = does a routable trigger sit on it?
+        # A sensor that reads fine but has no trigger is telemetry PASS / alert GAP - it is not "absent".
+        if stage["telemetry_ok"]:
+            v.update(telemetry_coverage=PASS, alert_coverage=verdict)
+        else:
+            v.update(telemetry_coverage=verdict, alert_coverage=NOT_EVALUATED)
         v.update(verdict=verdict, reason=reason, detail=detail)
         return v
 
     if item is None:
-        return done(GAP, "ITEM_MISSING", "no item with this key on the host")
+        return done(GAP, "ITEM_MISSING", "no item with this key is configured on the host (a configuration fact: it holds whether or not the device is reachable)")
     ev = I.evidence(item, now, masters)
     v["evidence"] = ev
     if ev["raw_input"]:
         return done(GAP, "ITEM_IS_RAW_INPUT", "this is a raw SNMP walk/discovery input (%s), not one physical sensor" % ev["raw_input"])
     if not ev["enabled"]:
         return done(GAP, "ITEM_DISABLED")
-    if unreachable:
-        return done(BLOCKED, "HOST_UNREACHABLE", "every polling interface of the host is unavailable; stale/unsupported data cannot be attributed to the sensor")
+    if reach == "unreachable":
+        return done(BLOCKED, "HOST_UNREACHABLE", "the item exists but every polling interface of the host is unavailable; stale/unsupported data cannot be attributed to the sensor")
     if not ev["supported"]:
         return done(GAP, "ITEM_UNSUPPORTED", ev["error"])
     if ev["lastclock"] == 0:
         return done(GAP, "NEVER_COLLECTED", "no value has ever been collected")
     if ev["age_seconds"] > age_limit:
-        return done(GAP, "STALE", "last sample %ds ago (limit %ds)" % (ev["age_seconds"], age_limit))
+        return done(GAP, "STALE", "last sample %ds ago (limit %ds) while the device is %s: a polling/item problem, not a hardware fault" % (ev["age_seconds"], age_limit, reach))
     # --- interpret the value
     if cat in P.STATUS_CATEGORIES:
         entry, why = S.usable(reg, decl["semantics"], vendor, family)
@@ -140,6 +164,7 @@ def verify_sensor(decl, cat, item, masters, triggers, unreachable, now, age_limi
         if pr and not pr[0] <= num <= pr[1]:
             return done(GAP, "VALUE_IMPLAUSIBLE", "%s outside the declared plausible range %s" % (num, pr))
         v["current_state"] = "%s %s" % (ev["lastvalue"], ev["units"])
+    stage["telemetry_ok"] = True
     # --- a trigger bound to THIS item, with the dedicated tags
     bound = [trigger_view(t, cat) for t in triggers if any(str(x.get("itemid")) == ev["itemid"] for x in t.get("items", []))]
     v["triggers"] = bound
@@ -151,6 +176,17 @@ def verify_sensor(decl, cat, item, masters, triggers, unreachable, now, age_limi
     if not any(t["dedicated_tags"] for t in enabled):
         return done(GAP, "TRIGGER_NOT_ROUTABLE", "enabled trigger(s) exist but none carries %s=1 and %s=%s" % (TAG_HW, TAG_COMPONENT, P.COMPONENT_TAG[cat]))
     return done(PASS, "OK")
+
+
+NOT_EVALUATED = "NOT_EVALUATED"
+
+
+def _dim(vals):
+    """Aggregate one dimension. GAP > BLOCKED > NOT_EVALUATED > PASS; N/A entries are ignored by the caller."""
+    for x in (GAP, BLOCKED, NOT_EVALUATED):
+        if x in vals:
+            return x
+    return PASS
 
 
 def _worst(verdicts):
@@ -166,7 +202,7 @@ def verify_host(api, name, settings, reg, now=None):
     base = {"host": name, "site": settings.get("site", ""), "vendor": settings["vendor"], "family": settings["family"], "model": settings["model"]}
     host = _host(api, name)
     if host is None:
-        return dict(base, verdict=BLOCKED, host_status="HOST_NOT_FOUND", categories={})
+        return dict(base, verdict=BLOCKED, telemetry_coverage=BLOCKED, alert_coverage=NOT_EVALUATED, host_status="HOST_NOT_FOUND", categories={})
     items = I.fetch_items(api, host["hostid"])
     masters = I.master_ids(items)
     triggers = _triggers(api, host["hostid"])
@@ -176,33 +212,51 @@ def verify_host(api, name, settings, reg, now=None):
     status = "MONITORED" if str(host["status"]) == "0" else "HOST_DISABLED"
     cats = {}
     for cat, na in (settings.get("not_applicable") or {}).items():
-        cats[cat] = {"verdict": NA, "evidence": na["evidence"], "sensors": []}
+        cats[cat] = {"verdict": NA, "telemetry_coverage": NA, "alert_coverage": NA, "evidence": na["evidence"], "sensors": []}
     for cat in settings.get("expected", []):
         decls = [d for d in settings.get("sensors", []) if d["category"] == cat]
         if status != "MONITORED":
-            cats[cat] = {"verdict": BLOCKED, "reason": "HOST_DISABLED", "sensors": []}
+            cats[cat] = {"verdict": BLOCKED, "telemetry_coverage": BLOCKED, "alert_coverage": NOT_EVALUATED, "reason": "HOST_DISABLED", "sensors": []}
             continue
         if not decls:
-            cats[cat] = {"verdict": GAP, "reason": "NO_DECLARED_SENSOR", "sensors": [],
+            cats[cat] = {"verdict": GAP, "telemetry_coverage": GAP, "alert_coverage": NOT_EVALUATED, "reason": "NO_DECLARED_SENSOR", "sensors": [],
                          "detail": "the policy declares no verified sensor for this category (use discover mode, then verify a real one)"}
             continue
-        sv = [verify_sensor(d, cat, by_key.get(d["key"]), masters, triggers, mq["unreachable"], now, age_limit, reg, settings["vendor"], settings["family"]) for d in decls]
-        cats[cat] = {"verdict": _worst([s["verdict"] for s in sv]), "sensors": sv}
+        sv = [verify_sensor(d, cat, by_key.get(d["key"]), masters, triggers, mq["state"], now, age_limit, reg, settings["vendor"], settings["family"]) for d in decls]
+        cats[cat] = {"verdict": _worst([s["verdict"] for s in sv]), "telemetry_coverage": _dim([s["telemetry_coverage"] for s in sv]),
+                     "alert_coverage": _dim([s["alert_coverage"] for s in sv]), "sensors": sv}
     verdicts = [c["verdict"] for c in cats.values() if c["verdict"] != NA]
     overall = _worst(verdicts) if verdicts else NA
+    live = [c for c in cats.values() if c["verdict"] != NA]
+    tele = _dim([c["telemetry_coverage"] for c in live]) if live else NA
+    alert = _dim([c["alert_coverage"] for c in live]) if live else NA
     ev_items = [I.evidence(i, now, masters) for i in items]
-    return dict(base, verdict=overall, host_status=status, templates=sorted(t["name"] for t in host.get("parentTemplates", [])),
+    return dict(base, verdict=overall, telemetry_coverage=tele, alert_coverage=alert, host_status=status, templates=sorted(t["name"] for t in host.get("parentTemplates", [])),
                 identity=_identity(host, items, now, masters), monitoring_quality=mq, categories=cats,
                 raw_input_count=sum(1 for e in ev_items if e["raw_input"]),
+                environmental_raw_input_count=sum(1 for e in ev_items if e["raw_input"] and _env_raw(e)),
                 concrete_sensor_count=sum(1 for c in cats.values() for s in c["sensors"] if s.get("evidence") and not s["evidence"]["raw_input"]))
 
 
-def audit(api, config, reg, version, now=None):
-    report = {"project": "NETOPS Hardware Health", "schema": 2, "environment": config["environment"], "zabbix_version": version,
+def alert_pass_sensors(hosts):
+    return sum(1 for h in hosts for c in h.get("categories", {}).values() for s in c.get("sensors", []) if s.get("alert_coverage") == PASS)
+
+
+def audit(api, config, reg, version, now=None, readiness=None):
+    """Report schema 3. Three INDEPENDENT dimensions are kept apart:
+       telemetry_coverage     can the declared sensors be read, fresh, and understood?
+       alert_coverage         does a routable (dedicated-tag) trigger sit on each of them?
+       notification_readiness is the separate action present, enabled and delivery-validated? (never inferred from the other two)
+    The per-host `verdict` is the strict combination (a host is PASS only when telemetry AND alert coverage pass)."""
+    report = {"project": "NETOPS Hardware Health", "schema": 3, "environment": config["environment"], "zabbix_version": version,
               "identity_verified": True, "generated_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(), "hosts": [],
-              "summary": {PASS: 0, GAP: 0, BLOCKED: 0, NA: 0}}
+              "summary": {PASS: 0, GAP: 0, BLOCKED: 0, NA: 0},
+              "telemetry_summary": {}, "alert_summary": {}}
     for name, settings in sorted(config["hosts"].items()):
         h = verify_host(api, name, settings, reg, now)
         report["hosts"].append(h)
         report["summary"][h["verdict"]] += 1
+        for key, dim in (("telemetry_summary", h["telemetry_coverage"]), ("alert_summary", h["alert_coverage"])):
+            report[key][dim] = report[key].get(dim, 0) + 1
+    report["notification_readiness"] = readiness if readiness is not None else {"state": "NOT_ASSESSED", "reasons": ["readiness was not evaluated in this run"], "delivery_tested": False}
     return report

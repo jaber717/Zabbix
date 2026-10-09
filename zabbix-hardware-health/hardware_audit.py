@@ -100,6 +100,7 @@ def main(argv=None, environ=None, transport=None, base=None, now=None, out=print
             api, version = _open(args.env, cfg, environ, transport)
             if args.cmd == "audit":
                 report = AU.audit(api, cfg, reg, version, now)
+                report["notification_readiness"] = A.readiness(api, os.path.join(base, "config", "action-validation.yaml"), AU.alert_pass_sensors(report["hosts"]))
                 _write_json(args.output, report)
                 out(json.dumps(report, indent=2, sort_keys=True))
                 s = report["summary"]

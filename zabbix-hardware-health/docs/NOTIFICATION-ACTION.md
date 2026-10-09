@@ -27,7 +27,7 @@ The Interface Alerting v1.0.2 action (`NETOPS-IaC Interface Alerts`) fires on on
 | evaluation | AND (`evaltype` 1) |
 | condition A | type 26 *event tag value*, operator equals, tag `netops_hardware`, value `1` |
 | condition B | type 25 *event tag*, operator does-not-equal, tag `netops_alert` |
-| Problem operation | send message, existing media type (name from `config/notifications.<env>.yaml`), existing user group(s); subject/message carry host, vendor/model, site, slot, component, severity, date/time, event ID, status |
+| Problem operation | send message, existing media type (name from `config/notifications.<env>.yaml`), existing user group(s); subject/message carry host, vendor/model, site, slot, component, severity, date/time, event ID, status; tag values use the documented quoted form `{EVENT.TAGS."hardware_model"}` (v0.2.1). Recipients: `usergroups` + `approved_by` + `approval_reference` are mandatory and never defaulted or substituted |
 | Recovery operation | same recipients, `[HARDWARE RESOLVED]`, recovery time and duration |
 
 Never used for routing: host group, host name, trigger-name text, `scope`, `class`, `component`, `target` tags.

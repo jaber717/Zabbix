@@ -1,4 +1,7 @@
-# Copy to config/notifications.lab.yaml (operator-owned names; this tool never creates media types or user groups).
-# The action is created DISABLED. Delivery is NOT validated: see docs/NOTIFICATION-ACTION.md.
-media_type: Telegram              # LAB: an existing media type;  Production (later release): the e-mail media type
-usergroups: ["Network Operations"]
+# Copy to config/notifications.lab.yaml. EVERY value below is operator-owned and must be filled in and approved by a person:
+# the tool refuses to plan or apply with a blank or unapproved recipient, and it never defaults or substitutes a group
+# (not "Network Operations", not "Zabbix administrators"). It never creates media types or user groups.
+media_type: ""                 # exact name of an EXISTING media type (LAB may use the existing Telegram one; Production later uses e-mail)
+usergroups: []                 # exact names of EXISTING user groups approved to receive hardware alerts
+approved_by: ""                # the person who approved these recipients
+approval_reference: ""         # ticket / change reference of that approval
