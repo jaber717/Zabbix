@@ -4,6 +4,17 @@
 
 Separate from the frozen zabbix-alerting/v1.0.2 interface project.
 
+## Mandatory scope: FOUR vendors
+
+| Vendor | Platforms | Hardware coverage to verify |
+| --- | --- | --- |
+| Cisco | ASR 8500 / IOS-XR; Nexus / NX-OS; IOS-XE | Fan, PSU, temperature, redundancy, freshness |
+| Palo Alto Networks | PA-Series / PAN-OS | Fan, PSU, temperature, redundancy, freshness |
+| Fortinet | FortiGate; FortiProxy where present | Fan, PSU, temperature, redundancy, freshness |
+| Huawei | S-series / VRP switches; AR8140 | Fan, PSU, temperature, redundancy, freshness |
+
+Each vendor and model needs separate real device/SNMP/API evidence. No model may be called COVERED based only on another vendor's template. Where a device lacks a physical sensor, mark N/A with evidence; otherwise missing monitoring is GAP or BLOCKED. F5 is deferred, not part of the four-vendor acceptance gate.
+
 ## Goal
 
 Detect fan failures, PSU failures, temperature alarms, hardware redundancy loss,
