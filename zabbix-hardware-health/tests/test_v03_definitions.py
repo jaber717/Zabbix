@@ -109,3 +109,24 @@ class TemplateBuild(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SamplesNotDiscarded(unittest.TestCase):
+    def test_trigger_items_store_every_sample(self):
+        for d in DEFS.values():
+            if not d.get("sensors"):
+                continue
+            doc = template.build(d)
+            t = doc["zabbix_export"]["templates"][0]
+            protos = [ip for r in t.get("discovery_rules", []) for ip in r["item_prototypes"]] + t["items"]
+            for it in protos:
+                has_trig = it.get("trigger_prototypes") or it.get("triggers")
+                heartbeat = any(p["type"] == "DISCARD_UNCHANGED_HEARTBEAT" for p in it.get("preprocessing", []))
+                if it.get("trigger_prototypes"):
+                    self.assertFalse(heartbeat, it["key"])
+
+    def test_importcheck_flags_discarding_item(self):
+        doc = template.build(DEFS["cisco-iosxe"])
+        ip = doc["zabbix_export"]["templates"][0]["discovery_rules"][0]["item_prototypes"][0]
+        ip["preprocessing"].append({"type": "DISCARD_UNCHANGED_HEARTBEAT", "parameters": ["3m"]})
+        self.assertTrue(any("heartbeat" in p or "unchanged" in p for p in importcheck.check(doc)))

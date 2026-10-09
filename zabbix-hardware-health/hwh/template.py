@@ -76,8 +76,13 @@ def _trigger_protos(defn, sn, key, slot):
     return out
 
 
-def _preproc_walk_value(oid_expr):
-    return [{"type": "SNMP_WALK_VALUE", "parameters": [oid_expr, "0"]}, {"type": "DISCARD_UNCHANGED_HEARTBEAT", "parameters": ["3m"]}]
+def _preproc_walk_value(oid_expr, heartbeat=True):
+    """Status items that carry triggers must store EVERY sample: the confirm / recover logic counts last(#n) samples, and discarding unchanged
+    values would silently turn \"2 samples\" into \"2 heartbeats\". Only informational readings may discard unchanged values."""
+    pre = [{"type": "SNMP_WALK_VALUE", "parameters": [oid_expr, "0"]}]
+    if heartbeat:
+        pre.append({"type": "DISCARD_UNCHANGED_HEARTBEAT", "parameters": ["3m"]})
+    return pre
 
 
 def _snmp_sensor(defn, sn):
@@ -90,7 +95,7 @@ def _snmp_sensor(defn, sn):
     master = {
         "uuid": uuid_for("walk:%s:%s" % (defn["id"], sid)), "name": "%s: SNMP walk %s" % (defn["id"], sn["title"]), "type": "SNMP_AGENT",
         "snmp_oid": "walk[%s,%s]" % (sn["table"]["name_oid"], v["oid"]), "key": walk_key, "delay": "{$NETOPS.HW.POLL}",
-        "history": "0", "value_type": "TEXT", "trends": "0",
+        "history": "1h", "value_type": "TEXT", "trends": "0",
         "description": "Raw SNMP walk feeding discovery and the dependent items. A raw input, not a sensor. Source object: %s." % v["object"],
         "tags": [{"tag": "component", "value": "raw"}],
         "triggers": [{
@@ -111,7 +116,7 @@ def _snmp_sensor(defn, sn):
                  "delay": "0", "value_type": "UNSIGNED", "history": "7d", "trends": "0",
                  "description": "MIB object %s. %s" % (sem["object"], sn.get("note", "")),
                  "valuemap": {"name": valuemap_name(v["semantics"])},
-                 "preprocessing": _preproc_walk_value("%s.{#SNMPINDEX}" % v["oid"]), "master_item": {"key": walk_key},
+                 "preprocessing": _preproc_walk_value("%s.{#SNMPINDEX}" % v["oid"], heartbeat=False), "master_item": {"key": walk_key},
                  "tags": [{"tag": "component", "value": COMPONENT_TAG[sn["category"]]}, {"tag": "sensor", "value": "{#HW.NAME}"}],
                  "trigger_prototypes": _trigger_protos(defn, sn, item_key, "{#HW.NAME}")}
     rule = {"uuid": uuid_for("lld:%s:%s" % (defn["id"], sid)), "name": "%s: %s discovery" % (defn["id"], sn["title"]), "type": "DEPENDENT",
@@ -131,7 +136,7 @@ def _api_sensor(defn, sn):
     get_key, key = "netops.hw.%s.get" % sid, "netops.hw.%s" % sid
     master = {
         "uuid": uuid_for("get:%s:%s" % (defn["id"], sid)), "name": "%s: API %s" % (defn["id"], sn["title"]), "type": "HTTP_AGENT", "key": get_key,
-        "delay": "{$NETOPS.HW.POLL}", "history": "0", "value_type": "TEXT", "trends": "0", "authtype": "BASIC",
+        "delay": "{$NETOPS.HW.POLL}", "history": "1h", "value_type": "TEXT", "trends": "0", "authtype": "BASIC",
         "username": "{$NETOPS.HW.API.USER}", "password": "{$NETOPS.HW.API.PASSWORD}", "timeout": "{$NETOPS.HW.API.TIMEOUT}",
         "url": "{$NETOPS.HW.API.URL}", "query_fields": [{"name": k, "value": v} for k, v in sorted(a["query"].items())] + [{"name": "cmd", "value": a["command"]}],
         "description": "Raw API response (read-only operational command). A raw input, not a sensor.",
@@ -145,7 +150,8 @@ def _api_sensor(defn, sn):
     if "index_map" in a:
         pre.append({"type": "JAVASCRIPT", "parameters": ["const idx = %s.indexOf(value);\nreturn idx !== -1 ? idx : %d;" % (
             json.dumps(a["index_map"]), a["unknown_index"])]})
-    pre.append({"type": "DISCARD_UNCHANGED_HEARTBEAT", "parameters": ["3m"]})
+    if sn["scope"] == "reading":
+        pre.append({"type": "DISCARD_UNCHANGED_HEARTBEAT", "parameters": ["3m"]})
     v = sn["value"]
     dep = {"uuid": uuid_for("item:%s:%s" % (defn["id"], sid)), "name": "%s" % sn["title"], "type": "DEPENDENT", "key": key, "delay": "0",
            "value_type": "FLOAT" if v["type"] == "float" else "UNSIGNED", "history": "7d", "trends": "30d" if v["type"] == "float" else "0",

@@ -10,6 +10,16 @@ COMPONENTS = {"fan", "power", "temperature", "redundancy", "ha", "sensor", "sens
 UUID_RE = re.compile(r"^[0-9a-f]{32}$")
 
 
+def _multi_sample_keys(tree):
+    if tree[0] == "last":
+        return [tree[2]] if tree[3] > 1 else []
+    if tree[0] in ("and", "or"):
+        return _multi_sample_keys(tree[1]) + _multi_sample_keys(tree[2])
+    if tree[0] == "cmp":
+        return _multi_sample_keys(tree[2]) + _multi_sample_keys(tree[3])
+    return []
+
+
 def check(doc):
     """-> list of problem strings (empty = structurally sound)."""
     problems = []
@@ -46,6 +56,7 @@ def check(doc):
             uid(ip, "prototype " + ip["key"])
             keys[ip["key"]] = ip
     vm_names = {v["name"] for v in tmpl.get("valuemaps", [])}
+    multi = set()
 
     def check_trigger(t, what, allow_hw):
         uid(t, what)
@@ -65,6 +76,8 @@ def check(doc):
                 except AuditError as e:
                     problems.append("%s: %s unparsable: %s" % (what, field, e))
                     continue
+                for _n in _multi_sample_keys(tree):
+                    multi.add(_n)
                 for tp, k in expr.references(tree):
                     base = k
                     if tp != name:
@@ -98,6 +111,10 @@ def check(doc):
         vmref = (it.get("valuemap") or {}).get("name")
         if vmref and vmref not in vm_names:
             problems.append("item %s: valuemap %s not defined" % (it["key"], vmref))
+    for k in sorted(multi):
+        it = keys.get(k)
+        if it and any(p["type"] == "DISCARD_UNCHANGED_HEARTBEAT" for p in it.get("preprocessing", [])):
+            problems.append("item %s feeds a last(#n>1) trigger but discards unchanged values (n samples would mean n heartbeats)" % k)
     if len(set(uuids)) != len(uuids):
         problems.append("duplicate uuid in the document")
     for m in tmpl.get("macros", []):
