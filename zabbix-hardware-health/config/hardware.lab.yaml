@@ -1,4 +1,10 @@
 # Dedicated hardware-health project. LAB hosts must be explicitly approved.
+# 2026-10-09 discovery: no current Zabbix LAB host has verified, fresh physical
+# fan/PSU/temperature/redundancy values. PNET routers are IOSv; DR network hosts
+# are intentional mock objects with non-routable addresses. Keep this inventory
+# empty until a real model and its supported components are evidenced.
+# See docs/LAB-DISCOVERY-2026-10-09.md. Do not promote template prototypes to
+# physical component expectations without observed SNMP/API values.
 environment: lab
 hosts: {}
 # Example:
