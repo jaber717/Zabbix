@@ -1,0 +1,32 @@
+# Facts transcribed from docs/LAB-DISCOVERY-2026-10-09.md (Codex, branch codex/hardware-health-lab-discovery @ 281361c). Nothing is added or inferred.
+# PASS is not allowed in an observation file; N/A would need model-specific proof, which does not exist for any device here.
+observations:
+  - hosts: [INT-CORE, MOBILY, SAIX-A, SAIX-B, SITE-A, SITE-B, STC]
+    family: cisco-iosxe
+    model: "Cisco IOSv virtual router (model/sysDescr/sysObjectID items had no value)"
+    source: "Codex LAB discovery 2026-10-09 @281361c"
+    note: "Physical component applicability of a virtual platform is unverified, so it is a GAP, not N/A."
+    categories:
+      fan:           {verdict: GAP, evidence: "raw sensor.fans.walk input never sampled (0 of 7 hosts); no concrete fan sensor discovered; template trigger prototypes exist but no host trigger"}
+      power:         {verdict: GAP, evidence: "raw sensor.psu.walk input never sampled (0 of 7 hosts); no concrete PSU sensor discovered"}
+      temperature:   {verdict: GAP, evidence: "raw sensor.temp.walk input never sampled (0 of 7 hosts); no concrete temperature sensor discovered"}
+      hw_redundancy: {verdict: GAP, evidence: "no redundancy evidence of any kind; all SNMP interfaces were unavailable at discovery"}
+  - hosts: [DR-LEAF01, DR-LEAF02]
+    family: cisco-nxos
+    model: "Cisco Nexus 9000 Series by SNMP template on an intentional MOCK host (non-routable address)"
+    source: "Codex LAB discovery 2026-10-09 @281361c"
+    categories:
+      fan:           {verdict: BLOCKED, evidence: "mock host: template defines discovery and triggers but no real device data; NOT TESTABLE"}
+      power:         {verdict: BLOCKED, evidence: "mock host: no discovered sensors; NOT TESTABLE"}
+      temperature:   {verdict: BLOCKED, evidence: "mock host: no discovered sensors; NOT TESTABLE"}
+      hw_redundancy: {verdict: BLOCKED, evidence: "mock host: no evidence; NOT TESTABLE"}
+  - hosts: [DR-FW01]
+    family: fortinet-fortigate
+    model: "FortiGate by SNMP template on an intentional MOCK host"
+    source: "Codex LAB discovery 2026-10-09 @281361c"
+    categories:
+      fan:           {verdict: BLOCKED, evidence: "mock host: generic hardware-sensor discovery defined, no sensor discovered; NOT TESTABLE"}
+      power:         {verdict: BLOCKED, evidence: "mock host: no sensor discovered; NOT TESTABLE"}
+      temperature:   {verdict: BLOCKED, evidence: "mock host: no sensor discovered; NOT TESTABLE"}
+      hw_redundancy: {verdict: BLOCKED, evidence: "mock host: no hardware-redundancy evidence; NOT TESTABLE"}
+      ha:            {verdict: BLOCKED, evidence: "seven static HA-related items, all undated, and 0 enabled HA triggers; mock host so HA state is not proven. HA is a separate category from hw_redundancy"}

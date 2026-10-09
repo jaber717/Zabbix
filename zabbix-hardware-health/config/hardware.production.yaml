@@ -1,3 +1,5 @@
 # Intentionally empty. Never copy LAB devices into Production.
+# A production policy must define zabbix.url_regex (the audit refuses to run otherwise) and its own, separate API token:
+#   zabbix: {url_regex: '^https://<production zabbix host>(/|$)', forbid_url_regex: '(lab|test)'}
 environment: production
 hosts: {}

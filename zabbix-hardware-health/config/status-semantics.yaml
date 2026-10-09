@@ -1,0 +1,15 @@
+# Verified vendor status semantics. DELIBERATELY EMPTY: this project does not invent status codes or OIDs.
+# An entry may be added only after the mapping is confirmed from the vendor MIB / API documentation or a device capture, e.g.:
+#
+#   semantics:
+#     <id>:
+#       vendor: cisco                      # must equal the host's vendor; never reused across vendors
+#       families: [cisco-nxos]             # optional restriction
+#       description: what the item reports
+#       evidence: "<MIB::object + document/URL, or capture reference>"   # required, >= 10 chars
+#       verified: true
+#       states: {"<raw value>": normal | degraded | failed | absent | unknown}   # at least one 'normal'
+#
+# Until an entry exists, a sensor that depends on it can only be reported as SEMANTICS_UNVERIFIED (a GAP), never as healthy or failed.
+schema: 1
+semantics: {}

@@ -1,14 +1,4 @@
-# Design only — this is NOT applied by the audit script.
-# Configure a separate Zabbix trigger action after verifying the event tags
-# on your real hardware triggers. Do not route on broad name patterns blindly.
-name: NETOPS Hardware Health
-enabled: false
-media_type: Email
-user_group: Network Operations
-# REQUIRED: inventory of verified tags, from report.json
-# Example ONLY, not universally portable across vendor templates:
-# matching_event_tags:
-#   - {tag: component, value: fans}
-#   - {tag: component, value: power}
-#   - {tag: component, value: temperature}
-# Exclude NETOPS Interface Alerting managed events (netops_alert).
+# Copy to config/notifications.lab.yaml (operator-owned names; this tool never creates media types or user groups).
+# The action is created DISABLED. Delivery is NOT validated: see docs/NOTIFICATION-ACTION.md.
+media_type: Telegram              # LAB: an existing media type;  Production (later release): the e-mail media type
+usergroups: ["Network Operations"]

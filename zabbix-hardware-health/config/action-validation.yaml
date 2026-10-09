@@ -1,0 +1,6 @@
+# Independent validation record. The action can be ENABLED by the tool only when every item below is verified: true with an evidence reference.
+# Filled in by the independent tester AFTER real (or safely simulated) events have been delivered. Nothing has been validated yet.
+problem_delivery:    {verified: false, evidence: ""}   # a hardware Problem notification arrived with the expected content
+recovery_delivery:   {verified: false, evidence: ""}   # the matching Recovery notification arrived
+interface_exclusion: {verified: false, evidence: ""}   # interface events did not reach this action and hardware events did not reach the interface action
+validated_by: ""

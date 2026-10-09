@@ -1,216 +1,157 @@
 #!/usr/bin/env python3
-"""Read-only hardware coverage and freshness audit for Zabbix 7.0.
-Never calls write API methods, never creates triggers or actions.
+"""NETOPS Hardware Health - read-only coverage audit, discovery, per-vendor matrix and the (disabled-by-default) notification action.
+
+    hardware_audit.py --env lab audit                     verify the sensors the approved policy declares (exit 0 all PASS, 2 gaps, 3 untrustworthy)
+    hardware_audit.py --env lab discover --host NAME ...  list raw inputs and CANDIDATE sensors with real values (never coverage)
+    hardware_audit.py matrix --observations F --report R  build the PASS/GAP/N-A/BLOCKED matrix for the four vendors
+    hardware_audit.py --env lab action plan|apply|rollback   the separate NETOPS-HW Hardware Health action (LAB only; created disabled)
+
+The audit/discover/plan paths can only call apiinfo.version, host.get, item.get, trigger.get, usermacro.get, action.get, usergroup.get and
+mediatype.get. Only `action apply|rollback` may write, and only action.create/update/delete on the NETOPS-HW action.
 """
 import argparse
-import datetime as dt
 import json
 import os
-import re
 import sys
-import time
-import urllib.error
-import urllib.request
 
-import yaml
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 
-CATEGORIES = ("fan", "power", "temperature", "redundancy")
-PATTERNS = {
-    "fan": re.compile(r"\b(?:fans?|blowers?|fantray|fan.tray)\b", re.I),
-    "power": re.compile(r"\b(?:psu|ps[12]|power[\s_-]*suppl(?:y|ies)|power[\s_-]*modules?|pwr)\b", re.I),
-    "temperature": re.compile(r"\b(?:temperatures?|thermal|overheat|thermometer)\b", re.I),
-    "redundancy": re.compile(r"\b(?:redundan(?:t|cy)|lost[\s_-]*redundancy)\b", re.I),
-}
-DEFAULT_AGE_MINUTES = 480
+from hwh import VERSION                                   # noqa: E402
+from hwh import action as A                               # noqa: E402
+from hwh import audit as AU                               # noqa: E402
+from hwh import identity, matrix, policy, semantics       # noqa: E402
+from hwh.api import AuditError, ZabbixAPI                 # noqa: E402
 
-
-class AuditError(Exception):
-    pass
+try:
+    import yaml                                           # noqa: E402
+except ImportError:                                       # pragma: no cover
+    yaml = None
 
 
-def classify(text):
-    """Conservative category hints, NOT an assertion of hardware state."""
-    text = str(text or "")
-    matches = [k for k in CATEGORIES if PATTERNS[k].search(text)]
-    # A PSU fan is a fan sensor, not proof that the PSU itself is monitored.
-    if "fan" in matches:
-        matches = [k for k in matches if k != "power"]
-    return matches
+def _parser():
+    p = argparse.ArgumentParser(description="NETOPS Hardware Health")
+    p.add_argument("--env", choices=["lab", "production"])
+    p.add_argument("--version", action="version", version="hardware-health " + VERSION)
+    sub = p.add_subparsers(dest="cmd", required=True)
+    a = sub.add_parser("audit")
+    a.add_argument("--config")
+    a.add_argument("--output")
+    d = sub.add_parser("discover")
+    d.add_argument("--host", action="append", required=True)
+    d.add_argument("--config")
+    d.add_argument("--output")
+    m = sub.add_parser("matrix")
+    m.add_argument("--observations", action="append", default=[])
+    m.add_argument("--report", action="append", default=[])
+    m.add_argument("--out")
+    m.add_argument("--json")
+    act = sub.add_parser("action")
+    act.add_argument("what", choices=["plan", "apply", "rollback"])
+    act.add_argument("--notifications")
+    act.add_argument("--enable", action="store_true", help="enable the action - allowed only with independently verified delivery evidence")
+    act.add_argument("--backup")
+    return p
 
 
-def load_config(path, environment):
-    with open(path, encoding="utf-8") as f:
-        config = yaml.safe_load(f)
-    if not isinstance(config, dict) or config.get("environment") != environment:
-        raise AuditError("Configuration environment mismatch")
-    if set(config) - {"environment", "hosts"}:
-        raise AuditError("Unknown top-level configuration keys")
-    hosts = config.get("hosts")
-    if not isinstance(hosts, dict):
-        raise AuditError("hosts must be a mapping")
-    for name, settings in hosts.items():
-        if not isinstance(name, str) or not name:
-            raise AuditError("Host name must be a nonempty string")
-        if not isinstance(settings, dict):
-            raise AuditError("Host settings must be a mapping: " + name)
-        if set(settings) - {"site", "vendor", "expected", "max_sensor_age_minutes"}:
-            raise AuditError("Unknown host setting for " + name)
-        expected = settings.get("expected")
-        if not isinstance(expected, list) or not expected or len(set(expected)) != len(expected):
-            raise AuditError("Host needs a unique nonempty expected list: " + name)
-        if any(v not in CATEGORIES for v in expected):
-            raise AuditError("Unrecognized expected category for " + name)
-        age = settings.get("max_sensor_age_minutes", DEFAULT_AGE_MINUTES)
-        if type(age) is not int or not 1 <= age <= 10080:
-            raise AuditError("Invalid max_sensor_age_minutes for " + name)
-    return config
+def _open(env, policy_cfg, environ, transport, write=False):
+    url, token = identity.resolve_target(env, environ)
+    api = ZabbixAPI(url, token, transport=transport, write=write)
+    version = identity.verify(api, env, url, policy_cfg)
+    return api, version
 
 
-class ZabbixAPI:
-    def __init__(self, url, token, transport=None):
-        if not url.startswith("https://") and not url.startswith("http://"):
-            raise AuditError("Zabbix URL must include http:// or https://")
-        self.url = url.rstrip("/")
-        if not self.url.endswith("/api_jsonrpc.php"):
-            self.url += "/api_jsonrpc.php"
-        self.token = token
-        self.transport = transport or urllib.request.urlopen
-        self.seq = 0
-
-    def call(self, method, params=None):
-        if method not in ("apiinfo.version", "host.get", "item.get", "trigger.get"):
-            raise AuditError("Read-only API allowlist refused " + method)
-        self.seq += 1
-        body = json.dumps({"jsonrpc": "2.0", "method": method,
-                           "params": params or {}, "id": self.seq}).encode("utf-8")
-        headers = {"Content-Type": "application/json-rpc"}
-        if method != "apiinfo.version":
-            headers["Authorization"] = "Bearer " + self.token
-        req = urllib.request.Request(self.url, data=body, headers=headers, method="POST")
-        try:
-            with self.transport(req, timeout=20) as response:
-                result = json.load(response)
-        except (urllib.error.URLError, TimeoutError, ValueError) as exc:
-            raise AuditError("Zabbix API request failed: " + str(exc)) from exc
-        if "error" in result:
-            # Do not leak API tokens or request headers.
-            raise AuditError("Zabbix API rejected " + method + ": " +
-                             str(result["error"].get("message", "unknown")))
-        return result["result"]
+def _write_json(path, obj):
+    if path:
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(obj, fh, indent=2, sort_keys=True)
+            fh.write("\n")
 
 
-def scan_host(api, name, settings, now=None):
-    now = int(time.time()) if now is None else int(now)
-    age_limit = settings.get("max_sensor_age_minutes", DEFAULT_AGE_MINUTES) * 60
-    host_rows = api.call("host.get", {"output": ["hostid", "host", "status"],
-                         "filter": {"host": [name]}, "selectParentTemplates": ["name"]})
-    if len(host_rows) != 1:
-        return {"host": name, "site": settings.get("site", ""), "status": "HOST_NOT_FOUND",
-                "coverage": {}, "sensor_count": 0, "trigger_count": 0}
-    host = host_rows[0]
-    hid = host["hostid"]
-    items = api.call("item.get", {"hostids": [hid],
-                     "output": ["itemid", "name", "key_", "status", "state", "lastclock", "error"]})
-    triggers = api.call("trigger.get", {"hostids": [hid],
-                        "output": ["triggerid", "description", "status", "priority"],
-                        "selectTags": ["tag", "value"],
-                        "selectItems": ["itemid", "key_"]})
-    result = {
-        "host": name, "site": settings.get("site", ""),
-        "vendor": settings.get("vendor", ""),
-        "status": "HOST_DISABLED" if str(host["status"]) != "0" else "MONITORED",
-        "templates": sorted(t["name"] for t in host.get("parentTemplates", [])),
-        "sensor_count": 0, "trigger_count": 0, "coverage": {}
-    }
-    item_by_id = {str(i["itemid"]): i for i in items}
-    for category in settings["expected"]:
-        category_items = []
-        category_triggers = []
-        for item in items:
-            if category in classify(item.get("name", "") + " " + item.get("key_", "")):
-                category_items.append(item)
-        for trigger in triggers:
-            related = [item_by_id.get(str(x.get("itemid")), {}) for x in trigger.get("items", [])]
-            hint = trigger.get("description", "") + " " + " ".join(
-                x.get("key_", "") for x in related)
-            if category in classify(hint):
-                category_triggers.append(trigger)
-        healthy_items = [i for i in category_items
-                         if str(i.get("status")) == "0" and str(i.get("state")) == "0"
-                         and 0 < now - int(i.get("lastclock") or 0) <= age_limit]
-        enabled_triggers = [t for t in category_triggers if str(t.get("status")) == "0"]
-        observed_tags = sorted({(x.get("tag", ""), x.get("value", ""))
-                               for t in enabled_triggers for x in t.get("tags", [])})
-        observed_tags = [{"tag": k, "value": v} for k, v in observed_tags]
-        if not category_items:
-            state = "NO_SENSOR_ITEMS"
-        elif not enabled_triggers:
-            state = "NO_ENABLED_TRIGGERS"
-        elif not healthy_items:
-            state = "STALE_OR_UNSUPPORTED"
-        else:
-            state = "COVERED"
-        result["coverage"][category] = {
-            "state": state, "item_count": len(category_items),
-            "fresh_supported_items": len(healthy_items),
-            "enabled_trigger_count": len(enabled_triggers),
-            "event_tags": observed_tags,
-            "trigger_examples": [x["description"] for x in enabled_triggers[:5]],
-        }
-        result["sensor_count"] += len(category_items)
-        result["trigger_count"] += len(enabled_triggers)
-    if result["status"] == "MONITORED" and all(
-            v["state"] == "COVERED" for v in result["coverage"].values()):
-        result["status"] = "COVERED"
-    else:
-        result["status"] = "REVIEW_REQUIRED"
-    return result
-
-
-def audit(api, config):
-    version = api.call("apiinfo.version")
-    if not str(version).startswith("7.0."):
-        raise AuditError("Expected Zabbix 7.0.x, got " + str(version))
-    report = {"project": "NETOPS Hardware Health", "schema": 1,
-              "environment": config["environment"], "zabbix_version": version,
-              "generated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
-              "hosts": [], "summary": {"covered": 0, "review_required": 0}}
-    for name, settings in sorted(config["hosts"].items()):
-        h = scan_host(api, name, settings)
-        report["hosts"].append(h)
-        if h["status"] == "COVERED":
-            report["summary"]["covered"] += 1
-        else:
-            report["summary"]["review_required"] += 1
-    return report
-
-
-def main(argv=None):
-    parser = argparse.ArgumentParser(description="Read-only Zabbix hardware coverage audit")
-    parser.add_argument("--env", choices=["lab", "production"], required=True)
-    parser.add_argument("--config", help="Explicit policy file")
-    parser.add_argument("--output", help="Optional JSON report path")
-    args = parser.parse_args(argv)
-    config_path = args.config or ("config/hardware." + args.env + ".yaml")
+def main(argv=None, environ=None, transport=None, base=None, now=None, out=print):
+    args = _parser().parse_args(argv)
+    environ = os.environ if environ is None else environ
+    base = base or HERE
     try:
-        cfg = load_config(config_path, args.env)
-        if not cfg["hosts"]:
-            raise AuditError("No approved hosts in inventory. Audit not run.")
-        suffix = args.env.upper()
-        url = os.environ.get("ZABBIX_HARDWARE_URL_" + suffix, "")
-        token = os.environ.get("ZABBIX_HARDWARE_TOKEN_" + suffix, "")
-        if not url or not token:
-            raise AuditError("Set environment-specific ZABBIX_HARDWARE_URL_ and TOKEN_ variables")
-        report = audit(ZabbixAPI(url, token), cfg)
-        encoded = json.dumps(report, indent=2, sort_keys=True)
-        if args.output:
-            with open(args.output, "w", encoding="utf-8") as f:
-                f.write(encoded + "\n")
-        print(encoded)
-        return 2 if report["summary"]["review_required"] else 0
-    except (AuditError, OSError, yaml.YAMLError) as exc:
+        catalogue = policy.load_catalogue(os.path.join(base, "config", "vendors.yaml"))
+        if args.cmd == "matrix":
+            entries = []
+            for f in args.observations:
+                entries += matrix.load_observations(f)
+            for f in args.report:
+                with open(f, encoding="utf-8") as fh:
+                    entries += matrix.entries_from_report(json.load(fh))
+            m = matrix.build(catalogue, entries)
+            text = matrix.render_markdown(m)
+            if args.out:
+                with open(args.out, "w", encoding="utf-8") as fh:
+                    fh.write(text)
+            else:
+                out(text)
+            _write_json(args.json, m)
+            return 0
+        if not args.env:
+            raise AuditError("--env lab|production is required for this command")
+        if args.cmd in ("audit", "discover"):
+            cfg = policy.load_config(args.config or os.path.join(base, "config", "hardware.%s.yaml" % args.env), args.env, catalogue)
+            reg = semantics.load(os.path.join(base, "config", "status-semantics.yaml"))
+            if args.cmd == "audit" and not cfg["hosts"]:
+                raise AuditError("No approved hosts in inventory. Audit not run.")
+            api, version = _open(args.env, cfg, environ, transport)
+            if args.cmd == "audit":
+                report = AU.audit(api, cfg, reg, version, now)
+                _write_json(args.output, report)
+                out(json.dumps(report, indent=2, sort_keys=True))
+                s = report["summary"]
+                return 0 if s["GAP"] == 0 and s["BLOCKED"] == 0 else 2
+            res = {"project": "NETOPS Hardware Health", "schema": 2, "mode": "discover", "environment": args.env, "zabbix_version": version,
+                   "hosts": [AU.discover_host(api, h, now) for h in args.host]}
+            _write_json(args.output, res)
+            out(json.dumps(res, indent=2, sort_keys=True))
+            return 0
+        if args.cmd == "action":
+            if args.env != "lab":
+                raise AuditError("hardware action management is LAB only in this release (refused before contacting any server)")
+            cfg = policy.load_config(os.path.join(base, "config", "hardware.%s.yaml" % args.env), args.env, catalogue)
+            nfile = args.notifications or os.path.join(base, "config", "notifications.%s.yaml" % args.env)
+            val_path = os.path.join(base, "config", "action-validation.yaml")
+            write = args.what in ("apply", "rollback")
+            if write and args.env != "lab":
+                raise AuditError("hardware action management is LAB only in this release")
+            api, version = _open(args.env, cfg, environ, transport, write=write)
+            if args.what == "rollback":
+                if not args.backup:
+                    raise AuditError("--backup is required")
+                out(A.rollback(api, args.env, args.backup))
+                return 0
+            spec = A.load_spec(nfile)
+            if args.what == "plan":
+                p = A.plan(api, args.env, spec, args.enable, val_path)
+            else:
+                res = A.apply(api, args.env, spec, args.enable, val_path, base)
+                p = res["plan"]
+                if res["backup"]:
+                    out("backup written: " + res["backup"])
+            for c in p["changes"]:
+                out("  " + c)
+            for n in p["notes"]:
+                out("  note: " + n)
+            for c in p["conflicts"]:
+                out("  CONFLICT: " + c)
+            bad = [c for c in p["crossover"] if not c["ok"]]
+            out("  crossover model: %d event types checked, %d wrong" % (len(p["crossover"]), len(bad)))
+            if not p["changes"] and not p["conflicts"]:
+                out("  no changes")
+            return 1 if p["conflicts"] else 0
+    except (AuditError, OSError, ValueError) as exc:
         print("HARDWARE AUDIT INCOMPLETE: " + str(exc), file=sys.stderr)
         return 3
+    except Exception as exc:                                         # yaml errors etc.
+        if yaml is not None and isinstance(exc, yaml.YAMLError):
+            print("HARDWARE AUDIT INCOMPLETE: YAML error: " + str(exc), file=sys.stderr)
+            return 3
+        raise
+    return 3
 
 
 if __name__ == "__main__":

@@ -1,88 +1,54 @@
 # NETOPS Hardware Health (independent project)
 
-**Status: v0.1 discovery / coverage audit. NOT a Production alerting release.**
+**Status: v0.2 LAB tooling. Audit corrected and offline-tested (96 tests). Hardware coverage is NOT accepted anywhere and hardware notifications are NOT operational.**
 
-Separate from the frozen zabbix-alerting/v1.0.2 interface project.
+Separate from the frozen `zabbix-alerting` v1.0.2 interface project (unchanged by this work).
 
-## Mandatory scope: FOUR vendors
+## Mandatory scope: four vendors
 
-| Vendor | Platforms | Hardware coverage to verify |
-| --- | --- | --- |
-| Cisco | ASR 8500 / IOS-XR; Nexus / NX-OS; IOS-XE | Fan, PSU, temperature, redundancy, freshness |
-| Palo Alto Networks | PA-Series / PAN-OS | Fan, PSU, temperature, redundancy, freshness |
-| Fortinet | FortiGate; FortiProxy where present | Fan, PSU, temperature, redundancy, freshness |
-| Huawei | S-series / VRP switches; AR8140 | Fan, PSU, temperature, redundancy, freshness |
+| Vendor | Platforms |
+| --- | --- |
+| Cisco | ASR 8500 / IOS-XR; Nexus / NX-OS; IOS / IOS-XE |
+| Palo Alto Networks | PA-Series / PAN-OS |
+| Fortinet | FortiGate; FortiProxy where present |
+| Huawei | S-series / VRP switches; AR8140 |
 
-Each vendor and model needs separate real device/SNMP/API evidence. No model may be called COVERED based only on another vendor's template. Where a device lacks a physical sensor, mark N/A with evidence; otherwise missing monitoring is GAP or BLOCKED. F5 is deferred, not part of the four-vendor acceptance gate.
+Per family: fan, power, temperature, hardware redundancy and (where it exists) HA, each as **PASS / GAP / N/A with evidence / BLOCKED** - see [docs/COVERAGE-MATRIX.md](docs/COVERAGE-MATRIX.md) (today: 0 PASS, 4 GAP, 31 BLOCKED, 0 N/A). F5 is deferred.
 
-## Goal
+## Commands
 
-Detect fan failures, PSU failures, temperature alarms, hardware redundancy loss,
-and missing/stale sensor monitoring. Reuse verified official/vendor templates and
-their triggers before creating vendor-specific templates.
+```bash
+python3 -m pip install -r requirements.txt
+python3 -m unittest discover -s tests -t .                                    # offline suite, no Zabbix needed
 
-## Current functionality
+export ZABBIX_HARDWARE_URL_LAB=... ZABBIX_HARDWARE_TOKEN_LAB=...              # per-environment; never the same for LAB and Production
+python3 hardware_audit.py --env lab discover --host NAME [--host NAME2]      # raw inputs vs concrete candidates, real values/timestamps/units/OIDs/model (never coverage)
+python3 hardware_audit.py --env lab audit --output report.json                # verify what config/hardware.lab.yaml declares (exit 0 / 2 / 3)
+python3 hardware_audit.py matrix --observations docs/observations/lab-discovery-2026-10-09.yaml --report report.json --out matrix.md
+python3 hardware_audit.py --env lab action plan|apply|rollback               # the separate NETOPS-HW action (LAB only, created DISABLED)
+```
 
-- Read-only Zabbix 7.0 API inspection of explicitly selected hosts.
-- Distinguishes present sensor items, enabled hardware triggers, and fresh supported
-  values. Never treats "no sensor available" as healthy.
-- Reports per-host category gaps, available event tags, template names and example triggers.
-- Strict LAB vs Production policy and separate API credentials.
-- No direct DB writes, no SNMP device changes, no modifications to
-  zabbix-alerting, no automatic tagging of stock templates.
-- Exit 0 when all required categories are covered, 2 on coverage gaps,
-  3 if the audit cannot be trusted.
+## Rules the tool enforces
 
-## Initial setup (LAB only)
+* **Read-only audit.** Allowed API methods: `apiinfo.version`, `host.get`, `item.get`, `trigger.get`, `usermacro.get`, `action.get`, `usergroup.get`, `mediatype.get`. Only `action apply|rollback` opens a write client, limited to `action.create|update|delete`.
+* **Server-side identity.** The Zabbix being queried must report `{$NETOPS.ENVIRONMENT}` equal to `--env`; a mismatch or a missing macro stops the run before any host is read. LAB and Production use different URLs, tokens and policy files; Production requires `zabbix.url_regex`.
+* **No keyword coverage.** A sensor is covered only if the approved policy declares its exact item key and live Zabbix shows a concrete (non-raw-walk), enabled, supported, fresh item whose value is interpretable through a **verified** vendor mapping, with an enabled trigger bound to that item carrying `netops_hardware=1` and the matching `hardware_component`.
+* **No invented vendor data.** `config/status-semantics.yaml` ships empty. A mapping needs `verified: true`, an evidence reference and the same vendor; it is never reused across vendors.
+* **HA is not hardware redundancy.** Separate categories, separate sensors, separate triggers (Fortinet and Palo Alto HA vs fan/PSU redundancy).
+* **Missing data is not a fault.** An unreachable device makes its sensors BLOCKED; nothing is inferred about fans or PSUs from an SNMP timeout.
+* **Empty approved inventories.** `config/hardware.lab.yaml` and `config/hardware.production.yaml` are `hosts: {}` until a real model's sensors are verified.
 
-From Zabbix/zabbix-hardware-health:
+## Documents
 
-    python3 -m pip install -r requirements.txt
-    python3 -m unittest discover -s tests -v
+| | |
+|---|---|
+| [docs/AUDIT-CORRECTIONS.md](docs/AUDIT-CORRECTIONS.md) | defect -> fix -> regression test |
+| [docs/COVERAGE-MATRIX.md](docs/COVERAGE-MATRIX.md) | four-vendor matrix from the 2026-10-09 discovery |
+| [docs/VENDOR-GAPS-AND-TEST-DEVICES.md](docs/VENDOR-GAPS-AND-TEST-DEVICES.md) | per-vendor gaps, required real devices, HW-1..HW-8 |
+| [docs/NOTIFICATION-ACTION.md](docs/NOTIFICATION-ACTION.md) | separate action design, tag contract, safety, HW-N1..N6 |
+| [docs/HANDOFF-TO-CODEX.md](docs/HANDOFF-TO-CODEX.md) | what to run next, blockers |
+| [docs/LAB-DISCOVERY-2026-10-09.md](docs/LAB-DISCOVERY-2026-10-09.md) | Codex's discovery report (unchanged) |
+| [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) | mandatory four-vendor acceptance gates (unchanged) |
 
-Edit config/hardware.lab.yaml with the exact Zabbix host names, the
-expected categories for each device and sensor freshness limits.
-Do NOT list unsupported components as healthy; document exceptions
-explicitly in acceptance evidence.
-
-Set credentials only in the session or a protected secrets store:
-
-    export ZABBIX_HARDWARE_URL_LAB=https://your-zabbix-frontend
-    export ZABBIX_HARDWARE_TOKEN_LAB=your-api-token
-
-Run:
-
-    python3 hardware_audit.py --env lab --output hardware-report.json
-
-Do not commit the report if it contains sensitive device metadata.
-
-## Notifications — future acceptance stage
-
-The audit is **not** an alert sender. Zabbix's existing enabled
-hardware triggers will be the source of Problems and Recoveries.
-
-After reviewing real trigger tags, configure a separate Zabbix Action
-named NETOPS Hardware Health with a dedicated operator group and
-Email/Telegram media. Scope its filters to confirmed hardware-event tags
-and device groups; DO NOT use a broad host-group-only rule or blindly
-assume that every stock template shares the same event tags.
-
-The independently tested LAB action must deliver Fan problem/recovery,
-PSU problem/recovery, and temperature problem/recovery; it must not
-send interface-alert or unrelated events. Current scope is discovery,
-not live notification deployment.
-
-See docs/ACCEPTANCE.md for required testing and vendor coverage.
-
-## Limitations
-
-- Matching item/trigger names provides a candidate inventory, not proof
-  that vendor OID values have the same semantics.
-- Freshness cannot be proven by a missing data point. Template-specific
-  heartbeat intervals must be validated (some stock items are infrequent).
-- Sensors without dedicated triggers, including redundancy, are reported
-  as gaps. Vendor-specific monitoring is a separate vetted implementation.
-- User groups, media types, auto-actions and device configuration are NOT
-  created by this read-only v0.1 tool.
-- No testing on the user's LAB or Production is claimed.
-- Use a dedicated branch, never overwrite the v1.0.2 interface-alert tag.
+## Not done, deliberately
+Building tagged hardware triggers (needs a real device to prove what each item returns); populating the LAB inventory; enabling the action; anything in Production; changes to Interface Alerting v1.0.2.

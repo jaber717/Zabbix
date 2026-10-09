@@ -1,0 +1,13 @@
+# Mandatory vendor / platform families and the hardware categories to VERIFY on each. This is scope, not a claim about what any model exposes:
+# a category is PASS only with real evidence, N/A only with per-model proof in the policy (`not_applicable`), otherwise GAP or BLOCKED.
+# `ha` (cluster / HA member state) is deliberately a different category from `hw_redundancy` (fan / PSU redundancy).
+schema: 1
+families:
+  cisco-iosxe:         {vendor: cisco,    title: "Cisco IOS / IOS-XE",           categories: [fan, power, temperature, hw_redundancy]}
+  cisco-nxos:          {vendor: cisco,    title: "Cisco Nexus / NX-OS",          categories: [fan, power, temperature, hw_redundancy]}
+  cisco-asr8500:       {vendor: cisco,    title: "Cisco ASR 8500 / IOS-XR",      categories: [fan, power, temperature, hw_redundancy]}
+  paloalto-panos:      {vendor: paloalto, title: "Palo Alto PA-Series / PAN-OS", categories: [fan, power, temperature, hw_redundancy, ha]}
+  fortinet-fortigate:  {vendor: fortinet, title: "Fortinet FortiGate",           categories: [fan, power, temperature, hw_redundancy, ha]}
+  fortinet-fortiproxy: {vendor: fortinet, title: "Fortinet FortiProxy",          categories: [fan, power, temperature, hw_redundancy, ha]}
+  huawei-vrp-switch:   {vendor: huawei,   title: "Huawei S-series / VRP switch", categories: [fan, power, temperature, hw_redundancy]}
+  huawei-ar8140:       {vendor: huawei,   title: "Huawei AR8140 / VRP router",   categories: [fan, power, temperature, hw_redundancy]}
