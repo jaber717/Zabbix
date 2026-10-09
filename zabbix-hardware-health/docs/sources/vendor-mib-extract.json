@@ -1,0 +1,75 @@
+{
+  "objects": {
+    "fgHaStatsSerial": {
+      "enum": null,
+      "mib": "FORTINET-FORTIGATE-MIB",
+      "oid": "1.3.6.1.4.1.12356.101.13.2.1.1.2"
+    },
+    "fgHaStatsSyncStatus": {
+      "enum": {
+        "0": "unsynchronized",
+        "1": "synchronized"
+      },
+      "mib": "FORTINET-FORTIGATE-MIB",
+      "oid": "1.3.6.1.4.1.12356.101.13.2.1.1.12"
+    },
+    "fgHaSystemMode": {
+      "enum": {
+        "1": "standalone",
+        "2": "activeActive",
+        "3": "activePassive"
+      },
+      "mib": "FORTINET-FORTIGATE-MIB",
+      "oid": "1.3.6.1.4.1.12356.101.13.1.1"
+    },
+    "fgHwSensorEntAlarmStatus": {
+      "enum": {
+        "0": "false",
+        "1": "true"
+      },
+      "mib": "FORTINET-FORTIGATE-MIB",
+      "oid": "1.3.6.1.4.1.12356.101.4.3.2.1.4"
+    },
+    "fgHwSensorEntName": {
+      "enum": null,
+      "mib": "FORTINET-FORTIGATE-MIB",
+      "oid": "1.3.6.1.4.1.12356.101.4.3.2.1.2"
+    },
+    "hwEntityFanState": {
+      "enum": {
+        "1": "normal",
+        "2": "abnormal"
+      },
+      "mib": "HUAWEI-ENTITY-EXTENT-MIB",
+      "oid": "1.3.6.1.4.1.2011.5.25.31.1.1.10.1.7"
+    },
+    "hwEntityTemperature": {
+      "enum": null,
+      "mib": "HUAWEI-ENTITY-EXTENT-MIB",
+      "oid": "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.11"
+    }
+  },
+  "source": {
+    "commit": "bcfb3b459f9226fcac15c42d8017158969d91445",
+    "files": {
+      "FORTINET-CORE-MIB": {
+        "sha256": "a53bf4a2ae8e237e010d307ade11f69b4cf055f42f4e10f9b2fda1985db341e1",
+        "url": "https://raw.githubusercontent.com/librenms/librenms/bcfb3b459f9226fcac15c42d8017158969d91445/mibs/fortinet/FORTINET-CORE-MIB"
+      },
+      "FORTINET-FORTIGATE-MIB": {
+        "sha256": "9ff90fc12e91ed1b752dd0505a3718a4ac41d08a02585686231312d59f3b07c7",
+        "url": "https://raw.githubusercontent.com/librenms/librenms/bcfb3b459f9226fcac15c42d8017158969d91445/mibs/fortinet/FORTINET-FORTIGATE-MIB"
+      },
+      "HUAWEI-ENTITY-EXTENT-MIB": {
+        "sha256": "ebadc333257701692bfc1b956bf3202c3e921065eb365278b7b5f166b9ef270e",
+        "url": "https://raw.githubusercontent.com/librenms/librenms/bcfb3b459f9226fcac15c42d8017158969d91445/mibs/huawei/HUAWEI-ENTITY-EXTENT-MIB"
+      },
+      "HUAWEI-MIB": {
+        "sha256": "ba362a1de240b708958ddc0e9818e16a22bacb3d8686900c87b4ad6ea167e723",
+        "url": "https://raw.githubusercontent.com/librenms/librenms/bcfb3b459f9226fcac15c42d8017158969d91445/mibs/huawei/HUAWEI-MIB"
+      }
+    },
+    "note": "third-party mirror of the vendor MIB files",
+    "repository": "https://github.com/librenms/librenms"
+  }
+}

@@ -1,5 +1,10 @@
-# Cisco ASR 8500 / IOS-XR: NO DEFINITION. No official or documented reference was found for this platform in this project's sources,
-# and no OID is guessed. Blocked until a real device and its documentation are available.
+# Cisco "ASR 8500" / IOS-XR: NO SENSOR DEFINITION. Reviewed 2026-10-09 (docs/VENDOR-SOURCES-REVIEW.md).
+# Finding 1: Cisco's own pages describe no product called "ASR 8500". They describe the ASR 9000 (IOS XR), ASR 1000 / 903 (IOS XE) and the
+#            "Cisco 8500 Series Secure Routers" (8550-G2, 8570-G2). The device the operator means has to be CONFIRMED before anything is defined.
+# Finding 2: for an IOS XR ASR 9000 the Cisco MIB Specification Guide is reported (search result; the page itself returned HTTP 504 when fetched) to list
+#            CISCO-ENTITY-FRU-CONTROL-MIB as supported. Its objects are already MIB-verified here (docs/sources/cisco-mib-extract.json) and used by the
+#            cisco-nxos definition, but WHICH rows an IOS XR chassis returns is not documented - field reports (2016) describe incomplete fan/power data.
+# No OID is guessed and no existing definition is re-labelled for this family.
 schema: 1
 id: cisco-asr8500
 vendor: cisco
@@ -7,13 +12,16 @@ families: [cisco-asr8500]
 title: Cisco ASR 8500 / IOS-XR - not defined
 kind: snmp
 sources:
-  - {kind: none, ref: "no reference template or MIB document identified for this platform"}
+  - {kind: none, ref: "no reference template or MIB document identified for a product named 'ASR 8500'"}
+  - {kind: research-note, ref: "docs/VENDOR-SOURCES-REVIEW.md section 1 (Cisco product naming, IOS XR MIB support)"}
 platforms:
-  - {name: "Cisco ASR 8500 / IOS-XR", support: unknown, note: "No model was available in the LAB and no authoritative OID source was identified. BLOCKED."}
+  - {name: "Cisco ASR 8500 / IOS-XR", support: unknown, note: "The product name is not found in Cisco documentation. The operator must confirm the exact model and software (ASR 9000 IOS XR? Cisco 8500 Series Secure Router IOS XE?). BLOCKED."}
+  - {name: "Cisco ASR 9000 (IOS XR)", support: documented-unverified, note: "CISCO-ENTITY-FRU-CONTROL-MIB reported as supported by the ASR 9000 MIB Specification Guide; power-supply data is reported to be admin-restricted (SystemOwner view); entSensorValueTable supported but not entSensorThresholdTable (Cisco community article). Not defined: it is not the confirmed target."}
+  - {name: "Cisco 8500 Series Secure Routers (8550-G2, 8570-G2)", support: unknown, note: "Exist on cisco.com; no SNMP hardware-health documentation was identified."}
 semantics: {}
 sensors: []
 unsupported:
-  - {category: fan, reason: "No definition: platform not documented in the project's sources."}
-  - {category: power, reason: "No definition."}
-  - {category: temperature, reason: "No definition."}
+  - {category: fan, reason: "No definition: the target model is unconfirmed. If it is an ASR 9000 (IOS XR), cefcFanTrayOperStatus is MIB-verified but the rows returned by the chassis are not documented; a device walk is required."}
+  - {category: power, reason: "No definition: the target model is unconfirmed. On IOS XR, power data is reported as admin-restricted (SystemOwner)."}
+  - {category: temperature, reason: "No definition: the target model is unconfirmed."}
   - {category: hw_redundancy, reason: "No definition."}

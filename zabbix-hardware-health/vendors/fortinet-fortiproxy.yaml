@@ -1,4 +1,9 @@
-# Fortinet FortiProxy: NO DEFINITION. The official Zabbix 7.0 Fortinet templates cover FortiGate only; no FortiProxy reference was identified.
+# Fortinet FortiProxy: NO SENSOR DEFINITION. Reviewed 2026-10-09 (docs/VENDOR-SOURCES-REVIEW.md section 2).
+# Verified: the FortiProxy 7.2 administration guide ("Fortinet MIBs") says SNMP needs FORTINET-CORE-MIB and FORTINET-FORTIPROXY-MIB, and gives one OID
+#           (fchSysVersion 1.3.6.1.4.1.12356.109.4.1.1.0): FortiProxy has its OWN arc (12356.109), not FortiGate's (12356.101).
+# Not found: any hardware sensor object (fan / PSU / temperature) for FortiProxy. The page lists none; FORTINET-FORTIPROXY-MIB is not in the public
+#           LibreNMS mirror; Fortinet's FortiGate sensor article says its sensor OID structure is FortiGate-specific. The MIB is available from Fortinet support.
+# FortiGate OIDs are NOT assumed to apply.
 schema: 1
 id: fortinet-fortiproxy
 vendor: fortinet
@@ -6,15 +11,16 @@ families: [fortinet-fortiproxy]
 title: Fortinet FortiProxy - not defined
 kind: snmp
 sources:
-  - {kind: none, ref: "no reference template or MIB document identified for FortiProxy"}
+  - {kind: none, ref: "no hardware-sensor object identified for FortiProxy"}
+  - {kind: research-note, ref: "docs/VENDOR-SOURCES-REVIEW.md section 2 (FortiProxy 7.2 administration guide 'Fortinet MIBs'; Fortinet FortiGate sensor article)"}
 platforms:
-  - {name: "Fortinet FortiProxy", support: unknown, note: "Not deployed in the LAB; no authoritative source identified. BLOCKED. Do not assume FortiGate OIDs apply."}
+  - {name: "Fortinet FortiProxy", support: unknown, note: "Not deployed in the LAB. Needs FORTINET-FORTIPROXY-MIB.mib from Fortinet support (or a device walk of 1.3.6.1.4.1.12356.109) to establish which hardware objects exist. BLOCKED. Do not assume FortiGate OIDs apply."}
 semantics: {}
 sensors: []
 unsupported:
-  - {category: fan, reason: "No definition."}
-  - {category: power, reason: "No definition."}
-  - {category: temperature, reason: "No definition."}
+  - {category: fan, reason: "No documented FortiProxy fan object found; MIB not publicly available. Obtain FORTINET-FORTIPROXY-MIB from Fortinet support."}
+  - {category: power, reason: "No documented FortiProxy power-supply object found."}
+  - {category: temperature, reason: "No documented FortiProxy temperature object found."}
   - {category: hw_redundancy, reason: "No definition."}
-  - {category: ha, reason: "No definition."}
+  - {category: ha, reason: "No documented FortiProxy HA object found; FortiGate's fgHaStatsSyncStatus (12356.101.13) is not assumed."}
   - {category: sensor, reason: "No definition."}
