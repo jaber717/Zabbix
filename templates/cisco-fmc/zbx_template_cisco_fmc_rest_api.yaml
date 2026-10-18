@@ -1,0 +1,1236 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+  - uuid: 61caa47830154f6fa4e51d950586e8d0
+    name: Templates/Cisco FMC
+  templates:
+  - uuid: 1fbc2354d247429f860231523b0b26cc
+    template: Cisco FMC by REST API
+    name: Cisco FMC by REST API
+    description: |-
+      Cisco Secure Firewall Management Center (FMC) monitoring through the FMC REST API.
+      Zabbix 7.0 or later. One script item polls the API; everything else is dependent items.
+
+      Setup
+      1. FMC: System > Configuration > REST API Preferences > Enable REST API.
+      2. FMC: create a dedicated internal user for monitoring (read-only / health-capable role).
+      3. Zabbix: create a host with any interface whose address (use DNS) matches the FMC HTTPS certificate; the script connects to {HOST.CONN}. Link this template.
+      4. Set {$FMC.USERNAME} and {$FMC.PASSWORD} on the host. Use 'Test' on item 'Cisco FMC: Get data' once before enabling the host: a wrong password is retried and can lock the FMC account.
+      5. TLS: the script's HTTP client verifies the FMC certificate and has no option to skip verification. Install the FMC (or its issuing CA) certificate in the trust store of the Zabbix server / proxy that polls.
+
+      This template covers what only the API exposes: managed-device health and connection, pending deployments, FMC-side Health Monitor alerts, software and content-package versions. CPU, memory, disk and interface counters of the FMC appliance itself are better taken from SNMP (Linux by SNMP) on the same host.
+    groups:
+    - name: Templates/Cisco FMC
+    items:
+    - uuid: ddeb0e8a62f04e9bae826a4e769753bb
+      name: 'Cisco FMC: Get data'
+      type: SCRIPT
+      key: fmc.get
+      delay: '{$FMC.POLL.INTERVAL}'
+      history: '0'
+      trends: '0'
+      value_type: TEXT
+      params: |
+        // Cisco FMC by REST API - collector for a Zabbix 7.0 script item (Duktape, ES5 only).
+        //
+        // Input  (JSON in `value`): host, port, user, password, domain, alerts_window, revoke
+        // Flow   : generatetoken -> devicerecords -> serverversion -> deployabledevices -> health/alerts -> revokeaccess
+        //
+        // Error policy
+        //  - Credential / REST-API-disabled failures are THROWN ("AUTH: ..."). The item goes unsupported and Zabbix
+        //    retries at the "unsupported item" interval instead of hammering FMC and locking the service account.
+        //  - Everything else is reported inside the returned JSON: ok=0 + error (primary data failed) or
+        //    warnings[] (a secondary section failed). Sections that failed are omitted, never zero-filled, so the
+        //    dependent items discard them instead of reporting a false "all clear".
+        //
+        // Zabbix limits a script to 10 HttpRequest objects, so ONE instance is reused for every call.
+
+        var P = JSON.parse(value);
+        var t_start = Date.now();
+
+        var out = { ok: 0, error: '', warnings: [], timing: { auth: 0, total: 0 } };
+        var token = null;
+        var refresh = null;
+        var fatal = null;
+        var http = new HttpRequest();
+
+        var base = 'https://' + P.host + ':' + (P.port ? String(P.port) : '443');
+        var DEVICE_PAGE = 100;
+        var ALERT_PAGE = 1000;
+        var MAX_PAGES = 20;
+
+        function str(v) {
+            return (v === undefined || v === null) ? '' : String(v);
+        }
+
+        function num(v, d) {
+            var n = parseInt(v, 10);
+            return isNaN(n) ? d : n;
+        }
+
+        function trunc(s, n) {
+            s = str(s);
+            return s.length > n ? s.substring(0, n - 3) + '...' : s;
+        }
+
+        function errMsg(e) {
+            return (e && e.message) ? str(e.message) : str(e);
+        }
+
+        function getHeader(headers, name) {
+            var lname = name.toLowerCase();
+            var k, v;
+            if (!headers) {
+                return '';
+            }
+            for (k in headers) {
+                if (Object.prototype.hasOwnProperty.call(headers, k) && k.toLowerCase() === lname) {
+                    v = headers[k];
+                    if (Object.prototype.toString.call(v) === '[object Array]') {
+                        v = v[0];
+                    }
+                    return str(v);
+                }
+            }
+            return '';
+        }
+
+        function healthCode(s) {
+            s = str(s).toLowerCase();
+            if (s === 'green' || s === 'normal' || s === 'recovered') {
+                return 0;
+            }
+            if (s === 'yellow' || s === 'warning') {
+                return 1;
+            }
+            if (s === 'red' || s === 'critical' || s === 'error' || s === 'failed') {
+                return 2;
+            }
+            return 3; // gray / disabled / unknown / anything unexpected
+        }
+
+        // FMC error bodies look like {"error":{"messages":[{"description":"Access denied"}]}}
+        function apiErrorText(body) {
+            var j, m;
+            try {
+                j = JSON.parse(body);
+                m = j.error.messages[0];
+                return trunc(m.description || m.details || '', 160);
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function call(method, path, withToken) {
+            var body;
+            http.clearHeader();
+            http.addHeader('Accept: application/json');
+            http.addHeader('Content-Type: application/json');
+            if (withToken && token) {
+                http.addHeader('X-auth-access-token: ' + token);
+            }
+            if (method === 'POST') {
+                body = http.post(base + path, '');
+            } else {
+                body = http.get(base + path);
+            }
+            return { status: http.getStatus(), body: body, headers: http.getHeaders() };
+        }
+
+        function getJson(path, what) {
+            var r = call('GET', path, true);
+            var detail;
+            if (r.status === 429) {
+                throw what + ': HTTP 429 (FMC REST API rate limit exceeded)';
+            }
+            if (r.status !== 200) {
+                detail = apiErrorText(r.body);
+                throw what + ': HTTP ' + r.status + (detail ? ' - ' + detail : '');
+            }
+            try {
+                return JSON.parse(r.body);
+            } catch (e) {
+                throw what + ': response is not valid JSON';
+            }
+        }
+
+        function getAll(path, what, pageSize) {
+            var items = [];
+            var offset = 0;
+            var page = 0;
+            var sep = (path.indexOf('?') === -1) ? '?' : '&';
+            var j, got, i;
+            while (page < MAX_PAGES) {
+                j = getJson(path + sep + 'limit=' + pageSize + '&offset=' + offset, what);
+                if (!j || Object.prototype.toString.call(j.items) !== '[object Array]') {
+                    throw what + ': expected an items array; unexpected FMC response shape';
+                }
+                got = j.items;
+                for (i = 0; i < got.length; i++) {
+                    items.push(got[i]);
+                }
+                page++;
+                if (got.length < pageSize) {
+                    break;
+                }
+                if (page === MAX_PAGES) {
+                    throw what + ': pagination safety limit reached; refusing a partial device/alert count';
+                }
+                offset += pageSize;
+            }
+            return items;
+        }
+
+        function warn(section, e) {
+            out.warnings.push(section + ': ' + trunc(errMsg(e), 200));
+        }
+
+        try {
+            if (!P.user || !P.password) {
+                throw 'AUTH: {$FMC.USERNAME} / {$FMC.PASSWORD} are not set on the host';
+            }
+
+            // ---- 1. token -------------------------------------------------------------------------------
+            var t0 = Date.now();
+            http.clearHeader();
+            http.addHeader('Authorization: Basic ' + btoa(P.user + ':' + P.password));
+            http.addHeader('Content-Type: application/json');
+            http.post(base + '/api/fmc_platform/v1/auth/generatetoken', '');
+            var authStatus = http.getStatus();
+            var authHeaders = http.getHeaders();
+            out.timing.auth = Math.round(Date.now() - t0) / 1000;
+
+            if (authStatus === 401) {
+                throw 'AUTH: generatetoken returned HTTP 401 - invalid credentials (item stays unsupported to avoid account lockout)';
+            }
+            if (authStatus === 403) {
+                throw 'AUTH: generatetoken returned HTTP 403 - REST API disabled (System > Configuration > REST API Preferences) or user not permitted';
+            }
+            if (authStatus === 429) {
+                throw 'generatetoken returned HTTP 429 (login throttling / rate limit)';
+            }
+            if (authStatus !== 200 && authStatus !== 204) {
+                throw 'generatetoken returned HTTP ' + authStatus;
+            }
+            token = getHeader(authHeaders, 'X-auth-access-token');
+            refresh = getHeader(authHeaders, 'X-auth-refresh-token');
+            if (!token) {
+                throw 'generatetoken returned no X-auth-access-token header';
+            }
+            var domain = P.domain ? str(P.domain) : getHeader(authHeaders, 'DOMAIN_UUID');
+            if (!domain) {
+                throw 'generatetoken returned no DOMAIN_UUID header and {$FMC.DOMAIN.UUID} is empty';
+            }
+            out.domain = domain;
+            var dpath = '/api/fmc_config/v1/domain/' + domain;
+
+            // ---- 2. managed devices (primary data) ---------------------------------------------------------
+            var recs = getAll(dpath + '/devices/devicerecords?expanded=true', 'devicerecords', DEVICE_PAGE);
+            var devs = { total: 0, green: 0, yellow: 0, red: 0, other: 0, disconnected: 0, items: [] };
+            var i, d, hc, it;
+            for (i = 0; i < recs.length; i++) {
+                d = recs[i];
+                hc = healthCode(d.healthStatus);
+                it = {
+                    id: str(d.id),
+                    name: str(d.name),
+                    host: str(d.hostName),
+                    model: str(d.model),
+                    ver: str(d.sw_version || d.version),
+                    hs: str(d.healthStatus),
+                    hc: hc,
+                    dep: str(d.deploymentStatus)
+                };
+                // Empty for healthy devices so the message item clears on recovery instead of keeping stale text.
+                it.hm = (hc !== 0) ? trunc(d.healthMessage, 160) : '';
+                if (typeof d.isConnected === 'boolean') {
+                    it.con = d.isConnected ? 1 : 0;
+                    if (!d.isConnected) {
+                        devs.disconnected++;
+                    }
+                }
+                devs.total++;
+                if (hc === 0) {
+                    devs.green++;
+                } else if (hc === 1) {
+                    devs.yellow++;
+                } else if (hc === 2) {
+                    devs.red++;
+                } else {
+                    devs.other++;
+                }
+                devs.items.push(it);
+            }
+            out.devices = devs;
+            out.ok = 1;
+
+            // ---- 3. FMC version (secondary) -----------------------------------------------------------------
+            try {
+                var vj = getJson('/api/fmc_platform/v1/info/serverversion', 'serverversion');
+                var v0 = (vj.items && vj.items[0]) ? vj.items[0] : {};
+                var ver = {};
+                if (v0.serverVersion) { ver.server = str(v0.serverVersion); }
+                if (v0.vdbVersion) { ver.vdb = str(v0.vdbVersion); }
+                if (v0.sruVersion) { ver.sru = str(v0.sruVersion); }
+                if (v0.geoVersion) { ver.geo = str(v0.geoVersion); }
+                if (v0.lspVersion) { ver.lsp = str(v0.lspVersion); }
+                out.version = ver;
+            } catch (e1) {
+                warn('serverversion', e1);
+            }
+
+            // ---- 4. pending deployments (secondary) -----------------------------------------------------------
+            try {
+                var dep = getAll(dpath + '/deployment/deployabledevices?expanded=true', 'deployabledevices', ALERT_PAGE);
+                var pend = [];
+                var k;
+                for (k = 0; k < dep.length; k++) {
+                    pend.push(str(dep[k].name)); // the resource lists devices with out-of-date config; count them all
+                }
+                out.deploy = { pending: pend.length, devices: trunc(pend.join(', '), 500) };
+            } catch (e2) {
+                warn('deployabledevices', e2);
+            }
+
+            // ---- 5. health alerts (secondary) -------------------------------------------------------------------
+            var win = num(P.alerts_window, 86400);
+            if (win > 0) {
+                try {
+                    if (win < 300) { win = 300; }
+                    if (win > 604800) { win = 604800; }
+                    var now = Math.floor(Date.now() / 1000);
+                    // +600s on endTime so a few minutes of clock skew between Zabbix and FMC cannot hide fresh alerts
+                    var flt = 'startTime:' + (now - win) + ';endTime:' + (now + 600);
+                    var alerts = getAll(dpath + '/health/alerts?expanded=true&filter=' + encodeURIComponent(flt),
+                        'health/alerts', ALERT_PAGE);
+
+                    // Keep only the newest alert per device+module+name so RED followed by RECOVERED/GREEN cancels out.
+                    var latest = {};
+                    var a, key;
+                    for (i = 0; i < alerts.length; i++) {
+                        a = alerts[i];
+                        key = str(a.deviceUUID) + '|' + str(a.moduleID) + '|' + str(a.name);
+                        if (!latest[key] || num(a.timestamp, 0) >= num(latest[key].timestamp, 0)) {
+                            latest[key] = a;
+                        }
+                    }
+                    var res = { window: win, fmc: { red: 0, yellow: 0, details: '' }, all: { red: 0, yellow: 0 } };
+                    var fmcRed = [];
+                    var fmcYellow = [];
+                    var st, line;
+                    for (key in latest) {
+                        if (!Object.prototype.hasOwnProperty.call(latest, key)) { continue; }
+                        a = latest[key];
+                        st = str(a.status).toUpperCase();
+                        // Cisco FMC may return CRITICAL/WARNING/NORMAL (as well as RED/YELLOW/GREEN).
+                        if (st === 'CRITICAL') { st = 'RED'; }
+                        if (st === 'WARNING') { st = 'YELLOW'; }
+                        if (st !== 'RED' && st !== 'ERROR' && st !== 'FAILED' && st !== 'YELLOW') { continue; }
+                        line = st + ' ' + str(a.moduleID) + ': ' + trunc(a.description || a.name || a.details, 120);
+                        if (st === 'YELLOW') {
+                            res.all.yellow++;
+                            if (str(a.deviceUUID) === '0') { res.fmc.yellow++; fmcYellow.push(line); }
+                        } else {
+                            res.all.red++;
+                            if (str(a.deviceUUID) === '0') { res.fmc.red++; fmcRed.push(line); }
+                        }
+                    }
+                    res.fmc.details = trunc(fmcRed.concat(fmcYellow).join('; '), 1000);
+                    out.alerts = res;
+                } catch (e3) {
+                    warn('health/alerts', e3);
+                }
+            }
+        } catch (e) {
+            var msg = errMsg(e);
+            out.ok = 0;
+            out.error = trunc(msg, 500);
+            if (msg.indexOf('AUTH:') === 0) {
+                fatal = msg;
+            }
+        } finally {
+            // Release the FMC session; never let a failure here affect the result.
+            if (token && P.revoke !== '0') {
+                try {
+                    http.clearHeader();
+                    http.addHeader('X-auth-access-token: ' + token);
+                    if (refresh) {
+                        http.addHeader('X-auth-refresh-token: ' + refresh);
+                    }
+                    http.post(base + '/api/fmc_platform/v1/auth/revokeaccess', '');
+                } catch (e9) {
+                    Zabbix.log(4, 'FMC: revokeaccess failed: ' + errMsg(e9));
+                }
+            }
+        }
+
+        if (fatal) {
+            throw fatal;
+        }
+
+        out.timing.total = Math.round(Date.now() - t_start) / 1000;
+
+        // Text item values are capped at 64 KB. Shed per-device detail before hitting it so the item never goes unsupported.
+        var json = JSON.stringify(out);
+        if (json.length > 60000 && out.devices && out.devices.items) {
+            var n;
+            for (n = 0; n < out.devices.items.length; n++) {
+                delete out.devices.items[n].hm;
+                delete out.devices.items[n].host;
+                delete out.devices.items[n].model;
+            }
+            out.warnings.push('output exceeded 60 KB; per-device host/model/health message were dropped');
+            json = JSON.stringify(out);
+        }
+        return json;
+      description: 'Single collector for the whole template. Logs in once (generatetoken), reads managed devices, server version, pending deployments and health alerts, then revokes the session. Every other item is a dependent item that parses this JSON. If this item is Not supported, read its error text: AUTH errors are thrown on purpose so a wrong password is not retried at the normal poll rate.'
+      timeout: 60s
+      parameters:
+      - name: host
+        value: '{HOST.CONN}'
+      - name: port
+        value: '{$FMC.PORT}'
+      - name: user
+        value: '{$FMC.USERNAME}'
+      - name: password
+        value: '{$FMC.PASSWORD}'
+      - name: domain
+        value: '{$FMC.DOMAIN.UUID}'
+      - name: alerts_window
+        value: '{$FMC.ALERTS.WINDOW}'
+      - name: revoke
+        value: '{$FMC.REVOKE}'
+      tags:
+      - tag: component
+        value: raw
+    - uuid: 5a7d97bb22484f159532ead28ff2b3c6
+      name: 'Cisco FMC: API available'
+      type: DEPENDENT
+      key: fmc.available
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      description: 1 when authentication and the managed-device query succeeded in the last poll.
+      valuemap:
+        name: Cisco FMC API availability
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.ok
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: bb6ff894de1c45e98c2b81a1ac5a4861
+        expression: last(/Cisco FMC by REST API/fmc.available)=0 and length(last(/Cisco FMC by REST API/fmc.error))>0
+        name: 'Cisco FMC: REST API is not usable ({ITEM.LASTVALUE2})'
+        priority: HIGH
+        description: The collector ran but could not authenticate or read the managed-device list. The error text is in the name. TLS verification failures (self-signed FMC certificate not trusted by the Zabbix server/proxy) also land here.
+        tags:
+        - tag: scope
+          value: availability
+      - uuid: 9bd166b6b12349ff8c069933ce516d34
+        expression: nodata(/Cisco FMC by REST API/fmc.available,{$FMC.NODATA.TIMEOUT})=1
+        name: 'Cisco FMC: No data from the collector for {$FMC.NODATA.TIMEOUT}'
+        priority: AVERAGE
+        description: 'The master item "Cisco FMC: Get data" is Not supported or timing out. Open Latest data on the host and read that item''s error. Typical causes: wrong credentials ("AUTH: ..." - fix them quickly, repeated bad logins can lock the FMC user), REST API disabled, script timeout.'
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: ab4d980d2e1647068d13f139939d6c90
+      name: 'Cisco FMC: Last error'
+      type: DEPENDENT
+      key: fmc.error
+      delay: '0'
+      history: 7d
+      value_type: TEXT
+      trends: '0'
+      description: Error from the last failed poll; empty when the API is healthy.
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.error
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1h
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: availability
+    - uuid: 1a6457737c5e4f0997fc8ac9416df20f
+      name: 'Cisco FMC: Collector warnings'
+      type: DEPENDENT
+      key: fmc.warnings
+      delay: '0'
+      history: 7d
+      value_type: TEXT
+      trends: '0'
+      description: Secondary sections (version, deployments, health alerts) that failed in the last poll. A failed section is omitted from the data, not reported as zero.
+      preprocessing:
+      - type: JAVASCRIPT
+        parameters:
+        - |-
+          var o = JSON.parse(value);
+          return (o.warnings || []).join('; ');
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1h
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: availability
+    - uuid: 129962657a05494780b5519e12c58d01
+      name: 'Cisco FMC: Collector warnings, count'
+      type: DEPENDENT
+      key: fmc.warnings.count
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.warnings.length()
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: 88301d25d0ea4a9fbc6ee74788b5b809
+        expression: min(/Cisco FMC by REST API/fmc.warnings.count,#3)>0 and length(last(/Cisco FMC by REST API/fmc.warnings))>0
+        name: 'Cisco FMC: Collector sections failing ({ITEM.LASTVALUE2})'
+        priority: WARNING
+        description: At least one secondary API call has failed for 3 consecutive polls (for example health alerts returning HTTP 403 because the FMC user lacks the health permission). The matching items stop updating rather than reporting zero.
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: 479a2cd1628242219b54dc19314edd1d
+      name: 'Cisco FMC: Authentication time'
+      type: DEPENDENT
+      key: fmc.auth.time
+      delay: '0'
+      history: 31d
+      value_type: FLOAT
+      trends: 365d
+      units: s
+      description: Time taken by generatetoken.
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.timing.auth
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: availability
+    - uuid: 670979c3da5d468b96cc627c802a3289
+      name: 'Cisco FMC: Total poll time'
+      type: DEPENDENT
+      key: fmc.api.time
+      delay: '0'
+      history: 31d
+      value_type: FLOAT
+      trends: 365d
+      units: s
+      description: Wall time of the whole collection run (all API calls plus session revoke).
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.timing.total
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: 29a2ac2cfe4c431f8e01af5620bebb87
+        expression: avg(/Cisco FMC by REST API/fmc.api.time,#3)>{$FMC.POLL.TIME.WARN}
+        name: 'Cisco FMC: Polling is slow (>{$FMC.POLL.TIME.WARN}s)'
+        priority: WARNING
+        description: Average collection time over the last 3 polls. The script item timeout is 60s; sustained slowness means the FMC API is struggling or the device list has grown.
+        tags:
+        - tag: scope
+          value: performance
+    - uuid: fa5e7d8cba904e6b979ad264d19334d6
+      name: 'Cisco FMC: FMC software version'
+      type: DEPENDENT
+      key: fmc.version
+      delay: '0'
+      history: 31d
+      value_type: CHAR
+      trends: '0'
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.version.server
+        error_handler: DISCARD_VALUE
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 12h
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: version
+      triggers:
+      - uuid: 5c6552b071f24760b5ca21140d8de64b
+        expression: change(/Cisco FMC by REST API/fmc.version)=1
+        name: 'Cisco FMC: Software version changed ({ITEM.LASTVALUE1})'
+        priority: INFO
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: inventory
+    - uuid: aab80132ad6542b797561cd26ee68f81
+      name: 'Cisco FMC: VDB version'
+      type: DEPENDENT
+      key: fmc.version.vdb
+      delay: '0'
+      history: 31d
+      value_type: CHAR
+      trends: '0'
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.version.vdb
+        error_handler: DISCARD_VALUE
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 12h
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: version
+    - uuid: a4e183eac814411d85fe7409c753ebad
+      name: 'Cisco FMC: SRU version'
+      type: DEPENDENT
+      key: fmc.version.sru
+      delay: '0'
+      history: 31d
+      value_type: CHAR
+      trends: '0'
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.version.sru
+        error_handler: DISCARD_VALUE
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 12h
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: version
+    - uuid: 13f917adff98400a90a58cf2512904df
+      name: 'Cisco FMC: GeoDB version'
+      type: DEPENDENT
+      key: fmc.version.geo
+      delay: '0'
+      history: 31d
+      value_type: CHAR
+      trends: '0'
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.version.geo
+        error_handler: DISCARD_VALUE
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 12h
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: version
+    - uuid: 0521a8b34c5540c8b9be73b2ac69c493
+      name: 'Cisco FMC: LSP version'
+      type: DEPENDENT
+      key: fmc.version.lsp
+      delay: '0'
+      history: 31d
+      value_type: CHAR
+      trends: '0'
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.version.lsp
+        error_handler: DISCARD_VALUE
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 12h
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: version
+    - uuid: b329c9cd50d34ed98be8264123a81680
+      name: 'Cisco FMC: Managed devices, total'
+      type: DEPENDENT
+      key: fmc.devices.total
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      description: Device records returned by FMC.
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.devices.total
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: devices
+      triggers:
+      - uuid: b68a8de4598d4b96986967c1a34f85c1
+        expression: change(/Cisco FMC by REST API/fmc.devices.total)<0
+        name: 'Cisco FMC: Managed device count decreased ({ITEM.LASTVALUE1})'
+        priority: INFO
+        manual_close: 'YES'
+        description: A device was unregistered or dropped from the device list. Close manually once confirmed.
+        tags:
+        - tag: scope
+          value: inventory
+    - uuid: ed1ba198b4274b809024459433d94642
+      name: 'Cisco FMC: Managed devices, health green'
+      type: DEPENDENT
+      key: fmc.devices.green
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.devices.green
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: devices
+    - uuid: 1e6f42f6e8a04feca868b7a761e0fa2a
+      name: 'Cisco FMC: Managed devices, health yellow'
+      type: DEPENDENT
+      key: fmc.devices.yellow
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.devices.yellow
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: devices
+    - uuid: 7a5e36f8307248fba2cc8b5e41d712a9
+      name: 'Cisco FMC: Managed devices, health red'
+      type: DEPENDENT
+      key: fmc.devices.red
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.devices.red
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: devices
+    - uuid: ef2e38bbd2a443759dadb9dec58bf043
+      name: 'Cisco FMC: Managed devices, health unknown/disabled'
+      type: DEPENDENT
+      key: fmc.devices.other
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      description: healthStatus is gray, disabled or a value this template does not recognise.
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.devices.other
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: devices
+    - uuid: eb762eb5481e438fa1dcb32941ebdd74
+      name: 'Cisco FMC: Managed devices, disconnected'
+      type: DEPENDENT
+      key: fmc.devices.disconnected
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      description: Devices whose isConnected flag is false (management channel to FMC is down).
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.devices.disconnected
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: devices
+    - uuid: 2eb93ab4d70b495b9cf86adcf77a6967
+      name: 'Cisco FMC: Devices with pending deployment'
+      type: DEPENDENT
+      key: fmc.deploy.pending
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      description: Devices listed by deployment/deployabledevices (configuration changes not yet deployed).
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deploy.pending
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: deployment
+      triggers:
+      - uuid: 2f6e5bd006b74d5e974dd6eb8ad87221
+        expression: min(/Cisco FMC by REST API/fmc.deploy.pending,{$FMC.DEPLOY.PENDING.TIME})>0
+        name: 'Cisco FMC: Undeployed changes pending for {$FMC.DEPLOY.PENDING.TIME} ({ITEM.LASTVALUE1} devices)'
+        priority: INFO
+        description: Configuration changes have been waiting for deployment continuously for the whole period.
+        tags:
+        - tag: scope
+          value: config
+    - uuid: ba4decc88fd442669c2249f760eda070
+      name: 'Cisco FMC: Devices with pending deployment, names'
+      type: DEPENDENT
+      key: fmc.deploy.devices
+      delay: '0'
+      history: 7d
+      value_type: TEXT
+      trends: '0'
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deploy.devices
+        error_handler: DISCARD_VALUE
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 12h
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: deployment
+    - uuid: ac70fc324f434d33994c6708845c44ea
+      name: 'Cisco FMC: Health alerts on the FMC itself, red'
+      type: DEPENDENT
+      key: fmc.alerts.fmc.red
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      description: Latest state per module is RED/ERROR/FAILED for the FMC appliance (deviceUUID 0) within the {$FMC.ALERTS.WINDOW} look-back. A RED followed by RECOVERED/GREEN counts as cleared.
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.alerts.fmc.red
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: alerts
+      triggers:
+      - uuid: 723f55361c844524b75d4a3355225367
+        expression: last(/Cisco FMC by REST API/fmc.alerts.fmc.red)>0 and length(last(/Cisco FMC by REST API/fmc.alerts.fmc.details))>0
+        name: 'Cisco FMC: Critical health alert on the FMC appliance ({ITEM.LASTVALUE2})'
+        priority: HIGH
+        description: Health Monitor reports a RED alert for the FMC itself (CPU, memory, disk, database, time sync, ...). Evaluated over the {$FMC.ALERTS.WINDOW} look-back, see item description.
+        tags:
+        - tag: scope
+          value: health
+    - uuid: 6795ac396b7a41eeb6faa3fd3ede63ca
+      name: 'Cisco FMC: Health alerts on the FMC itself, yellow'
+      type: DEPENDENT
+      key: fmc.alerts.fmc.yellow
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.alerts.fmc.yellow
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: alerts
+      triggers:
+      - uuid: 1b39ac1cf39348d99b20ec8330e2aa97
+        expression: last(/Cisco FMC by REST API/fmc.alerts.fmc.yellow)>0 and last(/Cisco FMC by REST API/fmc.alerts.fmc.red)=0 and length(last(/Cisco FMC by REST API/fmc.alerts.fmc.details))>0
+        name: 'Cisco FMC: Warning health alert on the FMC appliance ({ITEM.LASTVALUE3})'
+        priority: WARNING
+        tags:
+        - tag: scope
+          value: health
+    - uuid: 86fad68348a8480c98fe09aa21cbb304
+      name: 'Cisco FMC: Health alerts on the FMC itself, details'
+      type: DEPENDENT
+      key: fmc.alerts.fmc.details
+      delay: '0'
+      history: 7d
+      value_type: TEXT
+      trends: '0'
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.alerts.fmc.details
+        error_handler: DISCARD_VALUE
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 12h
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: alerts
+    - uuid: 6ecffa377d9f4f5280af2952f2dc1ebf
+      name: 'Cisco FMC: Health alerts on managed devices and FMC, red'
+      type: DEPENDENT
+      key: fmc.alerts.all.red
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      description: Same calculation across every device and the FMC.
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.alerts.all.red
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: alerts
+    - uuid: 1fea43af35d840bd938eb27ff9a81056
+      name: 'Cisco FMC: Health alerts on managed devices and FMC, yellow'
+      type: DEPENDENT
+      key: fmc.alerts.all.yellow
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.alerts.all.yellow
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: alerts
+    discovery_rules:
+    - uuid: 06bbd23801c948d39566fda1c6e2205e
+      name: Managed devices discovery
+      type: DEPENDENT
+      key: fmc.devices.discovery
+      delay: '0'
+      lifetime: 7d
+      description: One entry per device record on the FMC. Filter with {$FMC.DEVICES.NAME.MATCHES} / {$FMC.DEVICES.NAME.NOT_MATCHES}. A poll that fails keeps the previous discovery result.
+      item_prototypes:
+      - uuid: 3213babb963d446b9a6f2f4c31320d05
+        name: 'Device [{#DEVICE.NAME}]: Health status'
+        type: DEPENDENT
+        key: fmc.device.health[{#DEVICE.ID}]
+        delay: '0'
+        history: 31d
+        value_type: UNSIGNED
+        trends: 365d
+        description: 'FMC healthStatus of the managed device: green / yellow / red; anything else is Unknown.'
+        valuemap:
+          name: Cisco FMC health status
+        preprocessing:
+        - type: JSONPATH
+          parameters:
+          - $.devices.items[?(@.id=='{#DEVICE.ID}')].hc.first()
+          error_handler: DISCARD_VALUE
+        master_item:
+          key: fmc.get
+        tags:
+        - tag: component
+          value: health
+        trigger_prototypes:
+        - uuid: 406c2844a91040a5a994103b106e3119
+          expression: last(/Cisco FMC by REST API/fmc.device.health[{#DEVICE.ID}])=2
+          name: 'Cisco FMC: Device {#DEVICE.NAME} health is red'
+          priority: HIGH
+          description: Managed device ({#DEVICE.HOST}, {#DEVICE.MODEL}) reports RED health in FMC. See the "Health message" item of this device for the reason.
+          tags:
+          - tag: scope
+            value: health
+          - tag: device
+            value: '{#DEVICE.NAME}'
+        - uuid: b7984420b4d5499993f9eb1dc036cd30
+          expression: last(/Cisco FMC by REST API/fmc.device.health[{#DEVICE.ID}])=1
+          name: 'Cisco FMC: Device {#DEVICE.NAME} health is yellow'
+          priority: WARNING
+          tags:
+          - tag: scope
+            value: health
+          - tag: device
+            value: '{#DEVICE.NAME}'
+        - uuid: adaccea1919942d29e6d9c20cc1f9295
+          expression: min(/Cisco FMC by REST API/fmc.device.health[{#DEVICE.ID}],#6)=3
+          name: 'Cisco FMC: Device {#DEVICE.NAME} health is unknown or disabled'
+          priority: INFO
+          description: healthStatus has been gray/disabled/unrecognised for 6 consecutive polls. A health policy with the modules disabled produces this.
+          tags:
+          - tag: scope
+            value: health
+          - tag: device
+            value: '{#DEVICE.NAME}'
+      - uuid: e2bd4da648d6400db455795877ee30a5
+        name: 'Device [{#DEVICE.NAME}]: Health message'
+        type: DEPENDENT
+        key: fmc.device.health.msg[{#DEVICE.ID}]
+        delay: '0'
+        history: 31d
+        value_type: TEXT
+        trends: '0'
+        description: healthMessage from the device record; empty while the device is green.
+        preprocessing:
+        - type: JSONPATH
+          parameters:
+          - $.devices.items[?(@.id=='{#DEVICE.ID}')].hm.first()
+          error_handler: DISCARD_VALUE
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 12h
+        master_item:
+          key: fmc.get
+        tags:
+        - tag: component
+          value: health
+      - uuid: e3fe376da9bc49f99d18e0a5849a5876
+        name: 'Device [{#DEVICE.NAME}]: Connection to FMC'
+        type: DEPENDENT
+        key: fmc.device.connected[{#DEVICE.ID}]
+        delay: '0'
+        history: 31d
+        value_type: UNSIGNED
+        trends: 365d
+        description: isConnected flag of the device record.
+        valuemap:
+          name: Cisco FMC device connection
+        preprocessing:
+        - type: JSONPATH
+          parameters:
+          - $.devices.items[?(@.id=='{#DEVICE.ID}')].con.first()
+          error_handler: DISCARD_VALUE
+        master_item:
+          key: fmc.get
+        tags:
+        - tag: component
+          value: health
+        trigger_prototypes:
+        - uuid: 1d866a02a7fc4d5abe08791f2fb00855
+          expression: last(/Cisco FMC by REST API/fmc.device.connected[{#DEVICE.ID}])=0
+          name: 'Cisco FMC: Device {#DEVICE.NAME} is disconnected from FMC'
+          priority: HIGH
+          tags:
+          - tag: scope
+            value: availability
+          - tag: device
+            value: '{#DEVICE.NAME}'
+      - uuid: 419b649389854e6aa6db66f0b8e27d1b
+        name: 'Device [{#DEVICE.NAME}]: Software version'
+        type: DEPENDENT
+        key: fmc.device.version[{#DEVICE.ID}]
+        delay: '0'
+        history: 31d
+        value_type: CHAR
+        trends: '0'
+        preprocessing:
+        - type: JSONPATH
+          parameters:
+          - $.devices.items[?(@.id=='{#DEVICE.ID}')].ver.first()
+          error_handler: DISCARD_VALUE
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 12h
+        master_item:
+          key: fmc.get
+        tags:
+        - tag: component
+          value: inventory
+        trigger_prototypes:
+        - uuid: a4e5e8e919d94f3386fc846ca07efb21
+          expression: change(/Cisco FMC by REST API/fmc.device.version[{#DEVICE.ID}])=1
+          name: 'Cisco FMC: Device {#DEVICE.NAME} software version changed ({ITEM.LASTVALUE1})'
+          priority: INFO
+          manual_close: 'YES'
+          tags:
+          - tag: scope
+            value: inventory
+          - tag: device
+            value: '{#DEVICE.NAME}'
+      - uuid: 796a77d9a12f4bb2b5e96ee8c6907999
+        name: 'Device [{#DEVICE.NAME}]: Model'
+        type: DEPENDENT
+        key: fmc.device.model[{#DEVICE.ID}]
+        delay: '0'
+        history: 31d
+        value_type: CHAR
+        trends: '0'
+        preprocessing:
+        - type: JSONPATH
+          parameters:
+          - $.devices.items[?(@.id=='{#DEVICE.ID}')].model.first()
+          error_handler: DISCARD_VALUE
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 12h
+        master_item:
+          key: fmc.get
+        tags:
+        - tag: component
+          value: inventory
+      - uuid: 7d78a980ba7d47aca5f98582d5570f61
+        name: 'Device [{#DEVICE.NAME}]: Deployment status'
+        type: DEPENDENT
+        key: fmc.device.deploy[{#DEVICE.ID}]
+        delay: '0'
+        history: 31d
+        value_type: CHAR
+        trends: '0'
+        preprocessing:
+        - type: JSONPATH
+          parameters:
+          - $.devices.items[?(@.id=='{#DEVICE.ID}')].dep.first()
+          error_handler: DISCARD_VALUE
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 12h
+        master_item:
+          key: fmc.get
+        tags:
+        - tag: component
+          value: deployment
+      master_item:
+        key: fmc.get
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.devices.items
+        error_handler: DISCARD_VALUE
+      lld_macro_paths:
+      - lld_macro: '{#DEVICE.ID}'
+        path: $.id
+      - lld_macro: '{#DEVICE.NAME}'
+        path: $.name
+      - lld_macro: '{#DEVICE.HOST}'
+        path: $.host
+      - lld_macro: '{#DEVICE.MODEL}'
+        path: $.model
+      filter:
+        evaltype: AND
+        conditions:
+        - macro: '{#DEVICE.NAME}'
+          value: '{$FMC.DEVICES.NAME.MATCHES}'
+          formulaid: A
+        - macro: '{#DEVICE.NAME}'
+          operator: NOT_MATCHES_REGEX
+          value: '{$FMC.DEVICES.NAME.NOT_MATCHES}'
+          formulaid: B
+    macros:
+    - macro: '{$FMC.USERNAME}'
+      description: FMC user with REST API access (dedicated, read-only/monitoring role).
+    - macro: '{$FMC.PASSWORD}'
+      type: SECRET_TEXT
+      description: Password of {$FMC.USERNAME}.
+    - macro: '{$FMC.PORT}'
+      value: '443'
+      description: HTTPS port of the FMC.
+    - macro: '{$FMC.DOMAIN.UUID}'
+      description: Leave empty to use the DOMAIN_UUID returned at login (the user's default / Global domain). Set it to poll another domain.
+    - macro: '{$FMC.POLL.INTERVAL}'
+      value: 5m
+      description: Collector interval. Each run is one login plus about 4-6 API calls (120 calls/min limit).
+    - macro: '{$FMC.ALERTS.WINDOW}'
+      value: '86400'
+      description: Health-alert look-back in seconds (300-604800). 0 disables the health-alert call.
+    - macro: '{$FMC.REVOKE}'
+      value: '1'
+      description: 1 = revoke the API token at the end of every run. Set 0 only if revokeaccess is rejected on your version.
+    - macro: '{$FMC.NODATA.TIMEOUT}'
+      value: 15m
+      description: No-data period for the collector. Keep it above 2x {$FMC.POLL.INTERVAL}.
+    - macro: '{$FMC.POLL.TIME.WARN}'
+      value: '30'
+      description: Seconds; slow-collection threshold.
+    - macro: '{$FMC.DEPLOY.PENDING.TIME}'
+      value: 24h
+      description: How long changes may stay undeployed before the INFO trigger fires.
+    - macro: '{$FMC.DEVICES.NAME.MATCHES}'
+      value: .*
+      description: 'Regex: managed devices to discover.'
+    - macro: '{$FMC.DEVICES.NAME.NOT_MATCHES}'
+      value: CHANGE_IF_NEEDED
+      description: 'Regex: managed devices to exclude from discovery.'
+    tags:
+    - tag: class
+      value: software
+    - tag: target
+      value: cisco-fmc
+    valuemaps:
+    - uuid: f806dacdbd8342bfb54f7ba19d3b30ca
+      name: Cisco FMC API availability
+      mappings:
+      - value: '0'
+        newvalue: Failed
+      - value: '1'
+        newvalue: OK
+    - uuid: 5c8ddd4e407447bfbf2a42141d4763c9
+      name: Cisco FMC health status
+      mappings:
+      - value: '0'
+        newvalue: Green
+      - value: '1'
+        newvalue: Yellow
+      - value: '2'
+        newvalue: Red
+      - value: '3'
+        newvalue: Unknown / disabled
+    - uuid: 238d793c2eed42509726d8399451134c
+      name: Cisco FMC device connection
+      mappings:
+      - value: '0'
+        newvalue: Disconnected
+      - value: '1'
+        newvalue: Connected
