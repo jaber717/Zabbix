@@ -33,22 +33,27 @@ zabbix_export:
       params: |
         // Cisco FMC by REST API - collector for a Zabbix 7.0 script item (Duktape, ES5 only).
         //
-        // Input  (JSON in `value`): host, port, user, password, domain, alerts_window, revoke
+        // Input  (JSON in `value`): host, port, user, password, domain, alerts_window, revoke,
+        //                           deploy_enabled, alerts_all, max_items
         // Flow   : generatetoken -> devicerecords -> serverversion -> deployabledevices -> health/alerts -> revokeaccess
         //
         // Error policy
         //  - Credential / REST-API-disabled failures are THROWN ("AUTH: ..."). The item goes unsupported and Zabbix
         //    retries at the "unsupported item" interval instead of hammering FMC and locking the service account.
-        //  - Everything else is reported inside the returned JSON: ok=0 + error (primary data failed) or
-        //    warnings[] (a secondary section failed). Sections that failed are omitted, never zero-filled, so the
-        //    dependent items discard them instead of reporting a false "all clear".
+        //  - Every other API call is an independent SECTION. A failing section never stops the others. Its result is
+        //    omitted from the JSON (never zero-filled) and its status is published in sections.<name>:
+        //    s = 0 ok, 1 error, 2 forbidden (HTTP 403, needs an FMC-side permission change), 3 disabled/not needed;
+        //    http = HTTP status of the failure, msg = FMC's own error text, n/pages = records/pages read.
+        //    devicerecords failing sets ok=0 + error; the other sections are still collected.
+        //  - Pagination never reports a partial list as complete: a page budget, a record budget, an offset-ignored
+        //    check and a cross-check against the count reported by FMC all end in an explicit section error.
         //
         // Zabbix limits a script to 10 HttpRequest objects, so ONE instance is reused for every call.
 
         var P = JSON.parse(value);
         var t_start = Date.now();
 
-        var out = { ok: 0, error: '', warnings: [], timing: { auth: 0, total: 0 } };
+        var out = { ok: 0, error: '', warnings: [], sections: {}, timing: { auth: 0, total: 0 } };
         var token = null;
         var refresh = null;
         var fatal = null;
@@ -57,7 +62,10 @@ zabbix_export:
         var base = 'https://' + P.host + ':' + (P.port ? String(P.port) : '443');
         var DEVICE_PAGE = 100;
         var ALERT_PAGE = 1000;
-        var MAX_PAGES = 20;
+        var MAX_PAGES = 50;          // per list; with the request budget this stays below FMC's 120 requests/min
+        var REQ_BUDGET = 100;        // HTTP calls per poll
+        var TIME_BUDGET = 100000;    // ms; the item timeout of the template is 120 s
+        var reqs = 0;
 
         function str(v) {
             return (v === undefined || v === null) ? '' : String(v);
@@ -75,6 +83,15 @@ zabbix_export:
 
         function errMsg(e) {
             return (e && e.message) ? str(e.message) : str(e);
+        }
+
+        var MAX_ITEMS = num(P.max_items, 50000);
+        if (MAX_ITEMS < 100) { MAX_ITEMS = 100; }
+        if (MAX_ITEMS > 500000) { MAX_ITEMS = 500000; }
+
+        // Typed error: keeps the HTTP status so 403 can be told apart from other failures.
+        function fail(what, httpStatus, text) {
+            return { message: what + ': ' + text, http: httpStatus };
         }
 
         function getHeader(headers, name) {
@@ -138,51 +155,170 @@ zabbix_export:
         }
 
         function getJson(path, what) {
-            var r = call('GET', path, true);
-            var detail;
+            var r, detail;
+            if (reqs >= REQ_BUDGET) {
+                throw fail(what, 0, 'request budget of ' + REQ_BUDGET + ' calls per poll exhausted (FMC allows 120/min per source IP)');
+            }
+            if (Date.now() - t_start > TIME_BUDGET) {
+                throw fail(what, 0, 'collector time budget of ' + Math.round(TIME_BUDGET / 1000) + ' s exhausted');
+            }
+            reqs++;
+            r = call('GET', path, true);
             if (r.status === 429) {
-                throw what + ': HTTP 429 (FMC REST API rate limit exceeded)';
+                throw fail(what, 429, 'HTTP 429 (FMC REST API rate limit exceeded)');
             }
             if (r.status !== 200) {
                 detail = apiErrorText(r.body);
-                throw what + ': HTTP ' + r.status + (detail ? ' - ' + detail : '');
+                throw fail(what, r.status, 'HTTP ' + r.status + (detail ? ' - ' + detail : ''));
             }
             try {
                 return JSON.parse(r.body);
             } catch (e) {
-                throw what + ': response is not valid JSON';
+                throw fail(what, 200, 'response is not valid JSON');
             }
         }
 
-        function getAll(path, what, pageSize) {
-            var items = [];
-            var offset = 0;
-            var page = 0;
+        // Reads every record of a list resource and hands each one to onItem (nothing is accumulated here).
+        //
+        // FMC list responses: {"links":..,"items":[..],"paging":{"offset":0,"limit":25,"count":N,"pages":M}}.
+        //  - The next offset is advanced by the number of records actually received, not by the requested size, so a
+        //    server that clamps `limit` (e.g. 1000 -> 25) is still read completely.
+        //  - A page shorter than the effective limit (paging.limit when present) is the last page; an empty page ends
+        //    the list. A full last page costs one extra (empty) request, which is cheaper than guessing.
+        //  - paging.count is only used as a cross-check, never as the sole stop condition: if the list ends before the
+        //    reported count was read, that is an error, not a smaller result.
+        //  - Identical first/last records on consecutive pages mean the server ignored `offset`; stop instead of
+        //    counting duplicates until a safety cap trips.
+        //  - A response without `items` is an empty list only when it carries a `paging` object; otherwise it is an
+        //    unexpected shape.
+        function pageAll(path, what, want, onItem) {
             var sep = (path.indexOf('?') === -1) ? '?' : '&';
-            var j, got, i;
-            while (page < MAX_PAGES) {
-                j = getJson(path + sep + 'limit=' + pageSize + '&offset=' + offset, what);
-                if (!j || Object.prototype.toString.call(j.items) !== '[object Array]') {
-                    throw what + ': expected an items array; unexpected FMC response shape';
+            var offset = 0, pages = 0, fetched = 0, total = -1, eff = want, prevSig = null;
+            var j, got, p, c, l, sig, i;
+            for (;;) {
+                pages++;
+                if (pages > MAX_PAGES) {
+                    throw fail(what, 0, 'needs more than ' + MAX_PAGES + ' pages (read ' + fetched + ' records, FMC count ' +
+                        (total >= 0 ? total : 'n/a') + ', effective page size ' + eff + '); narrow the query rather than raising the cap');
                 }
-                got = j.items;
-                for (i = 0; i < got.length; i++) {
-                    items.push(got[i]);
+                j = getJson(path + sep + 'limit=' + want + '&offset=' + offset, what);
+                p = (j && typeof j.paging === 'object' && j.paging) ? j.paging : null;
+                if (j && Object.prototype.toString.call(j.items) === '[object Array]') {
+                    got = j.items;
+                } else if (p) {
+                    got = [];
+                } else {
+                    throw fail(what, 200, 'expected an items array; unexpected FMC response shape');
                 }
-                page++;
-                if (got.length < pageSize) {
+                if (p) {
+                    c = num(p.count, -1);
+                    if (c >= 0) { total = c; }
+                    l = num(p.limit, 0);
+                    if (l > 0) { eff = l; }
+                }
+                if (got.length > eff) { eff = got.length; }
+                if (total > MAX_ITEMS) {
+                    throw fail(what, 0, 'FMC reports ' + total + ' records (page size ' + eff + ', ' + Math.ceil(total / eff) +
+                        ' pages), above the limit of ' + MAX_ITEMS + ' ({$FMC.PAGING.MAX.ITEMS}); reduce the query (e.g. {$FMC.ALERTS.WINDOW}) or raise the limit knowingly');
+                }
+                if (got.length === 0) {
                     break;
                 }
-                if (page === MAX_PAGES) {
-                    throw what + ': pagination safety limit reached; refusing a partial device/alert count';
+                sig = JSON.stringify(got[0]) + '|' + JSON.stringify(got[got.length - 1]) + '|' + got.length;
+                if (prevSig !== null && sig === prevSig) {
+                    throw fail(what, 0, 'offset ' + offset + ' returned the same records as the previous page (server ignores offset; read ' +
+                        fetched + ' records, FMC count ' + (total >= 0 ? total : 'n/a') + '); refusing to count duplicates');
                 }
-                offset += pageSize;
+                prevSig = sig;
+                for (i = 0; i < got.length; i++) {
+                    onItem(got[i]);
+                }
+                fetched += got.length;
+                offset += got.length;
+                if (fetched > MAX_ITEMS) {
+                    throw fail(what, 0, 'more than ' + MAX_ITEMS + ' records ({$FMC.PAGING.MAX.ITEMS}) read; refusing a partial result');
+                }
+                if (got.length < eff) {
+                    break;
+                }
             }
-            return items;
+            if (total >= 0 && fetched < total) {
+                throw fail(what, 0, 'incomplete list: read ' + fetched + ' of ' + total + ' records reported by FMC in ' + pages + ' pages (page size ' + eff + ')');
+            }
+            return { n: fetched, count: total, pages: pages, limit: eff };
         }
 
-        function warn(section, e) {
-            out.warnings.push(section + ': ' + trunc(errMsg(e), 200));
+        // Runs one independent section. Returns '' on success, otherwise the error text (also stored in out.sections).
+        function runSection(name, what, hint403, fn) {
+            var meta, m, code, h;
+            try {
+                meta = fn();
+                out.sections[name] = { s: 0 };
+                if (meta) {
+                    out.sections[name].n = meta.n;
+                    out.sections[name].pages = meta.pages;
+                }
+                return '';
+            } catch (e) {
+                m = errMsg(e);
+                if (m.indexOf(what + ':') !== 0) {
+                    m = what + ': ' + m;
+                }
+                h = (e && typeof e.http === 'number') ? e.http : 0;
+                code = (h === 403) ? 2 : 1;
+                if (code === 2 && hint403) {
+                    m += ' [' + hint403 + ']';
+                }
+                m = trunc(m, 300);
+                out.sections[name] = { s: code, http: h, msg: m };
+                return m;
+            }
+        }
+
+        function disabled(name) {
+            out.sections[name] = { s: 3 };
+        }
+
+        function alertKey(a) {
+            return str(a.deviceUUID) + '|' + str(a.moduleID) + '|' + str(a.name);
+        }
+
+        // Keep only the newest alert per device+module+name so RED followed by RECOVERED/GREEN cancels out.
+        function keepNewest(latest, a, onlyFmc) {
+            var key;
+            if (onlyFmc && str(a.deviceUUID) !== '0') {
+                return;
+            }
+            key = alertKey(a);
+            if (!latest[key] || num(a.timestamp, 0) >= num(latest[key].timestamp, 0)) {
+                latest[key] = a;
+            }
+        }
+
+        function summarize(latest) {
+            var res = { fmc: { red: 0, yellow: 0, details: '' }, all: { red: 0, yellow: 0 } };
+            var fmcRed = [];
+            var fmcYellow = [];
+            var key, a, st, line;
+            for (key in latest) {
+                if (!Object.prototype.hasOwnProperty.call(latest, key)) { continue; }
+                a = latest[key];
+                st = str(a.status).toUpperCase();
+                // Cisco FMC may return CRITICAL/WARNING/NORMAL (as well as RED/YELLOW/GREEN).
+                if (st === 'CRITICAL') { st = 'RED'; }
+                if (st === 'WARNING') { st = 'YELLOW'; }
+                if (st !== 'RED' && st !== 'ERROR' && st !== 'FAILED' && st !== 'YELLOW') { continue; }
+                line = st + ' ' + str(a.moduleID) + ': ' + trunc(a.description || a.name || a.details, 120);
+                if (st === 'YELLOW') {
+                    res.all.yellow++;
+                    if (str(a.deviceUUID) === '0') { res.fmc.yellow++; fmcYellow.push(line); }
+                } else {
+                    res.all.red++;
+                    if (str(a.deviceUUID) === '0') { res.fmc.red++; fmcRed.push(line); }
+                }
+            }
+            res.fmc.details = trunc(fmcRed.concat(fmcYellow).join('; '), 1000);
+            return res;
         }
 
         try {
@@ -224,48 +360,52 @@ zabbix_export:
             out.domain = domain;
             var dpath = '/api/fmc_config/v1/domain/' + domain;
 
-            // ---- 2. managed devices (primary data) ---------------------------------------------------------
-            var recs = getAll(dpath + '/devices/devicerecords?expanded=true', 'devicerecords', DEVICE_PAGE);
-            var devs = { total: 0, green: 0, yellow: 0, red: 0, other: 0, disconnected: 0, items: [] };
-            var i, d, hc, it;
-            for (i = 0; i < recs.length; i++) {
-                d = recs[i];
-                hc = healthCode(d.healthStatus);
-                it = {
-                    id: str(d.id),
-                    name: str(d.name),
-                    host: str(d.hostName),
-                    model: str(d.model),
-                    ver: str(d.sw_version || d.version),
-                    hs: str(d.healthStatus),
-                    hc: hc,
-                    dep: str(d.deploymentStatus)
-                };
-                // Empty for healthy devices so the message item clears on recovery instead of keeping stale text.
-                it.hm = (hc !== 0) ? trunc(d.healthMessage, 160) : '';
-                if (typeof d.isConnected === 'boolean') {
-                    it.con = d.isConnected ? 1 : 0;
-                    if (!d.isConnected) {
-                        devs.disconnected++;
+            // ---- 2. managed devices (primary data; a failure sets ok=0 but does not stop the other sections) ----
+            var devErr = runSection('devices', 'devicerecords', 'the FMC user needs read access to managed devices', function () {
+                var devs = { total: 0, green: 0, yellow: 0, red: 0, other: 0, disconnected: 0, items: [] };
+                var meta = pageAll(dpath + '/devices/devicerecords?expanded=true', 'devicerecords', DEVICE_PAGE, function (d) {
+                    var hc = healthCode(d.healthStatus);
+                    var it = {
+                        id: str(d.id),
+                        name: str(d.name),
+                        host: str(d.hostName),
+                        model: str(d.model),
+                        ver: str(d.sw_version || d.version),
+                        hs: str(d.healthStatus),
+                        hc: hc,
+                        dep: str(d.deploymentStatus)
+                    };
+                    // Empty for healthy devices so the message item clears on recovery instead of keeping stale text.
+                    it.hm = (hc !== 0) ? trunc(d.healthMessage, 160) : '';
+                    if (typeof d.isConnected === 'boolean') {
+                        it.con = d.isConnected ? 1 : 0;
+                        if (!d.isConnected) {
+                            devs.disconnected++;
+                        }
                     }
-                }
-                devs.total++;
-                if (hc === 0) {
-                    devs.green++;
-                } else if (hc === 1) {
-                    devs.yellow++;
-                } else if (hc === 2) {
-                    devs.red++;
-                } else {
-                    devs.other++;
-                }
-                devs.items.push(it);
+                    devs.total++;
+                    if (hc === 0) {
+                        devs.green++;
+                    } else if (hc === 1) {
+                        devs.yellow++;
+                    } else if (hc === 2) {
+                        devs.red++;
+                    } else {
+                        devs.other++;
+                    }
+                    devs.items.push(it);
+                });
+                out.devices = devs;   // assigned only after the whole list was read
+                return meta;
+            });
+            if (devErr) {
+                out.error = trunc(devErr, 500);
+            } else {
+                out.ok = 1;
             }
-            out.devices = devs;
-            out.ok = 1;
 
             // ---- 3. FMC version (secondary) -----------------------------------------------------------------
-            try {
+            var e1 = runSection('version', 'serverversion', '', function () {
                 var vj = getJson('/api/fmc_platform/v1/info/serverversion', 'serverversion');
                 var v0 = (vj.items && vj.items[0]) ? vj.items[0] : {};
                 var ver = {};
@@ -275,70 +415,73 @@ zabbix_export:
                 if (v0.geoVersion) { ver.geo = str(v0.geoVersion); }
                 if (v0.lspVersion) { ver.lsp = str(v0.lspVersion); }
                 out.version = ver;
-            } catch (e1) {
-                warn('serverversion', e1);
+                return null;
+            });
+            if (e1) { out.warnings.push(e1); }
+
+            // ---- 4. pending deployments (secondary; needs a role that may view/perform deployments) ------------
+            if (P.deploy_enabled === '0') {
+                disabled('deploy');
+            } else {
+                var e2 = runSection('deploy', 'deployabledevices',
+                    'FMC user role cannot view deployments - grant a role with deployment access or set {$FMC.DEPLOY.ENABLED}=0', function () {
+                    var pend = [];
+                    var meta = pageAll(dpath + '/deployment/deployabledevices?expanded=true', 'deployabledevices', DEVICE_PAGE, function (x) {
+                        pend.push(str(x.name)); // the resource lists devices with out-of-date config; count them all
+                    });
+                    out.deploy = { pending: pend.length, devices: trunc(pend.join(', '), 500) };
+                    return meta;
+                });
+                if (e2) { out.warnings.push(e2); }
             }
 
-            // ---- 4. pending deployments (secondary) -----------------------------------------------------------
-            try {
-                var dep = getAll(dpath + '/deployment/deployabledevices?expanded=true', 'deployabledevices', ALERT_PAGE);
-                var pend = [];
-                var k;
-                for (k = 0; k < dep.length; k++) {
-                    pend.push(str(dep[k].name)); // the resource lists devices with out-of-date config; count them all
-                }
-                out.deploy = { pending: pend.length, devices: trunc(pend.join(', '), 500) };
-            } catch (e2) {
-                warn('deployabledevices', e2);
-            }
-
-            // ---- 5. health alerts (secondary) -------------------------------------------------------------------
+            // ---- 5. health alerts (secondary; two independent sections) --------------------------------------------
             var win = num(P.alerts_window, 86400);
-            if (win > 0) {
-                try {
-                    if (win < 300) { win = 300; }
-                    if (win > 604800) { win = 604800; }
-                    var now = Math.floor(Date.now() / 1000);
-                    // +600s on endTime so a few minutes of clock skew between Zabbix and FMC cannot hide fresh alerts
-                    var flt = 'startTime:' + (now - win) + ';endTime:' + (now + 600);
-                    var alerts = getAll(dpath + '/health/alerts?expanded=true&filter=' + encodeURIComponent(flt),
-                        'health/alerts', ALERT_PAGE);
+            if (win <= 0) {
+                disabled('alerts_all');
+                disabled('alerts_fmc');
+            } else {
+                if (win < 300) { win = 300; }
+                if (win > 604800) { win = 604800; }
+                var now = Math.floor(Date.now() / 1000);
+                // +600s on endTime so a few minutes of clock skew between Zabbix and FMC cannot hide fresh alerts
+                var flt = 'startTime:' + (now - win) + ';endTime:' + (now + 600);
+                var apath = dpath + '/health/alerts?expanded=true&filter=';
+                var h403 = 'FMC user lacks the Health permission - grant a role that may view Health Monitor alerts';
+                var allOk = false;
+                var res = null;
 
-                    // Keep only the newest alert per device+module+name so RED followed by RECOVERED/GREEN cancels out.
-                    var latest = {};
-                    var a, key;
-                    for (i = 0; i < alerts.length; i++) {
-                        a = alerts[i];
-                        key = str(a.deviceUUID) + '|' + str(a.moduleID) + '|' + str(a.name);
-                        if (!latest[key] || num(a.timestamp, 0) >= num(latest[key].timestamp, 0)) {
-                            latest[key] = a;
-                        }
-                    }
-                    var res = { window: win, fmc: { red: 0, yellow: 0, details: '' }, all: { red: 0, yellow: 0 } };
-                    var fmcRed = [];
-                    var fmcYellow = [];
-                    var st, line;
-                    for (key in latest) {
-                        if (!Object.prototype.hasOwnProperty.call(latest, key)) { continue; }
-                        a = latest[key];
-                        st = str(a.status).toUpperCase();
-                        // Cisco FMC may return CRITICAL/WARNING/NORMAL (as well as RED/YELLOW/GREEN).
-                        if (st === 'CRITICAL') { st = 'RED'; }
-                        if (st === 'WARNING') { st = 'YELLOW'; }
-                        if (st !== 'RED' && st !== 'ERROR' && st !== 'FAILED' && st !== 'YELLOW') { continue; }
-                        line = st + ' ' + str(a.moduleID) + ': ' + trunc(a.description || a.name || a.details, 120);
-                        if (st === 'YELLOW') {
-                            res.all.yellow++;
-                            if (str(a.deviceUUID) === '0') { res.fmc.yellow++; fmcYellow.push(line); }
-                        } else {
-                            res.all.red++;
-                            if (str(a.deviceUUID) === '0') { res.fmc.red++; fmcRed.push(line); }
-                        }
-                    }
-                    res.fmc.details = trunc(fmcRed.concat(fmcYellow).join('; '), 1000);
-                    out.alerts = res;
-                } catch (e3) {
-                    warn('health/alerts', e3);
+                if (P.alerts_all === '0') {
+                    disabled('alerts_all');
+                } else {
+                    var latestAll = {};
+                    var e3 = runSection('alerts_all', 'health/alerts[all]', h403, function () {
+                        var meta = pageAll(apath + encodeURIComponent(flt), 'health/alerts[all]', ALERT_PAGE, function (a) {
+                            keepNewest(latestAll, a, false);
+                        });
+                        res = summarize(latestAll);
+                        out.alerts = { window: win, fmc: res.fmc, all: res.all };
+                        // The FMC-only view is a subset of the all-devices list that was just read completely.
+                        out.sections.alerts_fmc = { s: 0, n: meta.n, pages: meta.pages, from: 'alerts_all' };
+                        allOk = true;
+                        return meta;
+                    });
+                    if (e3) { out.warnings.push(e3); }
+                }
+
+                if (!allOk) {
+                    // Narrow, cheap query for the FMC appliance only (deviceUUID 0). Used when the all-devices list is
+                    // disabled or failed (typically: too many records), so the FMC's own health stays monitored.
+                    var latestFmc = {};
+                    var e4 = runSection('alerts_fmc', 'health/alerts[fmc]', h403, function () {
+                        var meta = pageAll(apath + encodeURIComponent(flt + ';deviceUUIDs:0'), 'health/alerts[fmc]', ALERT_PAGE, function (a) {
+                            keepNewest(latestFmc, a, true);   // client-side check as well, in case the filter is not honoured
+                        });
+                        res = summarize(latestFmc);
+                        out.alerts = { window: win, fmc: res.fmc };   // no "all" block: it was not collected
+                        return meta;
+                    });
+                    if (e4) { out.warnings.push(e4); }
                 }
             }
         } catch (e) {
@@ -369,6 +512,7 @@ zabbix_export:
         }
 
         out.timing.total = Math.round(Date.now() - t_start) / 1000;
+        out.requests = reqs;
 
         // Text item values are capped at 64 KB. Shed per-device detail before hitting it so the item never goes unsupported.
         var json = JSON.stringify(out);
@@ -383,8 +527,8 @@ zabbix_export:
             json = JSON.stringify(out);
         }
         return json;
-      description: 'Single collector for the whole template. Logs in once (generatetoken), reads managed devices, server version, pending deployments and health alerts, then revokes the session. Every other item is a dependent item that parses this JSON. If this item is Not supported, read its error text: AUTH errors are thrown on purpose so a wrong password is not retried at the normal poll rate.'
-      timeout: 60s
+      description: 'Single collector for the whole template. Logs in once (generatetoken), reads managed devices, server version, pending deployments and health alerts, then revokes the session. Every API call is an independent section: a failing section is omitted from the JSON (never zero-filled), reported in sections.<name> and in the warnings, and does not stop the other sections. Lists are read with server-reported paging metadata and are never published partially. Every other item is a dependent item that parses this JSON. If this item is Not supported, read its error text: AUTH errors are thrown on purpose so a wrong password is not retried at the normal poll rate.'
+      timeout: 120s
       parameters:
       - name: host
         value: '{HOST.CONN}'
@@ -400,6 +544,12 @@ zabbix_export:
         value: '{$FMC.ALERTS.WINDOW}'
       - name: revoke
         value: '{$FMC.REVOKE}'
+      - name: deploy_enabled
+        value: '{$FMC.DEPLOY.ENABLED}'
+      - name: alerts_all
+        value: '{$FMC.ALERTS.ALL.ENABLED}'
+      - name: max_items
+        value: '{$FMC.PAGING.MAX.ITEMS}'
       tags:
       - tag: component
         value: raw
@@ -555,7 +705,7 @@ zabbix_export:
         expression: avg(/Cisco FMC by REST API/fmc.api.time,#3)>{$FMC.POLL.TIME.WARN}
         name: 'Cisco FMC: Polling is slow (>{$FMC.POLL.TIME.WARN}s)'
         priority: WARNING
-        description: Average collection time over the last 3 polls. The script item timeout is 60s; sustained slowness means the FMC API is struggling or the device list has grown.
+        description: Average collection time over the last 3 polls. The script item timeout is 120s; sustained slowness means the FMC API is struggling or the device list has grown.
         tags:
         - tag: scope
           value: performance
@@ -955,6 +1105,129 @@ zabbix_export:
       tags:
       - tag: component
         value: alerts
+    - uuid: fa5e2f5cead04afd8f34f9c613061af3
+      name: 'Cisco FMC: Collector section status, Managed devices (devicerecords)'
+      type: DEPENDENT
+      key: fmc.section.devices
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      description: 'Result of this API section in the last poll: OK, Error, Forbidden (HTTP 403, FMC-side permission needed) or Disabled/not needed. The FMC error text is in "Collector warnings".'
+      valuemap:
+        name: Cisco FMC collector section status
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.sections.devices.s
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: availability
+    - uuid: 44e6aa072a104bc18b33a57a0f68dfc9
+      name: 'Cisco FMC: Collector section status, Server version (serverversion)'
+      type: DEPENDENT
+      key: fmc.section.version
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      description: 'Result of this API section in the last poll: OK, Error, Forbidden (HTTP 403, FMC-side permission needed) or Disabled/not needed. The FMC error text is in "Collector warnings".'
+      valuemap:
+        name: Cisco FMC collector section status
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.sections.version.s
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: availability
+    - uuid: 58c912afa9b14d6680b6170b339bc7c2
+      name: 'Cisco FMC: Collector section status, Pending deployments (deployabledevices)'
+      type: DEPENDENT
+      key: fmc.section.deploy
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      description: 'Result of this API section in the last poll: OK, Error, Forbidden (HTTP 403, FMC-side permission needed) or Disabled/not needed. The FMC error text is in "Collector warnings".'
+      valuemap:
+        name: Cisco FMC collector section status
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.sections.deploy.s
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: fe6f9f343b15418b81d1619dc651f2eb
+        expression: min(/Cisco FMC by REST API/fmc.section.deploy,#3)>0 and max(/Cisco FMC by REST API/fmc.section.deploy,#3)<3
+        name: 'Cisco FMC: Pending deployments are not being collected'
+        priority: INFO
+        description: deployabledevices has failed for 3 consecutive polls. Forbidden (HTTP 403) means the FMC user's role may not view deployments - grant a role with deployment access, or set {$FMC.DEPLOY.ENABLED}=0 to stop polling it. The pending-deployment items keep their last value meanwhile.
+        tags:
+        - tag: scope
+          value: config
+    - uuid: 6a26d84ff75b46a78713083d998c20e5
+      name: 'Cisco FMC: Collector section status, Health alerts, all devices'
+      type: DEPENDENT
+      key: fmc.section.alerts_all
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      description: 'Result of this API section in the last poll: OK, Error, Forbidden (HTTP 403, FMC-side permission needed) or Disabled/not needed. The FMC error text is in "Collector warnings".'
+      valuemap:
+        name: Cisco FMC collector section status
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.sections.alerts_all.s
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: availability
+    - uuid: 8704fe6f506046c884c86e362b430729
+      name: 'Cisco FMC: Collector section status, Health alerts, FMC appliance only'
+      type: DEPENDENT
+      key: fmc.section.alerts_fmc
+      delay: '0'
+      history: 31d
+      value_type: UNSIGNED
+      trends: 365d
+      description: 'Result of this API section in the last poll: OK, Error, Forbidden (HTTP 403, FMC-side permission needed) or Disabled/not needed. The FMC error text is in "Collector warnings".'
+      valuemap:
+        name: Cisco FMC collector section status
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.sections.alerts_fmc.s
+        error_handler: DISCARD_VALUE
+      master_item:
+        key: fmc.get
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: f9ec0b8e37ac4a918aca1f4917502f7a
+        expression: min(/Cisco FMC by REST API/fmc.section.alerts_fmc,#3)>0 and max(/Cisco FMC by REST API/fmc.section.alerts_fmc,#3)<3
+        name: 'Cisco FMC: Health alerts of the FMC appliance are not being collected'
+        priority: WARNING
+        description: The health/alerts section has failed for 3 consecutive polls (status Error or Forbidden). The FMC alert items keep their last value and can no longer report a new RED/YELLOW alert. Read 'Collector warnings' for the FMC's own error text. Forbidden = the FMC user's role lacks the Health permission.
+        tags:
+        - tag: scope
+          value: availability
     discovery_rules:
     - uuid: 06bbd23801c948d39566fda1c6e2205e
       name: Managed devices discovery
@@ -1181,10 +1454,19 @@ zabbix_export:
       description: Leave empty to use the DOMAIN_UUID returned at login (the user's default / Global domain). Set it to poll another domain.
     - macro: '{$FMC.POLL.INTERVAL}'
       value: 5m
-      description: Collector interval. Each run is one login plus about 4-6 API calls (120 calls/min limit).
+      description: Collector interval. Each run is one login plus about 5-8 API calls, more when lists span several pages (a hard budget of 100 calls per run protects the 120 calls/min limit).
     - macro: '{$FMC.ALERTS.WINDOW}'
       value: '86400'
-      description: Health-alert look-back in seconds (300-604800). 0 disables the health-alert call.
+      description: Health-alert look-back in seconds (300-604800). 0 disables the health-alert calls. A shorter window means fewer records per poll; on busy systems prefer a few hours over 24 h.
+    - macro: '{$FMC.DEPLOY.ENABLED}'
+      value: '1'
+      description: '1 = read deployment/deployabledevices (pending deployments). Needs an FMC role that may view deployments (e.g. Administrator, Network Admin or Security Approver; read-only analyst roles get HTTP 403). Set 0 to skip the call when the monitoring user must stay read-only; the pending-deployment items then stop updating.'
+    - macro: '{$FMC.ALERTS.ALL.ENABLED}'
+      value: '1'
+      description: '1 = also read health alerts for all managed devices. 0 = only the FMC appliance itself (deviceUUID 0), a much smaller query. If the all-devices list fails or is too large the template falls back to the FMC-only query automatically.'
+    - macro: '{$FMC.PAGING.MAX.ITEMS}'
+      value: '50000'
+      description: 'Upper bound of records read from one FMC list per poll (100-500000). A list reported larger than this is refused with an explicit error instead of being truncated; reduce {$FMC.ALERTS.WINDOW} first.'
     - macro: '{$FMC.REVOKE}'
       value: '1'
       description: 1 = revoke the API token at the end of every run. Set 0 only if revokeaccess is rejected on your version.
@@ -1234,3 +1516,14 @@ zabbix_export:
         newvalue: Disconnected
       - value: '1'
         newvalue: Connected
+    - uuid: 6b7d517d1154406180eecddc73540ea6
+      name: Cisco FMC collector section status
+      mappings:
+      - value: '0'
+        newvalue: OK
+      - value: '1'
+        newvalue: Error
+      - value: '2'
+        newvalue: Forbidden (HTTP 403)
+      - value: '3'
+        newvalue: Disabled / not needed
