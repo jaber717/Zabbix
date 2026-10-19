@@ -1171,7 +1171,7 @@ zabbix_export:
         value: traps
       triggers:
       - uuid: 252041a0c1c945e08782ca1031318609
-        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFabricNodeUnreachableNotification|26866[.]6[.]1[.]37([^0-9]|$)|gigamonFabricNodeUnrecoverableNotification|26866[.]6[.]1[.]42([^0-9]|$)|gigamonFabricNodeRestartFailedNotification|26866[.]6[.]1[.]40([^0-9]|$)|gigamonFabricNodeRebootFailedNotification|26866[.]6[.]1[.]41([^0-9]|$)")=1
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFabricNodeUnreachableNotification|gigamonFabricNodeUnrecoverableNotification|gigamonFabricNodeRestartFailedNotification|gigamonFabricNodeRebootFailedNotification|26866[.]6[.]1[.](37|42|40|41)([^0-9]|$)")=1
         name: 'Gigamon FM: Fabric node unreachable / unrecoverable / restart or reboot failed'
         priority: HIGH
         description: Fabric-node failure notification from GigaVUE-FM. Close manually after investigation (traps carry no automatic recovery here).
@@ -1181,7 +1181,7 @@ zabbix_export:
         - tag: scope
           value: trap
       - uuid: 0d5c44b287b045088dd86eecc218ba1e
-        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonVSeriesOperationalUnhealthyNotification|26866[.]6[.]1[.]46([^0-9]|$)")=1
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonVSeriesOperationalUnhealthyNotification|26866[.]6[.]1[.](46)([^0-9]|$)")=1
         name: 'Gigamon FM: V Series node operationally unhealthy'
         priority: HIGH
         description: V Series node reported unhealthy. Close manually after investigation (traps carry no automatic recovery here).
@@ -1191,7 +1191,7 @@ zabbix_export:
         - tag: scope
           value: trap
       - uuid: a6836e0535764a188a536e09e4dcfff2
-        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonMonitoringSessionConfigUnhealthyNotification|26866[.]6[.]1[.]33([^0-9]|$)|gigamonMonitoringSessionTrafficUnhealthyNotification|26866[.]6[.]1[.]34([^0-9]|$)")=1
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonMonitoringSessionConfigUnhealthyNotification|gigamonMonitoringSessionTrafficUnhealthyNotification|26866[.]6[.]1[.](33|34)([^0-9]|$)")=1
         name: 'Gigamon FM: Monitoring session unhealthy (config or traffic)'
         priority: AVERAGE
         description: Monitoring session unhealthy. Close manually after investigation (traps carry no automatic recovery here).
@@ -1201,7 +1201,7 @@ zabbix_export:
         - tag: scope
           value: trap
       - uuid: 11638816c55e43498fb0747662b896fe
-        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMTrafficDropThresholdExceededEventNotification|26866[.]6[.]1[.]25([^0-9]|$)")=1
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMTrafficDropThresholdExceededEventNotification|26866[.]6[.]1[.](25)([^0-9]|$)")=1
         name: 'Gigamon FM: Traffic drop threshold exceeded'
         priority: AVERAGE
         description: Traffic drop above threshold. Close manually after investigation (traps carry no automatic recovery here).
@@ -1211,7 +1211,7 @@ zabbix_export:
         - tag: scope
           value: trap
       - uuid: d7a153cad3c641868e081d6799f8f6b7
-        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMLicensesExpiredNotification|26866[.]6[.]1[.]10([^0-9]|$)|gigamonFloatingLicensesExpiredEventNotification|26866[.]6[.]1[.]28([^0-9]|$)")=1
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMLicensesExpiredNotification|gigamonFloatingLicensesExpiredEventNotification|26866[.]6[.]1[.](10|28)([^0-9]|$)")=1
         name: 'Gigamon FM: Licence expired'
         priority: AVERAGE
         description: Licences have expired. Close manually after investigation (traps carry no automatic recovery here).
@@ -1221,7 +1221,7 @@ zabbix_export:
         - tag: scope
           value: trap
       - uuid: c49c696c60dc4cd08a58a634e6b579b0
-        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMLicensesExpiringSoonNotification|26866[.]6[.]1[.]9([^0-9]|$)|gigamonFMLicensesExpiringIn90DaysNotification|26866[.]6[.]1[.]8([^0-9]|$)|gigamonFloatingLicensesGraceEventNotification|26866[.]6[.]1[.]29([^0-9]|$)")=1
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMLicensesExpiringSoonNotification|gigamonFMLicensesExpiringIn90DaysNotification|gigamonFloatingLicensesGraceEventNotification|26866[.]6[.]1[.](9|8|29)([^0-9]|$)")=1
         name: 'Gigamon FM: Licence expiring / grace period'
         priority: WARNING
         description: Licences expiring or in grace. Close manually after investigation (traps carry no automatic recovery here).
@@ -1231,7 +1231,7 @@ zabbix_export:
         - tag: scope
           value: trap
       - uuid: 62030f54b27d45518074bbc2fde237cc
-        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMDiskReclaimEventNotification|26866[.]6[.]1[.]24([^0-9]|$)|gigamonFMDiskSpaceEventNotification|26866[.]6[.]1[.]32([^0-9]|$)")=1
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMDiskReclaimEventNotification|gigamonFMDiskSpaceEventNotification|26866[.]6[.]1[.](24|32)([^0-9]|$)")=1
         name: 'Gigamon FM: Disk space / reclaim threshold'
         priority: AVERAGE
         description: FM disk usage above threshold. Close manually after investigation (traps carry no automatic recovery here).
@@ -1241,7 +1241,7 @@ zabbix_export:
         - tag: scope
           value: trap
       - uuid: 18c770fc24f64d7a88777a591fad66d8
-        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMClusterMemberNotReachableEventNotification|26866[.]6[.]1[.]27([^0-9]|$)|gigamonFMHighAvailabilityNotification|26866[.]6[.]1[.]23([^0-9]|$)")=1
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMClusterMemberNotReachableEventNotification|gigamonFMHighAvailabilityNotification|26866[.]6[.]1[.](27|23)([^0-9]|$)")=1
         name: 'Gigamon FM: Cluster member not reachable / high availability event'
         priority: AVERAGE
         description: Cluster or HA event. Close manually after investigation (traps carry no automatic recovery here).
@@ -1251,7 +1251,7 @@ zabbix_export:
         - tag: scope
           value: trap
       - uuid: 7b2416117ed447ce8f1b986c1d6b9785
-        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMImageUpgradeFailedNotification|26866[.]6[.]1[.]5([^0-9]|$)")=1
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMImageUpgradeFailedNotification|26866[.]6[.]1[.](5)([^0-9]|$)")=1
         name: 'Gigamon FM: Image upgrade failed'
         priority: AVERAGE
         description: Image upgrade failed. Close manually after investigation (traps carry no automatic recovery here).
@@ -1261,7 +1261,7 @@ zabbix_export:
         - tag: scope
           value: trap
       - uuid: ee79e347154a4e06860c603d0a70f2c9
-        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMFlowComputationErrorEventNotification|26866[.]6[.]1[.]16([^0-9]|$)|gigamonFMSFlowHealthStateChangedNotification|26866[.]6[.]1[.]17([^0-9]|$)")=1
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMFlowComputationErrorEventNotification|gigamonFMSFlowHealthStateChangedNotification|26866[.]6[.]1[.](16|17)([^0-9]|$)")=1
         name: 'Gigamon FM: Flow computation error / flow health changed'
         priority: WARNING
         description: Flow computation error or flow health change. Close manually after investigation (traps carry no automatic recovery here).

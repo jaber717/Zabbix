@@ -215,7 +215,8 @@ for tpl in ex['templates']:
         sample_other = 'snmpTrapOID.0 = OID: .1.3.6.1.4.1.9.9.1 something'
         check(re.search(keyre, sample_other) is None, 'catch-all key matches foreign trap')
         for tr in allitem['triggers']:
-            rx = re.search(r',"regexp","(.*)"\)=1', tr['expression']).group(1)
+            rx = '|'.join(re.findall(r',"regexp","(.*?)"\)=1', tr['expression']))
+            check(all(len(x) <= 255 for x in re.findall(r',"regexp","(.*?)"\)=1', tr['expression'])), tr['name'] + ': regex parameter > 255 chars')
             hits = set()
             for nm, num in notifs.items():
                 num_text = 'snmpTrapOID.0 = OID: .%s.%d gigamonFMNotifEventSeverity = STRING: x' % (fm, num)

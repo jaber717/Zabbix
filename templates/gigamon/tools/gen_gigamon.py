@@ -418,17 +418,31 @@ ALLKEY = 'snmptrap["%s[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitori
 notifs = {nm: int(par[1]) for nm, par in mib.parent.items() if par[0] == 'gigamonFM'}
 
 
-def trap_re(names):
-    parts = []
+MAXP = 240   # Zabbix limits a trigger-function parameter to 255 characters; stay below it
+
+
+def trap_chunks(names):
+    """Regex alternatives (MIB name or numeric OID, numeric ones merged into one group), packed into
+    chunks of at most MAXP characters. One find() per chunk, joined with 'or'."""
     for nm in names:
         assert nm in notifs, nm
-        parts.append('%s%s' % (nm, ''))
-        parts.append('%s[.]%d([^0-9]|$)' % (FMNUM, notifs[nm]))
-    return '|'.join(parts)
+    nums = '|'.join(str(notifs[nm]) for nm in names)
+    parts = list(names) + ['%s[.](%s)([^0-9]|$)' % (FMNUM, nums)]
+    chunks, cur = [], ''
+    for p in parts:
+        cand = p if not cur else cur + '|' + p
+        if len(cand) > MAXP and cur:
+            chunks.append(cur)
+            cur = p
+        else:
+            cur = cand
+    chunks.append(cur)
+    assert all(len(c) <= MAXP for c in chunks), chunks
+    return chunks
 
 
 def trap_trigger(title, prio, names, desc):
-    expr = 'find(/%s/%s,#1,"regexp","%s")=1' % (D, ALLKEY, trap_re(names))
+    expr = ' or '.join('find(/%s/%s,#1,"regexp","%s")=1' % (D, ALLKEY, c) for c in trap_chunks(names))
     return trig(D, expr, 'Gigamon FM: ' + title, prio, desc + ' Close manually after investigation (traps carry no automatic recovery here).', 'trap', manual=True)
 
 

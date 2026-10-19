@@ -47,6 +47,8 @@ Inline network forward state: `failure-introduced-drop` DISASTER; failure-introd
 
 **Not tested:** Zabbix import, real SNMP responses, trap receipt, the unverified points listed above.
 
+`python3 tools/check_limits.py` (no MIBs needed): every trigger-function and preprocessing parameter <= 255 chars (limit confirmed by the Zabbix 7.0.30 importer) plus recalled schema limits for names, keys, OIDs, expressions, macros, tags, value maps. Longest parameter now 208 chars.
+
 ## Lab checks before trusting it
 
 ```
