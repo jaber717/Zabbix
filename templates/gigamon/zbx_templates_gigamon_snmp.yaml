@@ -1,0 +1,1289 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+  - uuid: 6300edd155784a3080d6acc97d71c07e
+    name: Templates/Network devices
+  templates:
+  - uuid: d48cd9b37e9c4c37844febc8e2e4b6f8
+    template: Gigamon GigaVUE by SNMP
+    name: Gigamon GigaVUE by SNMP
+    description: 'Gigamon GigaVUE node by SNMP: ICMP/SNMP availability, MIB-II system data and IF-MIB interface discovery (status, 64-bit traffic, errors, discards).
+
+      Link to every Gigamon node. Chassis hardware health (fans, power, temperature, ports, maps) is NOT covered: that lives in GIGAMON-SNMP-MIB, which was not among the MIBs this template was built from.'
+    groups:
+    - name: Templates/Network devices
+    items:
+    - uuid: a9e1c4251f464e14808263480d953d4a
+      name: ICMP ping
+      type: SIMPLE
+      key: icmpping
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      valuemap:
+        name: Gigamon service state
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: ba5a973ad52a4dfb8910c88478eb77f7
+        expression: max(/Gigamon GigaVUE by SNMP/icmpping,#3)=0
+        name: 'Gigamon: Unavailable by ICMP ping'
+        priority: HIGH
+        description: The node did not answer ICMP echo in 3 consecutive checks.
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: 8760c0e9f62c44b38d007358fcdb5e26
+      name: ICMP loss
+      type: SIMPLE
+      key: icmppingloss
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: FLOAT
+      units: '%'
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: 3b270c507c1e49cd82b3f359095b6849
+        expression: min(/Gigamon GigaVUE by SNMP/icmppingloss,5m)>{$GIGAMON.ICMP.LOSS.WARN} and min(/Gigamon GigaVUE by SNMP/icmppingloss,5m)<100
+        name: 'Gigamon: High ICMP ping loss ({ITEM.VALUE})'
+        priority: WARNING
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: 727737f9cabc4030839a65f3236677d9
+      name: ICMP response time
+      type: SIMPLE
+      key: icmppingsec
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: FLOAT
+      units: s
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: 56f3b24216b542d78e6d87fbac68b8a6
+        expression: min(/Gigamon GigaVUE by SNMP/icmppingsec,5m)>{$GIGAMON.ICMP.RESPONSE.TIME.WARN}
+        name: 'Gigamon: High ICMP ping response time ({ITEM.VALUE})'
+        priority: WARNING
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: a6901c1cc28e4ccf85047087591bc318
+      name: SNMP agent availability
+      type: INTERNAL
+      key: zabbix[host,snmp,available]
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Availability of the SNMP interface as seen by the Zabbix server/proxy.
+      valuemap:
+        name: Gigamon SNMP availability
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: afe4082ba17c4970842c4e62f59ffa30
+        expression: max(/Gigamon GigaVUE by SNMP/zabbix[host,snmp,available],{$GIGAMON.SNMP.TIMEOUT})=0
+        name: 'Gigamon: No SNMP data collection'
+        priority: AVERAGE
+        description: 'SNMP polling has failed for the whole {$GIGAMON.SNMP.TIMEOUT}: check community/credentials, ACLs on the node, UDP/161 path. Counter64 objects need SNMPv2c or v3.'
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: 3e9e081adc6c48568657de5aa4006458
+      name: System description
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.1.1.0
+      key: system.descr
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: TEXT
+      description: MIB-II sysDescr.
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: system
+    - uuid: 84cc24daa50b4f018f1fe53b23440f60
+      name: System name
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.1.5.0
+      key: system.name
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: MIB-II sysName.
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: system
+    - uuid: 9364236d876942a186a8a4de12e374ae
+      name: System object ID
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.1.2.0
+      key: system.objectid
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: MIB-II sysObjectID (a Gigamon node is expected under 1.3.6.1.4.1.26866; not verified against a live device).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: system
+    - uuid: d746eef9fcff42bb8bbf72135281a7bc
+      name: Uptime
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.1.3.0
+      key: system.uptime
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: FLOAT
+      units: uptime
+      description: MIB-II sysUpTime (timeticks / 100).
+      preprocessing:
+      - type: MULTIPLIER
+        parameters:
+        - '0.01'
+      tags:
+      - tag: component
+        value: system
+      triggers:
+      - uuid: a9899414cce14bdd87afed6c2c2823ca
+        expression: last(/Gigamon GigaVUE by SNMP/system.uptime)<10m
+        name: 'Gigamon: Restarted (uptime {ITEM.LASTVALUE})'
+        priority: INFO
+        description: 'Uptime is below 10 minutes: the node restarted or the SNMP agent was reset.'
+        tags:
+        - tag: scope
+          value: availability
+      - uuid: 44e491781871479f8bfaa0fba8ab3fb2
+        expression: nodata(/Gigamon GigaVUE by SNMP/system.uptime,{$GIGAMON.NODATA.TIMEOUT})=1
+        name: 'Gigamon: No SNMP data for {$GIGAMON.NODATA.TIMEOUT}'
+        priority: AVERAGE
+        tags:
+        - tag: scope
+          value: availability
+    discovery_rules:
+    - uuid: a74d65b7062b4e928f9ed5abd539ed62
+      name: Network interfaces discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#IFNAME},1.3.6.1.2.1.31.1.1.1.1,{#IFDESCR},1.3.6.1.2.1.2.2.1.2,{#IFALIAS},1.3.6.1.2.1.31.1.1.1.18]
+      key: net.if.discovery
+      delay: 1h
+      lifetime: 7d
+      description: IF-MIB interfaces. Gigamon GigaVUE physical ports are monitoring ports, so the link trigger only reacts to up->down changes.
+      filter:
+        evaltype: AND
+        conditions:
+        - macro: '{#IFNAME}'
+          value: '{$GIGAMON.IF.NAME.MATCHES}'
+          formulaid: A
+        - macro: '{#IFNAME}'
+          operator: NOT_MATCHES_REGEX
+          value: '{$GIGAMON.IF.NAME.NOT_MATCHES}'
+          formulaid: B
+      item_prototypes:
+      - uuid: 1b705e9574b642348960b5f2d4d00b64
+        name: 'Interface {#IFNAME}: Operational status'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.2.1.2.2.1.8.{#SNMPINDEX}
+        key: net.if.status[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: IF-MIB ifOperStatus. Physical monitoring/tap ports without link are normal, the trigger therefore fires only on an up->down transition.
+        valuemap:
+          name: Gigamon ifOperStatus
+        tags:
+        - tag: component
+          value: network
+        - tag: interface
+          value: '{#IFNAME}'
+        trigger_prototypes:
+        - uuid: a432f408692944458017ace8c1e52f60
+          expression: '{$GIGAMON.IFCONTROL:"{#IFNAME}"}=1 and last(/Gigamon GigaVUE by SNMP/net.if.status[{#SNMPINDEX}])=2 and (last(/Gigamon GigaVUE by SNMP/net.if.status[{#SNMPINDEX}],#1)<>last(/Gigamon GigaVUE by SNMP/net.if.status[{#SNMPINDEX}],#2))'
+          name: 'Interface {#IFNAME}: Link down'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Gigamon GigaVUE by SNMP/net.if.status[{#SNMPINDEX}])<>2 or {$GIGAMON.IFCONTROL:"{#IFNAME}"}=0
+          priority: AVERAGE
+          description: Operational status changed from up to down. Disable per port with {$GIGAMON.IFCONTROL:"<ifName>"}=0.
+          tags:
+          - tag: scope
+            value: network
+      - uuid: 4aa73f3dbb384e0987ed3154c0ca619a
+        name: 'Interface {#IFNAME}: Administrative status'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.2.1.2.2.1.7.{#SNMPINDEX}
+        key: net.if.admin[{#SNMPINDEX}]
+        delay: 5m
+        history: 7d
+        trends: 365d
+        value_type: UNSIGNED
+        valuemap:
+          name: Gigamon ifAdminStatus
+        preprocessing:
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 6h
+        tags:
+        - tag: component
+          value: network
+        - tag: interface
+          value: '{#IFNAME}'
+      - uuid: bcca1c8ec94641938a3c3cc1f8d84418
+        name: 'Interface {#IFNAME}: Speed'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.2.1.31.1.1.1.15.{#SNMPINDEX}
+        key: net.if.speed[{#SNMPINDEX}]
+        delay: 1h
+        history: 7d
+        trends: 365d
+        value_type: UNSIGNED
+        units: bps
+        description: ifHighSpeed (Mbps) converted to bit/s.
+        preprocessing:
+        - type: MULTIPLIER
+          parameters:
+          - '1000000'
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 1d
+        tags:
+        - tag: component
+          value: network
+        - tag: interface
+          value: '{#IFNAME}'
+      - uuid: 2e667caf78c24f8f8432e52d5d864e04
+        name: 'Interface {#IFNAME}: Bits received'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.2.1.31.1.1.1.6.{#SNMPINDEX}
+        key: net.if.in[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: FLOAT
+        units: bps
+        description: 'ifHCInOctets as bit/s (64-bit counter: needs SNMPv2c/v3).'
+        preprocessing:
+        - type: CHANGE_PER_SECOND
+          parameters:
+          - ''
+        - type: MULTIPLIER
+          parameters:
+          - '8'
+        tags:
+        - tag: component
+          value: network
+        - tag: interface
+          value: '{#IFNAME}'
+      - uuid: 7a5c142bcab94e058c562fcaba9b274f
+        name: 'Interface {#IFNAME}: Bits sent'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.2.1.31.1.1.1.10.{#SNMPINDEX}
+        key: net.if.out[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: FLOAT
+        units: bps
+        description: ifHCOutOctets as bit/s.
+        preprocessing:
+        - type: CHANGE_PER_SECOND
+          parameters:
+          - ''
+        - type: MULTIPLIER
+          parameters:
+          - '8'
+        tags:
+        - tag: component
+          value: network
+        - tag: interface
+          value: '{#IFNAME}'
+      - uuid: 2edb18d8b31c40f486ace19ab8751bb1
+        name: 'Interface {#IFNAME}: Inbound packets with errors'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.2.1.2.2.1.14.{#SNMPINDEX}
+        key: net.if.in.errors[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: FLOAT
+        units: '!pps'
+        preprocessing:
+        - type: CHANGE_PER_SECOND
+          parameters:
+          - ''
+        tags:
+        - tag: component
+          value: network
+        - tag: interface
+          value: '{#IFNAME}'
+        trigger_prototypes:
+        - uuid: 1847be3ad0dd46e48d9ed9f8da1cabca
+          expression: '{$GIGAMON.IFCONTROL:"{#IFNAME}"}=1 and (min(/Gigamon GigaVUE by SNMP/net.if.in.errors[{#SNMPINDEX}],5m)>{$GIGAMON.IF.ERRORS.WARN} or min(/Gigamon GigaVUE by SNMP/net.if.out.errors[{#SNMPINDEX}],5m)>{$GIGAMON.IF.ERRORS.WARN})'
+          name: 'Interface {#IFNAME}: High error rate'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: max(/Gigamon GigaVUE by SNMP/net.if.in.errors[{#SNMPINDEX}],5m)<{$GIGAMON.IF.ERRORS.WARN}*0.8 and max(/Gigamon GigaVUE by SNMP/net.if.out.errors[{#SNMPINDEX}],5m)<{$GIGAMON.IF.ERRORS.WARN}*0.8
+          priority: WARNING
+          description: Input or output errors above {$GIGAMON.IF.ERRORS.WARN} packets/s for 5 minutes.
+          tags:
+          - tag: scope
+            value: network
+      - uuid: 12097d5475a743a785f8f95f0db197c5
+        name: 'Interface {#IFNAME}: Outbound packets with errors'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.2.1.2.2.1.20.{#SNMPINDEX}
+        key: net.if.out.errors[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: FLOAT
+        units: '!pps'
+        preprocessing:
+        - type: CHANGE_PER_SECOND
+          parameters:
+          - ''
+        tags:
+        - tag: component
+          value: network
+        - tag: interface
+          value: '{#IFNAME}'
+      - uuid: 0fa7eb8466174f0b8c0a25eabc05c1e0
+        name: 'Interface {#IFNAME}: Inbound packets discarded'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.2.1.2.2.1.13.{#SNMPINDEX}
+        key: net.if.in.discards[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: FLOAT
+        units: '!pps'
+        preprocessing:
+        - type: CHANGE_PER_SECOND
+          parameters:
+          - ''
+        tags:
+        - tag: component
+          value: network
+        - tag: interface
+          value: '{#IFNAME}'
+      - uuid: 1396c682dc6d45a58e2538d77c7ce61a
+        name: 'Interface {#IFNAME}: Outbound packets discarded'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.2.1.2.2.1.19.{#SNMPINDEX}
+        key: net.if.out.discards[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: FLOAT
+        units: '!pps'
+        preprocessing:
+        - type: CHANGE_PER_SECOND
+          parameters:
+          - ''
+        tags:
+        - tag: component
+          value: network
+        - tag: interface
+          value: '{#IFNAME}'
+    macros:
+    - macro: '{$GIGAMON.ICMP.LOSS.WARN}'
+      value: '20'
+      description: ICMP loss warning threshold, %.
+    - macro: '{$GIGAMON.ICMP.RESPONSE.TIME.WARN}'
+      value: '0.15'
+      description: ICMP response time warning threshold, seconds.
+    - macro: '{$GIGAMON.SNMP.TIMEOUT}'
+      value: 5m
+      description: Period of failed SNMP polling before the "No SNMP data collection" trigger fires.
+    - macro: '{$GIGAMON.NODATA.TIMEOUT}'
+      value: 15m
+      description: No-data period for sysUpTime.
+    - macro: '{$GIGAMON.IF.NAME.MATCHES}'
+      value: .*
+      description: 'Regex: interfaces to discover.'
+    - macro: '{$GIGAMON.IF.NAME.NOT_MATCHES}'
+      value: ^$
+      description: 'Regex: interfaces to exclude from discovery (default excludes nothing).'
+    - macro: '{$GIGAMON.IFCONTROL}'
+      value: '1'
+      description: 1 = raise link-down and error triggers. Override per interface with {$GIGAMON.IFCONTROL:"<ifName>"}.
+    - macro: '{$GIGAMON.IF.ERRORS.WARN}'
+      value: '2'
+      description: Interface error rate (packets/s, 5 min) that raises the warning.
+    tags:
+    - tag: class
+      value: network
+    - tag: target
+      value: gigamon
+    valuemaps:
+    - uuid: 35000d9db8cd4f0385d326d781dfc3e9
+      name: Gigamon service state
+      mappings:
+      - value: '0'
+        newvalue: Down
+      - value: '1'
+        newvalue: Up
+    - uuid: 65753218ee2f48608f688f59ddf618a9
+      name: Gigamon SNMP availability
+      mappings:
+      - value: '0'
+        newvalue: Not available
+      - value: '1'
+        newvalue: Available
+      - value: '2'
+        newvalue: Unknown
+    - uuid: b9be704d329540fb88ce0749c9d2fedf
+      name: Gigamon ifOperStatus
+      mappings:
+      - value: '1'
+        newvalue: up
+      - value: '2'
+        newvalue: down
+      - value: '3'
+        newvalue: testing
+      - value: '4'
+        newvalue: unknown
+      - value: '5'
+        newvalue: dormant
+      - value: '6'
+        newvalue: notPresent
+      - value: '7'
+        newvalue: lowerLayerDown
+    - uuid: b465199a21cc4c5a89bf8fc8e84d5bbd
+      name: Gigamon ifAdminStatus
+      mappings:
+      - value: '1'
+        newvalue: up
+      - value: '2'
+        newvalue: down
+      - value: '3'
+        newvalue: testing
+  - uuid: e6689655ba9947e9845b5d98cfa7d8d8
+    template: Gigamon GigaVUE Inline Bypass by SNMP
+    name: Gigamon GigaVUE Inline Bypass by SNMP
+    description: 'Gigamon inline bypass (GIGAMONINLINEBYPASS, 1.3.6.1.4.1.26866.4): inline tool and inline network status, heartbeat, forward state. Link only to nodes that run inline bypass.'
+    groups:
+    - name: Templates/Network devices
+    discovery_rules:
+    - uuid: 50d66168f4594889889e6fa165e58df7
+      name: Inline tools discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#TOOL.ALIAS},1.3.6.1.4.1.26866.4.1.1.1.2,{#TOOL.PORTA},1.3.6.1.4.1.26866.4.1.1.1.3,{#TOOL.PORTB},1.3.6.1.4.1.26866.4.1.1.1.4]
+      key: gigamon.inline.tool.discovery
+      delay: 1h
+      lifetime: 7d
+      description: 'GIGAMONINLINEBYPASS inlineToolStatusTable (1.3.6.1.4.1.26866.4.1.1). Unsupported on nodes without inline bypass: link this template only where the feature exists.'
+      item_prototypes:
+      - uuid: 1ab90ed3e2b64592881e2e7613d5aced
+        name: 'Inline tool {#TOOL.ALIAS} [{#SNMPINDEX}]: Aggregate status'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.4.1.1.1.8.{#SNMPINDEX}
+        key: gigamon.inline.tool.agg[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: Overall state of the inline tool (disable / down / up / ready). MIB object intAggregateStatus (1.3.6.1.4.1.26866.4.1.1.1.8)
+        valuemap:
+          name: Gigamon inline tool aggregate status
+        tags:
+        - tag: component
+          value: inline-bypass
+        trigger_prototypes:
+        - uuid: 32a15669e1754d4286633c92ff8bbcdc
+          expression: '{$GIGAMON.INLINE.TOOL.CONTROL:"{#TOOL.ALIAS}"}=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.agg[{#SNMPINDEX}])=1'
+          name: Inline tool {#TOOL.ALIAS} [{#SNMPINDEX}] is down
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.agg[{#SNMPINDEX}])<>1 or {$GIGAMON.INLINE.TOOL.CONTROL:"{#TOOL.ALIAS}"}=0
+          priority: HIGH
+          description: The inline tool is reported down. Depending on the inline-network configuration traffic is bypassed (uninspected) or dropped. Disable per tool with {$GIGAMON.INLINE.TOOL.CONTROL:"<alias>"}=0.
+          tags:
+          - tag: scope
+            value: inline
+      - uuid: 0b490e9ff5664f978b0c59194708bd96
+        name: 'Inline tool {#TOOL.ALIAS} [{#SNMPINDEX}]: Heartbeat'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.4.1.1.1.7.{#SNMPINDEX}
+        key: gigamon.inline.tool.hb[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object intHBStatus (1.3.6.1.4.1.26866.4.1.1.1.7)
+        valuemap:
+          name: Gigamon inline heartbeat status
+        tags:
+        - tag: component
+          value: inline-bypass
+        trigger_prototypes:
+        - uuid: 7a5d7b5dfd09489d881376bec9ce42d2
+          expression: '{$GIGAMON.INLINE.TOOL.CONTROL:"{#TOOL.ALIAS}"}=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.hb[{#SNMPINDEX}])=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.agg[{#SNMPINDEX}])<>1'
+          name: 'Inline tool {#TOOL.ALIAS} [{#SNMPINDEX}]: Heartbeat down'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.hb[{#SNMPINDEX}])<>1 or {$GIGAMON.INLINE.TOOL.CONTROL:"{#TOOL.ALIAS}"}=0
+          priority: HIGH
+          description: Heartbeat lost while the aggregate status is not yet down. Suppressed when the aggregate-down trigger already covers the tool.
+          tags:
+          - tag: scope
+            value: inline
+      - uuid: 53198379b9ac4888865f9496fb03ef03
+        name: 'Inline tool {#TOOL.ALIAS} [{#SNMPINDEX}]: Negative heartbeat'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.4.1.1.1.9.{#SNMPINDEX}
+        key: gigamon.inline.tool.nhb[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object intNegativeHBStatus (1.3.6.1.4.1.26866.4.1.1.1.9)
+        valuemap:
+          name: Gigamon inline heartbeat status
+        tags:
+        - tag: component
+          value: inline-bypass
+        trigger_prototypes:
+        - uuid: 9ceb88da725f442f856f5a1cce1a55fe
+          expression: '{$GIGAMON.INLINE.TOOL.CONTROL:"{#TOOL.ALIAS}"}=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.nhb[{#SNMPINDEX}])=1'
+          name: 'Inline tool {#TOOL.ALIAS} [{#SNMPINDEX}]: Negative heartbeat down'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.nhb[{#SNMPINDEX}])<>1 or {$GIGAMON.INLINE.TOOL.CONTROL:"{#TOOL.ALIAS}"}=0
+          priority: WARNING
+          tags:
+          - tag: scope
+            value: inline
+      - uuid: 707c3b37674a40aa8e298c2598ca35bd
+        name: 'Inline tool {#TOOL.ALIAS} [{#SNMPINDEX}]: Port A status'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.4.1.1.1.5.{#SNMPINDEX}
+        key: gigamon.inline.tool.pa[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object intPortAStatus (1.3.6.1.4.1.26866.4.1.1.1.5)
+        valuemap:
+          name: Gigamon inline tool port status
+        tags:
+        - tag: component
+          value: inline-bypass
+        trigger_prototypes:
+        - uuid: cff7a87220f64e8d800337a4e9c3e0f8
+          expression: '{$GIGAMON.INLINE.TOOL.CONTROL:"{#TOOL.ALIAS}"}=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.pa[{#SNMPINDEX}])=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.agg[{#SNMPINDEX}])<>0 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.agg[{#SNMPINDEX}])<>1'
+          name: 'Inline tool {#TOOL.ALIAS} [{#SNMPINDEX}]: Port A down'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.pa[{#SNMPINDEX}])<>1 or {$GIGAMON.INLINE.TOOL.CONTROL:"{#TOOL.ALIAS}"}=0
+          priority: AVERAGE
+          tags:
+          - tag: scope
+            value: inline
+      - uuid: effdeecf575a4aa48c59c3fae9a60c5b
+        name: 'Inline tool {#TOOL.ALIAS} [{#SNMPINDEX}]: Port B status'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.4.1.1.1.6.{#SNMPINDEX}
+        key: gigamon.inline.tool.pb[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object intPortBStatus (1.3.6.1.4.1.26866.4.1.1.1.6)
+        valuemap:
+          name: Gigamon inline tool port status
+        tags:
+        - tag: component
+          value: inline-bypass
+        trigger_prototypes:
+        - uuid: 3cde162d8a1a4baf85c23eceae72888d
+          expression: '{$GIGAMON.INLINE.TOOL.CONTROL:"{#TOOL.ALIAS}"}=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.pb[{#SNMPINDEX}])=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.agg[{#SNMPINDEX}])<>0 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.agg[{#SNMPINDEX}])<>1'
+          name: 'Inline tool {#TOOL.ALIAS} [{#SNMPINDEX}]: Port B down'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.tool.pb[{#SNMPINDEX}])<>1 or {$GIGAMON.INLINE.TOOL.CONTROL:"{#TOOL.ALIAS}"}=0
+          priority: AVERAGE
+          tags:
+          - tag: scope
+            value: inline
+    - uuid: 9e99c1d8798441d680c3f96078396097
+      name: Inline networks discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#NET.ALIAS},1.3.6.1.4.1.26866.4.1.2.1.2,{#NET.PORTA},1.3.6.1.4.1.26866.4.1.2.1.3,{#NET.PORTB},1.3.6.1.4.1.26866.4.1.2.1.4]
+      key: gigamon.inline.net.discovery
+      delay: 1h
+      lifetime: 7d
+      description: GIGAMONINLINEBYPASS inlineNetworkStatusTable (1.3.6.1.4.1.26866.4.1.2).
+      item_prototypes:
+      - uuid: d6d8e0d0c6c746698fe6ce95a29cb63f
+        name: 'Inline network {#NET.ALIAS} [{#SNMPINDEX}]: Forward state'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.4.1.2.1.7.{#SNMPINDEX}
+        key: gigamon.inline.net.fwd[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: Forwarding state of the inline network pair. 5 = normal-forwarding. MIB object inlForwardState (1.3.6.1.4.1.26866.4.1.2.1.7)
+        valuemap:
+          name: Gigamon inline forward state
+        tags:
+        - tag: component
+          value: inline-bypass
+        trigger_prototypes:
+        - uuid: 3bdab322b86b46f38ab1deb9aa26a142
+          expression: '{$GIGAMON.INLINE.NET.CONTROL:"{#NET.ALIAS}"}=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])=7'
+          name: 'Inline network {#NET.ALIAS} [{#SNMPINDEX}]: Failure introduced DROP (traffic is being dropped)'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])<>7 or {$GIGAMON.INLINE.NET.CONTROL:"{#NET.ALIAS}"}=0
+          priority: DISASTER
+          description: 'forward state = failure-introduced-drop: production traffic through this inline network is dropped.'
+          tags:
+          - tag: scope
+            value: inline
+        - uuid: 01d314cc5da045fb89f69097a553a5eb
+          expression: '{$GIGAMON.INLINE.NET.CONTROL:"{#NET.ALIAS}"}=1 and (last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])=6 or last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])=9 or last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])=8)'
+          name: 'Inline network {#NET.ALIAS} [{#SNMPINDEX}]: Abnormal forward state ({ITEM.LASTVALUE})'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: (last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])<>6 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])<>8 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])<>9) or {$GIGAMON.INLINE.NET.CONTROL:"{#NET.ALIAS}"}=0
+          priority: HIGH
+          description: failure-introduced-bypass (6), network-ports-forced-down (8) or abnormal-forwarding (9).
+          tags:
+          - tag: scope
+            value: inline
+        - uuid: 9a3c3a5825564f7a8782ea6df5123940
+          expression: '{$GIGAMON.INLINE.NET.CONTROL:"{#NET.ALIAS}"}=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])=2'
+          name: 'Inline network {#NET.ALIAS} [{#SNMPINDEX}]: Network disconnected'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])<>2 or {$GIGAMON.INLINE.NET.CONTROL:"{#NET.ALIAS}"}=0
+          priority: AVERAGE
+          description: forward state = inline-network-disconnected.
+          tags:
+          - tag: scope
+            value: inline
+        - uuid: 2c305d9be2fd4820832fa58abbd5514d
+          expression: '{$GIGAMON.INLINE.NET.CONTROL:"{#NET.ALIAS}"}=1 and (last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])=0 or last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])=3 or last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])=4)'
+          name: 'Inline network {#NET.ALIAS} [{#SNMPINDEX}]: Bypass active, tools are not inspecting traffic ({ITEM.LASTVALUE})'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: (last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])<>0 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])<>3 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])<>4) or {$GIGAMON.INLINE.NET.CONTROL:"{#NET.ALIAS}"}=0
+          priority: WARNING
+          description: 'physical-bypass (0), forced-bypass (3) or forced-bypass-monitoring (4). Expected during maintenance: silence per network with {$GIGAMON.INLINE.NET.CONTROL:"<alias>"}=0.'
+          tags:
+          - tag: scope
+            value: inline
+      - uuid: ae8ff891ee3943a282871782ed94741f
+        name: 'Inline network {#NET.ALIAS} [{#SNMPINDEX}]: Port A status'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.4.1.2.1.5.{#SNMPINDEX}
+        key: gigamon.inline.net.pa[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object inlNetworkPortAStatus (1.3.6.1.4.1.26866.4.1.2.1.5)
+        valuemap:
+          name: Gigamon inline network port status
+        tags:
+        - tag: component
+          value: inline-bypass
+        trigger_prototypes:
+        - uuid: cc1172e0cdf34e9584d79a736a7edc11
+          expression: '{$GIGAMON.INLINE.NET.CONTROL:"{#NET.ALIAS}"}=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.pa[{#SNMPINDEX}])=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])<>1'
+          name: 'Inline network {#NET.ALIAS} [{#SNMPINDEX}]: Port A down'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.pa[{#SNMPINDEX}])<>1 or {$GIGAMON.INLINE.NET.CONTROL:"{#NET.ALIAS}"}=0
+          priority: AVERAGE
+          tags:
+          - tag: scope
+            value: inline
+      - uuid: 2d6d7bc2809d476083dc7bc1688f7cca
+        name: 'Inline network {#NET.ALIAS} [{#SNMPINDEX}]: Port B status'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.4.1.2.1.6.{#SNMPINDEX}
+        key: gigamon.inline.net.pb[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object inlNetworkPortBStatus (1.3.6.1.4.1.26866.4.1.2.1.6)
+        valuemap:
+          name: Gigamon inline network port status
+        tags:
+        - tag: component
+          value: inline-bypass
+        trigger_prototypes:
+        - uuid: b19e6b343df642e28ed8e5f1df2c616b
+          expression: '{$GIGAMON.INLINE.NET.CONTROL:"{#NET.ALIAS}"}=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.pb[{#SNMPINDEX}])=1 and last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.fwd[{#SNMPINDEX}])<>1'
+          name: 'Inline network {#NET.ALIAS} [{#SNMPINDEX}]: Port B down'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Gigamon GigaVUE Inline Bypass by SNMP/gigamon.inline.net.pb[{#SNMPINDEX}])<>1 or {$GIGAMON.INLINE.NET.CONTROL:"{#NET.ALIAS}"}=0
+          priority: AVERAGE
+          tags:
+          - tag: scope
+            value: inline
+    macros:
+    - macro: '{$GIGAMON.INLINE.TOOL.CONTROL}'
+      value: '1'
+      description: '1 = raise inline-tool triggers. Override per tool: {$GIGAMON.INLINE.TOOL.CONTROL:"<alias>"}=0 (for example during maintenance).'
+    - macro: '{$GIGAMON.INLINE.NET.CONTROL}'
+      value: '1'
+      description: '1 = raise inline-network triggers. Override per network: {$GIGAMON.INLINE.NET.CONTROL:"<alias>"}=0.'
+    tags:
+    - tag: class
+      value: network
+    - tag: target
+      value: gigamon
+    valuemaps:
+    - uuid: f2a46aa3a0634b758a57da6ba06af9cf
+      name: Gigamon inline tool port status
+      mappings:
+      - value: '0'
+        newvalue: Inline tool port disable
+      - value: '1'
+        newvalue: Inline tool port down
+      - value: '2'
+        newvalue: Inline tool port up
+    - uuid: 3a4accf153b54a1f82f4810926e92baf
+      name: Gigamon inline heartbeat status
+      mappings:
+      - value: '0'
+        newvalue: Heartbeat disable
+      - value: '1'
+        newvalue: Heartbeat down
+      - value: '2'
+        newvalue: Heartbeat up
+    - uuid: d875e557a7114e7c88d69c24a4312af4
+      name: Gigamon inline tool aggregate status
+      mappings:
+      - value: '0'
+        newvalue: Inline tool disable
+      - value: '1'
+        newvalue: Inline tool down
+      - value: '2'
+        newvalue: Inline tool up
+      - value: '3'
+        newvalue: Inline tool ready
+    - uuid: 3668293d07854a7c81b84cefc83a4f35
+      name: Gigamon inline network port status
+      mappings:
+      - value: '0'
+        newvalue: Inline network port disable
+      - value: '1'
+        newvalue: Inline network port down
+      - value: '2'
+        newvalue: Inline network port up
+    - uuid: 419c369dcb0847e0896bfb20c891763e
+      name: Gigamon inline forward state
+      mappings:
+      - value: '0'
+        newvalue: Physical bypass
+      - value: '1'
+        newvalue: Inline network disabled
+      - value: '2'
+        newvalue: Inline network disconnected
+      - value: '3'
+        newvalue: Forced bypass
+      - value: '4'
+        newvalue: Forced bypass monitoring
+      - value: '5'
+        newvalue: Normal forwarding
+      - value: '6'
+        newvalue: Failure introduced bypass
+      - value: '7'
+        newvalue: Failure introduced drop
+      - value: '8'
+        newvalue: Network ports forced down
+      - value: '9'
+        newvalue: Abnormal forwarding
+  - uuid: ee1d6eb0f7f047388bfb30909357031d
+    template: Gigamon GigaVUE GigaSMART by SNMP
+    name: Gigamon GigaVUE GigaSMART by SNMP
+    description: 'Gigamon GigaSMART (GIGAMONGIGASMART, 1.3.6.1.4.1.26866.5): eport heartbeat, eport interfaces, tunnel gateway/destination health, GSOP NetFlow resource failures. Link only to nodes with GigaSMART.'
+    groups:
+    - name: Templates/Network devices
+    items:
+    - uuid: 4393eb6738a74c768ca770399a51d227
+      name: GigaSMART eports, number
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.26866.5.1.5.0
+      key: gigamon.gs.eports.count
+      delay: 1h
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: 'Scalar: instance .0 appended. MIB object numberofeports (1.3.6.1.4.1.26866.5.1.5)'
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: gigasmart
+    discovery_rules:
+    - uuid: ccff66791dda458f8266618073091671
+      name: GigaSMART eport heartbeat discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#EPORT.ID},1.3.6.1.4.1.26866.5.1.2.1.2]
+      key: gigamon.gs.eport.discovery
+      delay: 1h
+      lifetime: 7d
+      description: GIGAMONGIGASMART ePortHBStatusTable (1.3.6.1.4.1.26866.5.1.2).
+      item_prototypes:
+      - uuid: 5214eef432cc45258e38e45d79ab9468
+        name: 'Eport {#EPORT.ID} [{#SNMPINDEX}]: Heartbeat status'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.5.1.2.1.3.{#SNMPINDEX}
+        key: gigamon.gs.eport.status[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: 0 = not applicable, 1 = down, 2 = up. MIB object ePortStatus (1.3.6.1.4.1.26866.5.1.2.1.3)
+        valuemap:
+          name: Gigamon eport heartbeat status
+        tags:
+        - tag: component
+          value: gigasmart
+        trigger_prototypes:
+        - uuid: 74efee1c2667472987f930fce6191d8e
+          expression: '{$GIGAMON.GS.EPORT.CONTROL:"{#EPORT.ID}"}=1 and last(/Gigamon GigaVUE GigaSMART by SNMP/gigamon.gs.eport.status[{#SNMPINDEX}])=1'
+          name: 'Eport {#EPORT.ID} [{#SNMPINDEX}]: Heartbeat down'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Gigamon GigaVUE GigaSMART by SNMP/gigamon.gs.eport.status[{#SNMPINDEX}])<>1 or {$GIGAMON.GS.EPORT.CONTROL:"{#EPORT.ID}"}=0
+          priority: HIGH
+          description: The GigaSMART eport reports down. Silence per eport with {$GIGAMON.GS.EPORT.CONTROL:"<id>"}=0.
+          tags:
+          - tag: scope
+            value: gigasmart
+      - uuid: 537ee4d34e1145c189cf41cc4cf4cb29
+        name: 'Eport {#EPORT.ID} [{#SNMPINDEX}]: Tx count rate'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.5.1.2.1.4.{#SNMPINDEX}
+        key: gigamon.gs.eport.tx[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: FLOAT
+        units: '!/s'
+        description: Counter64 as rate. The MIB does not state what is counted. MIB object ePortTxCount (1.3.6.1.4.1.26866.5.1.2.1.4)
+        preprocessing:
+        - type: CHANGE_PER_SECOND
+          parameters:
+          - ''
+        tags:
+        - tag: component
+          value: gigasmart
+      - uuid: e069ccfd5fce4d8587c59e825d01bcc6
+        name: 'Eport {#EPORT.ID} [{#SNMPINDEX}]: Rx count rate'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.5.1.2.1.5.{#SNMPINDEX}
+        key: gigamon.gs.eport.rx[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: FLOAT
+        units: '!/s'
+        description: Counter64 as rate. The MIB does not state what is counted. MIB object ePortRxCount (1.3.6.1.4.1.26866.5.1.2.1.5)
+        preprocessing:
+        - type: CHANGE_PER_SECOND
+          parameters:
+          - ''
+        tags:
+        - tag: component
+          value: gigasmart
+    - uuid: 6e0d75913b634098831381a7420d0481
+      name: GigaSMART eport interface discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#EPORT.IFNAME},1.3.6.1.4.1.26866.5.1.6.1.2,{#EPORT.IFTYPE},1.3.6.1.4.1.26866.5.1.6.1.3]
+      key: gigamon.gs.if.discovery
+      delay: 1h
+      lifetime: 7d
+      description: GIGAMONGIGASMART ePortInterfaceTable (1.3.6.1.4.1.26866.5.1.6). txUtil/rxUtil are OCTET STRING of undocumented format and are not collected.
+      item_prototypes:
+      - uuid: 718f1592e49d49de87505219a094e87f
+        name: 'Eport interface {#EPORT.IFNAME} [{#SNMPINDEX}]: Link status'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.5.1.6.1.6.{#SNMPINDEX}
+        key: gigamon.gs.if.link[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object linkStatus (1.3.6.1.4.1.26866.5.1.6.1.6)
+        valuemap:
+          name: Gigamon eport link status
+        tags:
+        - tag: component
+          value: gigasmart
+        trigger_prototypes:
+        - uuid: 348c009db1c347258eab63c6c75b52b2
+          expression: '{$GIGAMON.GS.IF.CONTROL:"{#EPORT.IFNAME}"}=1 and last(/Gigamon GigaVUE GigaSMART by SNMP/gigamon.gs.if.admin[{#SNMPINDEX}])=1 and last(/Gigamon GigaVUE GigaSMART by SNMP/gigamon.gs.if.link[{#SNMPINDEX}])<>1'
+          name: 'Eport interface {#EPORT.IFNAME} [{#SNMPINDEX}]: Link not up while administratively up ({ITEM.LASTVALUE})'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Gigamon GigaVUE GigaSMART by SNMP/gigamon.gs.if.link[{#SNMPINDEX}])=1 or last(/Gigamon GigaVUE GigaSMART by SNMP/gigamon.gs.if.admin[{#SNMPINDEX}])<>1 or {$GIGAMON.GS.IF.CONTROL:"{#EPORT.IFNAME}"}=0
+          priority: AVERAGE
+          description: Admin status is up but link status is not up(1).
+          tags:
+          - tag: scope
+            value: gigasmart
+      - uuid: 3a957bc39b424bbb8d7ee169d7198027
+        name: 'Eport interface {#EPORT.IFNAME} [{#SNMPINDEX}]: Admin status'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.5.1.6.1.5.{#SNMPINDEX}
+        key: gigamon.gs.if.admin[{#SNMPINDEX}]
+        delay: 5m
+        history: 7d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object adminStatus (1.3.6.1.4.1.26866.5.1.6.1.5)
+        valuemap:
+          name: Gigamon eport admin status
+        tags:
+        - tag: component
+          value: gigasmart
+      - uuid: a83e18ab39f1484a8f3c78c2da18fb50
+        name: 'Eport interface {#EPORT.IFNAME} [{#SNMPINDEX}]: Speed'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.5.1.6.1.4.{#SNMPINDEX}
+        key: gigamon.gs.if.speed[{#SNMPINDEX}]
+        delay: 1h
+        history: 7d
+        trends: 365d
+        value_type: UNSIGNED
+        units: bps
+        description: Mbps in the MIB, converted to bit/s. MIB object speed (1.3.6.1.4.1.26866.5.1.6.1.4)
+        preprocessing:
+        - type: MULTIPLIER
+          parameters:
+          - '1000000'
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 1d
+        tags:
+        - tag: component
+          value: gigasmart
+    - uuid: c3ef00b80276431888f54b2b3601b41e
+      name: GigaSMART tunnel gateway discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#GW.EPORT},1.3.6.1.4.1.26866.5.1.3.1.2,{#GW.PORT},1.3.6.1.4.1.26866.5.1.3.1.3,{#GW.IP},1.3.6.1.4.1.26866.5.1.3.1.5]
+      key: gigamon.gs.tun.gw.discovery
+      delay: 1h
+      lifetime: 7d
+      description: GIGAMONGIGASMART tunnelGwHealthTable (1.3.6.1.4.1.26866.5.1.3).
+      item_prototypes:
+      - uuid: 5a0cbd9b8d384061845cc83c9bd13ef5
+        name: 'Tunnel gateway {#GW.IP} on {#GW.EPORT} [{#SNMPINDEX}]: Status (raw)'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.5.1.3.1.7.{#SNMPINDEX}
+        key: gigamon.gs.tun.gw.status[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: tunnelGwStatus is declared MAX-ACCESS accessible-for-notify in the MIB, i.e. it may not be readable by GET/WALK. The TUNGWSTATUS enumeration lives in GIGAMON-COMMON-SMI, which was not supplied, so the raw integer is stored and no value map is applied. MIB object tunnelGwStatus (1.3.6.1.4.1.26866.5.1.3.1.7)
+        tags:
+        - tag: component
+          value: gigasmart
+        trigger_prototypes:
+        - uuid: c8ebc7f9754c46bf849f35315f9f54a8
+          expression: '{$GIGAMON.GS.TUNNEL.GW.OK}>0 and last(/Gigamon GigaVUE GigaSMART by SNMP/gigamon.gs.tun.gw.status[{#SNMPINDEX}])<>{$GIGAMON.GS.TUNNEL.GW.OK}'
+          name: 'Tunnel gateway {#GW.IP} on {#GW.EPORT} [{#SNMPINDEX}]: Status is not the healthy value ({ITEM.LASTVALUE})'
+          priority: AVERAGE
+          description: Inactive until {$GIGAMON.GS.TUNNEL.GW.OK} is set to the integer that TUNGWSTATUS uses for a healthy gateway (see README).
+          tags:
+          - tag: scope
+            value: gigasmart
+      - uuid: 22a81897ae8d45c88a564876f3a73b3f
+        name: 'Tunnel gateway {#GW.IP} on {#GW.EPORT} [{#SNMPINDEX}]: MAC'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.5.1.3.1.6.{#SNMPINDEX}
+        key: gigamon.gs.tun.gw.mac[{#SNMPINDEX}]
+        delay: 1h
+        history: 7d
+        trends: '0'
+        value_type: CHAR
+        description: MIB object tunnelGwMac (1.3.6.1.4.1.26866.5.1.3.1.6)
+        preprocessing:
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 1d
+        tags:
+        - tag: component
+          value: gigasmart
+    - uuid: 001b2068798341bb878b42546ac4b651
+      name: GigaSMART tunnel destination discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#DEST.IP},1.3.6.1.4.1.26866.5.1.4.1.2,{#DEST.EPORT},1.3.6.1.4.1.26866.5.1.4.1.4]
+      key: gigamon.gs.tun.dest.discovery
+      delay: 1h
+      lifetime: 7d
+      description: GIGAMONGIGASMART tunnelDestHealthTable (1.3.6.1.4.1.26866.5.1.4).
+      item_prototypes:
+      - uuid: f08e553d021e446f8501605b2724006d
+        name: 'Tunnel destination {#DEST.IP} on {#DEST.EPORT} [{#SNMPINDEX}]: Status (raw)'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.5.1.4.1.3.{#SNMPINDEX}
+        key: gigamon.gs.tun.dest.status[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: 'The TUNDESTSTATUS enumeration lives in GIGAMON-COMMON-SMI, which was not supplied: the raw integer is stored. MIB object tunnelDestStatus (1.3.6.1.4.1.26866.5.1.4.1.3)'
+        tags:
+        - tag: component
+          value: gigasmart
+        trigger_prototypes:
+        - uuid: 25e6e5f7868940678a4d4c6f7cd293c0
+          expression: '{$GIGAMON.GS.TUNNEL.DEST.OK}>0 and last(/Gigamon GigaVUE GigaSMART by SNMP/gigamon.gs.tun.dest.status[{#SNMPINDEX}])<>{$GIGAMON.GS.TUNNEL.DEST.OK}'
+          name: 'Tunnel destination {#DEST.IP} on {#DEST.EPORT} [{#SNMPINDEX}]: Status is not the healthy value ({ITEM.LASTVALUE})'
+          priority: AVERAGE
+          description: Inactive until {$GIGAMON.GS.TUNNEL.DEST.OK} is set to the integer that TUNDESTSTATUS uses for a healthy destination (see README).
+          tags:
+          - tag: scope
+            value: gigasmart
+    - uuid: 84c3d27adf7645b88a69b2ec31b84155
+      name: GigaSMART GSOP discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#GSOP.ALIAS},1.3.6.1.4.1.26866.5.1.7.1.2]
+      key: gigamon.gs.gsop.discovery
+      delay: 1h
+      lifetime: 7d
+      description: GIGAMONGIGASMART gsopStatsTable. Effective OID 1.3.6.1.4.1.26866.5.1.7 (the OID comment in the MIB says 1.3.6.1.4.1.26866.5.7, but gigaSmartStatus is 5.1 so the table is at 5.1.7).
+      item_prototypes:
+      - uuid: ef3bfe4d282f45ca8820b319e4bf9d2e
+        name: 'GSOP {#GSOP.ALIAS} [{#SNMPINDEX}]: NetFlow resource failures rate'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.26866.5.1.7.1.3.{#SNMPINDEX}
+        key: gigamon.gs.gsop.nffail[{#SNMPINDEX}]
+        delay: 1m
+        history: 31d
+        trends: 365d
+        value_type: FLOAT
+        units: '!/s'
+        description: MIB object netflowResourceFailureStat (1.3.6.1.4.1.26866.5.1.7.1.3)
+        preprocessing:
+        - type: CHANGE_PER_SECOND
+          parameters:
+          - ''
+        tags:
+        - tag: component
+          value: gigasmart
+        trigger_prototypes:
+        - uuid: fa4715b44aa2490686129a984a3441fc
+          expression: min(/Gigamon GigaVUE GigaSMART by SNMP/gigamon.gs.gsop.nffail[{#SNMPINDEX}],{$GIGAMON.GS.NF.FAIL.WINDOW})>0
+          name: 'GSOP {#GSOP.ALIAS} [{#SNMPINDEX}]: NetFlow resource failures are increasing'
+          priority: WARNING
+          description: netflowResourceFailureStat has increased continuously for {$GIGAMON.GS.NF.FAIL.WINDOW}.
+          tags:
+          - tag: scope
+            value: gigasmart
+    macros:
+    - macro: '{$GIGAMON.GS.EPORT.CONTROL}'
+      value: '1'
+      description: 1 = raise eport heartbeat triggers; override per eport identifier.
+    - macro: '{$GIGAMON.GS.IF.CONTROL}'
+      value: '1'
+      description: 1 = raise eport interface link triggers; override per ifName.
+    - macro: '{$GIGAMON.GS.TUNNEL.GW.OK}'
+      value: '0'
+      description: Integer of TUNGWSTATUS meaning "gateway healthy". 0 = trigger disabled (enumeration not in the supplied MIBs).
+    - macro: '{$GIGAMON.GS.TUNNEL.DEST.OK}'
+      value: '0'
+      description: Integer of TUNDESTSTATUS meaning "destination healthy". 0 = trigger disabled.
+    - macro: '{$GIGAMON.GS.NF.FAIL.WINDOW}'
+      value: 15m
+      description: Period during which the NetFlow resource-failure rate must stay above 0.
+    tags:
+    - tag: class
+      value: network
+    - tag: target
+      value: gigamon
+    valuemaps:
+    - uuid: af52e0e0bd78437084242d6ed8912243
+      name: Gigamon eport heartbeat status
+      mappings:
+      - value: '0'
+        newvalue: E port na
+      - value: '1'
+        newvalue: E port down
+      - value: '2'
+        newvalue: E port up
+    - uuid: 5967aaf307914f4682a25538e9e36703
+      name: Gigamon eport admin status
+      mappings:
+      - value: '1'
+        newvalue: Up
+      - value: '2'
+        newvalue: Down
+      - value: '3'
+        newvalue: Testing
+    - uuid: d8878da37b5c4fe28aa61abbfc223090
+      name: Gigamon eport link status
+      mappings:
+      - value: '1'
+        newvalue: Up
+      - value: '2'
+        newvalue: Down
+      - value: '3'
+        newvalue: Testing
+      - value: '4'
+        newvalue: Unknown
+      - value: '5'
+        newvalue: Dormant
+      - value: '6'
+        newvalue: Not present
+      - value: '7'
+        newvalue: Lower layer down
+  - uuid: 2885ae46382843438061364045e7cc4e
+    template: Gigamon GigaVUE-FM by SNMP traps
+    name: Gigamon GigaVUE-FM by SNMP traps
+    description: GigaVUE-FM notifications (GIGAMON-FM-SNMP, 1.3.6.1.4.1.26866.6.1.*) received as SNMP traps. The MIB defines no pollable objects for FM. Needs snmptrapd + zabbix_trap_receiver and a host whose SNMP interface IP equals the trap source address.
+    groups:
+    - name: Templates/Network devices
+    items:
+    - uuid: 207af8c551bc45d7856c9c7bbc77013c
+      name: 'SNMP traps: Gigamon FM notifications'
+      type: SNMP_TRAP
+      key: snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"]
+      delay: '0'
+      history: 30d
+      value_type: LOG
+      description: All GIGAMON-FM-SNMP notifications (1.3.6.1.4.1.26866.6.1.*). Matches the numeric OID or the MIB notification name, so it works with or without MIBs loaded in snmptrapd. Receiver setup in the README.
+      tags:
+      - tag: component
+        value: traps
+      triggers:
+      - uuid: 252041a0c1c945e08782ca1031318609
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFabricNodeUnreachableNotification|26866[.]6[.]1[.]37([^0-9]|$)|gigamonFabricNodeUnrecoverableNotification|26866[.]6[.]1[.]42([^0-9]|$)|gigamonFabricNodeRestartFailedNotification|26866[.]6[.]1[.]40([^0-9]|$)|gigamonFabricNodeRebootFailedNotification|26866[.]6[.]1[.]41([^0-9]|$)")=1
+        name: 'Gigamon FM: Fabric node unreachable / unrecoverable / restart or reboot failed'
+        priority: HIGH
+        description: Fabric-node failure notification from GigaVUE-FM. Close manually after investigation (traps carry no automatic recovery here).
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 0d5c44b287b045088dd86eecc218ba1e
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonVSeriesOperationalUnhealthyNotification|26866[.]6[.]1[.]46([^0-9]|$)")=1
+        name: 'Gigamon FM: V Series node operationally unhealthy'
+        priority: HIGH
+        description: V Series node reported unhealthy. Close manually after investigation (traps carry no automatic recovery here).
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: a6836e0535764a188a536e09e4dcfff2
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonMonitoringSessionConfigUnhealthyNotification|26866[.]6[.]1[.]33([^0-9]|$)|gigamonMonitoringSessionTrafficUnhealthyNotification|26866[.]6[.]1[.]34([^0-9]|$)")=1
+        name: 'Gigamon FM: Monitoring session unhealthy (config or traffic)'
+        priority: AVERAGE
+        description: Monitoring session unhealthy. Close manually after investigation (traps carry no automatic recovery here).
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 11638816c55e43498fb0747662b896fe
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMTrafficDropThresholdExceededEventNotification|26866[.]6[.]1[.]25([^0-9]|$)")=1
+        name: 'Gigamon FM: Traffic drop threshold exceeded'
+        priority: AVERAGE
+        description: Traffic drop above threshold. Close manually after investigation (traps carry no automatic recovery here).
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: d7a153cad3c641868e081d6799f8f6b7
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMLicensesExpiredNotification|26866[.]6[.]1[.]10([^0-9]|$)|gigamonFloatingLicensesExpiredEventNotification|26866[.]6[.]1[.]28([^0-9]|$)")=1
+        name: 'Gigamon FM: Licence expired'
+        priority: AVERAGE
+        description: Licences have expired. Close manually after investigation (traps carry no automatic recovery here).
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: c49c696c60dc4cd08a58a634e6b579b0
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMLicensesExpiringSoonNotification|26866[.]6[.]1[.]9([^0-9]|$)|gigamonFMLicensesExpiringIn90DaysNotification|26866[.]6[.]1[.]8([^0-9]|$)|gigamonFloatingLicensesGraceEventNotification|26866[.]6[.]1[.]29([^0-9]|$)")=1
+        name: 'Gigamon FM: Licence expiring / grace period'
+        priority: WARNING
+        description: Licences expiring or in grace. Close manually after investigation (traps carry no automatic recovery here).
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 62030f54b27d45518074bbc2fde237cc
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMDiskReclaimEventNotification|26866[.]6[.]1[.]24([^0-9]|$)|gigamonFMDiskSpaceEventNotification|26866[.]6[.]1[.]32([^0-9]|$)")=1
+        name: 'Gigamon FM: Disk space / reclaim threshold'
+        priority: AVERAGE
+        description: FM disk usage above threshold. Close manually after investigation (traps carry no automatic recovery here).
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 18c770fc24f64d7a88777a591fad66d8
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMClusterMemberNotReachableEventNotification|26866[.]6[.]1[.]27([^0-9]|$)|gigamonFMHighAvailabilityNotification|26866[.]6[.]1[.]23([^0-9]|$)")=1
+        name: 'Gigamon FM: Cluster member not reachable / high availability event'
+        priority: AVERAGE
+        description: Cluster or HA event. Close manually after investigation (traps carry no automatic recovery here).
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 7b2416117ed447ce8f1b986c1d6b9785
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMImageUpgradeFailedNotification|26866[.]6[.]1[.]5([^0-9]|$)")=1
+        name: 'Gigamon FM: Image upgrade failed'
+        priority: AVERAGE
+        description: Image upgrade failed. Close manually after investigation (traps carry no automatic recovery here).
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: ee79e347154a4e06860c603d0a70f2c9
+        expression: find(/Gigamon GigaVUE-FM by SNMP traps/snmptrap["26866[.]6[.]1[.]|gigamonFM|gigamonFabric|gigamonVSeries|gigamonMonitoring|gigamonFloating|gigamonAdd"],#1,"regexp","gigamonFMFlowComputationErrorEventNotification|26866[.]6[.]1[.]16([^0-9]|$)|gigamonFMSFlowHealthStateChangedNotification|26866[.]6[.]1[.]17([^0-9]|$)")=1
+        name: 'Gigamon FM: Flow computation error / flow health changed'
+        priority: WARNING
+        description: Flow computation error or flow health change. Close manually after investigation (traps carry no automatic recovery here).
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+    - uuid: cd1b88a60f6b466e8ee6837ac36a812b
+      name: SNMP traps (fallback)
+      type: SNMP_TRAP
+      key: snmptrap.fallback
+      delay: '0'
+      history: 7d
+      value_type: LOG
+      description: Traps from this host that match no snmptrap[] item.
+      tags:
+      - tag: component
+        value: traps
+    macros: []
+    tags:
+    - tag: class
+      value: software
+    - tag: target
+      value: gigamon-fm
