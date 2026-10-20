@@ -207,7 +207,7 @@ for tpl in ex['templates']:
         fm = mib.oid('gigamonFM')
         notifs = {n: int(p[1]) for n, p in mib.parent.items() if p[0] == 'gigamonFM'}
         check(len(notifs) == 41 or len(notifs) > 30, 'notification count %d' % len(notifs))
-        allitem = items[0]
+        allitem = next(i for i in items if i['key'].startswith('snmptrap["'))
         keyre = re.search(r'snmptrap\["(.*)"\]', allitem['key']).group(1)
         for nm, num in notifs.items():
             for sample in ('SNMPv2-MIB::snmpTrapOID.0 = GIGAMON-FM-SNMP::%s' % nm, 'snmpTrapOID.0 = OID: .%s.%d gigamonFMSysObjectID = STRING: x' % (fm, num)):

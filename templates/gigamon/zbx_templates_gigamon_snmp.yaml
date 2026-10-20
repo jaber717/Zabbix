@@ -1154,10 +1154,148 @@ zabbix_export:
   - uuid: 2885ae46382843438061364045e7cc4e
     template: Gigamon GigaVUE-FM by SNMP traps
     name: Gigamon GigaVUE-FM by SNMP traps
-    description: GigaVUE-FM notifications (GIGAMON-FM-SNMP, 1.3.6.1.4.1.26866.6.1.*) received as SNMP traps. The MIB defines no pollable objects for FM. Needs snmptrapd + zabbix_trap_receiver and a host whose SNMP interface IP equals the trap source address.
+    description: 'GigaVUE-FM monitoring WITHOUT SNMP polling (FM does not answer SNMP GET/WALK). (1) Liveness from the Zabbix server: ICMP, HTTPS port, HTTP status of the web UI. (2) FM notifications (GIGAMON-FM-SNMP, 1.3.6.1.4.1.26866.6.1.*) received as SNMP traps: needs snmptrapd + zabbix_trap_receiver and a host whose SNMP interface IP equals the trap source address. No resource metrics (CPU/memory/disk): use the hypervisor or an agent if Gigamon supports one.'
     groups:
     - name: Templates/Network devices
     items:
+    - uuid: 25c18ad91a954b8981da721d893d745b
+      name: ICMP ping
+      type: SIMPLE
+      key: icmpping
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      valuemap:
+        name: Gigamon service state
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: 8ae6655619694bac80f14e18cdd5587f
+        expression: max(/Gigamon GigaVUE-FM by SNMP traps/icmpping,#3)=0
+        name: 'Gigamon FM: Unavailable by ICMP ping'
+        priority: HIGH
+        description: 'FM did not answer ICMP echo in 3 consecutive checks (or ICMP is blocked between Zabbix and FM: then rely on the TCP check and set this trigger aside).'
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: c201e20c5a7b483e8fd9813ccf8ec351
+      name: ICMP loss
+      type: SIMPLE
+      key: icmppingloss
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: FLOAT
+      units: '%'
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: 56148a3153ac4a9b84ebe1aa7c26c35c
+        expression: min(/Gigamon GigaVUE-FM by SNMP traps/icmppingloss,5m)>{$GIGAMON.FM.ICMP.LOSS.WARN} and min(/Gigamon GigaVUE-FM by SNMP traps/icmppingloss,5m)<100
+        name: 'Gigamon FM: High ICMP ping loss ({ITEM.VALUE})'
+        priority: WARNING
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: 44bf0fb34c4645d586ee55c420cbb3ed
+      name: ICMP response time
+      type: SIMPLE
+      key: icmppingsec
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: FLOAT
+      units: s
+      tags:
+      - tag: component
+        value: availability
+    - uuid: 82338712dd3b4ae382f50c2b00104487
+      name: HTTPS port state
+      type: SIMPLE
+      key: net.tcp.service[https,,{$GIGAMON.FM.PORT}]
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: TCP connect to the FM HTTPS port (GigaVUE-FM web UI / REST API).
+      valuemap:
+        name: Gigamon service state
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: 1a1ecb7ea6ae4e05822d7f3dba1accd1
+        expression: max(/Gigamon GigaVUE-FM by SNMP traps/net.tcp.service[https,,{$GIGAMON.FM.PORT}],#3)=0
+        name: 'Gigamon FM: HTTPS port {$GIGAMON.FM.PORT} is not reachable'
+        priority: HIGH
+        description: 'The FM web UI/API port refuses or drops connections in 3 consecutive checks: FM application down, VM stopped, or a firewall in between.'
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: 4806296f9fc742c3867f958557d7208b
+      name: HTTPS response time
+      type: SIMPLE
+      key: net.tcp.service.perf[https,,{$GIGAMON.FM.PORT}]
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: FLOAT
+      units: s
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: e751a9f5f32f4b6f81fde26a76f435f7
+        expression: min(/Gigamon GigaVUE-FM by SNMP traps/net.tcp.service.perf[https,,{$GIGAMON.FM.PORT}],5m)>{$GIGAMON.FM.HTTPS.RESPONSE.WARN}
+        name: 'Gigamon FM: Slow HTTPS response ({ITEM.VALUE})'
+        priority: WARNING
+        tags:
+        - tag: scope
+          value: performance
+    - uuid: e93cd045b9d24b42872d53253ce28063
+      name: 'Web UI: HTTP status code'
+      type: HTTP_AGENT
+      key: gigamon.fm.web.status
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: 'HTTP status line of GET https://{HOST.CONN}:{$GIGAMON.FM.PORT}/ (certificate not verified: FM normally has a self-signed certificate). Any answer below 500 means the web tier responds; 301/302/401 are normal for a login page.'
+      preprocessing:
+      - type: REGEX
+        parameters:
+        - ^HTTP/[0-9.]+ ([0-9]+)
+        - \1
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: e8f415422b734a408d266d7c446dffce
+        expression: min(/Gigamon GigaVUE-FM by SNMP traps/gigamon.fm.web.status,#3)>=500
+        name: 'Gigamon FM: Web UI returns HTTP 5xx ({ITEM.LASTVALUE})'
+        priority: AVERAGE
+        description: The FM web service answers with a server error in 3 consecutive checks.
+        tags:
+        - tag: scope
+          value: availability
+      - uuid: 9f6a93cf437d44928215f93f03f3ae98
+        expression: nodata(/Gigamon GigaVUE-FM by SNMP traps/gigamon.fm.web.status,{$GIGAMON.FM.NODATA})=1 and last(/Gigamon GigaVUE-FM by SNMP traps/net.tcp.service[https,,{$GIGAMON.FM.PORT}])=1
+        name: 'Gigamon FM: Web UI gives no HTTP answer although TCP port is open'
+        priority: AVERAGE
+        description: The port accepts connections but no HTTP status line was received for {$GIGAMON.FM.NODATA}.
+        tags:
+        - tag: scope
+          value: availability
+      url: https://{HOST.CONN}:{$GIGAMON.FM.PORT}/
+      timeout: 10s
+      retrieve_mode: HEADERS
+      follow_redirects: 'NO'
+      status_codes: 100-599
+      verify_peer: 'NO'
+      verify_host: 'NO'
     - uuid: 207af8c551bc45d7856c9c7bbc77013c
       name: 'SNMP traps: Gigamon FM notifications'
       type: SNMP_TRAP
@@ -1281,9 +1419,29 @@ zabbix_export:
       tags:
       - tag: component
         value: traps
-    macros: []
+    macros:
+    - macro: '{$GIGAMON.FM.PORT}'
+      value: '443'
+      description: HTTPS port of GigaVUE-FM (web UI / REST API).
+    - macro: '{$GIGAMON.FM.ICMP.LOSS.WARN}'
+      value: '20'
+      description: ICMP loss warning threshold, %.
+    - macro: '{$GIGAMON.FM.HTTPS.RESPONSE.WARN}'
+      value: '3'
+      description: HTTPS connect time warning threshold, seconds.
+    - macro: '{$GIGAMON.FM.NODATA}'
+      value: 10m
+      description: No-data period for the HTTP status item.
     tags:
     - tag: class
       value: software
     - tag: target
       value: gigamon-fm
+    valuemaps:
+    - uuid: 0bb72c0680a4475e8183e4f3a2086b48
+      name: Gigamon service state
+      mappings:
+      - value: '0'
+        newvalue: Down
+      - value: '1'
+        newvalue: Up

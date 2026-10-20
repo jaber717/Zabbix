@@ -464,7 +464,37 @@ D_triggers = [
     trap_trigger('Flow computation error / flow health changed', 'WARNING',
                  ['gigamonFMFlowComputationErrorEventNotification', 'gigamonFMSFlowHealthStateChangedNotification'], 'Flow computation error or flow health change.'),
 ]
-D_items = [
+DK = lambda k: '/%s/%s' % (D, k)
+TCPK = 'net.tcp.service[https,,{$GIGAMON.FM.PORT}]'
+WEBK = 'gigamon.fm.web.status'
+web = item(D, 'Web UI: HTTP status code', WEBK, None, itype='HTTP_AGENT', delay='1m', hist='31d',
+           desc='HTTP status line of GET https://{HOST.CONN}:{$GIGAMON.FM.PORT}/ (certificate not verified: FM normally has a self-signed certificate). Any answer below 500 means the web tier responds; 301/302/401 are normal for a login page.',
+           prep=[{'type': 'REGEX', 'parameters': ['^HTTP/[0-9.]+ ([0-9]+)', '\\1']}], tg=tags(component='availability'),
+           triggers=[
+               trig(D, 'min(%s,#3)>=500' % DK(WEBK), 'Gigamon FM: Web UI returns HTTP 5xx ({ITEM.LASTVALUE})', 'AVERAGE',
+                    'The FM web service answers with a server error in 3 consecutive checks.', 'availability'),
+               trig(D, 'nodata(%s,{$GIGAMON.FM.NODATA})=1 and last(%s)=1' % (DK(WEBK), DK(TCPK)), 'Gigamon FM: Web UI gives no HTTP answer although TCP port is open', 'AVERAGE',
+                    'The port accepts connections but no HTTP status line was received for {$GIGAMON.FM.NODATA}.', 'availability')])
+web.update({'url': 'https://{HOST.CONN}:{$GIGAMON.FM.PORT}/', 'timeout': '10s', 'retrieve_mode': 'HEADERS', 'follow_redirects': 'NO',
+            'status_codes': '100-599', 'verify_peer': 'NO', 'verify_host': 'NO'})
+D_live = [
+    item(D, 'ICMP ping', 'icmpping', None, itype='SIMPLE', vmap='Gigamon service state', tg=tags(component='availability'),
+         triggers=[trig(D, 'max(%s,#3)=0' % DK('icmpping'), 'Gigamon FM: Unavailable by ICMP ping', 'HIGH',
+                        'FM did not answer ICMP echo in 3 consecutive checks (or ICMP is blocked between Zabbix and FM: then rely on the TCP check and set this trigger aside).', 'availability')]),
+    item(D, 'ICMP loss', 'icmppingloss', None, vt='FLOAT', itype='SIMPLE', units='%', tg=tags(component='availability'),
+         triggers=[trig(D, 'min(%s,5m)>{$GIGAMON.FM.ICMP.LOSS.WARN} and min(%s,5m)<100' % (DK('icmppingloss'), DK('icmppingloss')),
+                        'Gigamon FM: High ICMP ping loss ({ITEM.VALUE})', 'WARNING', scope='availability')]),
+    item(D, 'ICMP response time', 'icmppingsec', None, vt='FLOAT', itype='SIMPLE', units='s', tg=tags(component='availability')),
+    item(D, 'HTTPS port state', TCPK, None, itype='SIMPLE', vmap='Gigamon service state',
+         desc='TCP connect to the FM HTTPS port (GigaVUE-FM web UI / REST API).', tg=tags(component='availability'),
+         triggers=[trig(D, 'max(%s,#3)=0' % DK(TCPK), 'Gigamon FM: HTTPS port {$GIGAMON.FM.PORT} is not reachable', 'HIGH',
+                        'The FM web UI/API port refuses or drops connections in 3 consecutive checks: FM application down, VM stopped, or a firewall in between.', 'availability')]),
+    item(D, 'HTTPS response time', 'net.tcp.service.perf[https,,{$GIGAMON.FM.PORT}]', None, vt='FLOAT', itype='SIMPLE', units='s', tg=tags(component='availability'),
+         triggers=[trig(D, 'min(%s,5m)>{$GIGAMON.FM.HTTPS.RESPONSE.WARN}' % DK('net.tcp.service.perf[https,,{$GIGAMON.FM.PORT}]'),
+                        'Gigamon FM: Slow HTTPS response ({ITEM.VALUE})', 'WARNING', scope='performance')]),
+    web,
+]
+D_items = D_live + [
     item(D, 'SNMP traps: Gigamon FM notifications', ALLKEY, None, vt='LOG', itype='SNMP_TRAP', hist='30d', delay='0',
          desc='All GIGAMON-FM-SNMP notifications (%s.*). Matches the numeric OID or the MIB notification name, so it works with or without MIBs loaded in snmptrapd. Receiver setup in the README.' % FMOID,
          tg=tags(component='traps'), triggers=D_triggers),
@@ -472,7 +502,16 @@ D_items = [
          desc='Traps from this host that match no snmptrap[] item.', tg=tags(component='traps')),
 ]
 for i in D_items:
-    i.pop('trends', None)
+    if i['value_type'] == 'LOG':
+        i.pop('trends', None)
+
+D_macros = [
+    macro('{$GIGAMON.FM.PORT}', '443', 'HTTPS port of GigaVUE-FM (web UI / REST API).'),
+    macro('{$GIGAMON.FM.ICMP.LOSS.WARN}', '20', 'ICMP loss warning threshold, %.'),
+    macro('{$GIGAMON.FM.HTTPS.RESPONSE.WARN}', '3', 'HTTPS connect time warning threshold, seconds.'),
+    macro('{$GIGAMON.FM.NODATA}', '10m', 'No-data period for the HTTP status item.'),
+]
+D_vms = [{'uuid': uid(D, 'vm', 'svc'), 'name': 'Gigamon service state', 'mappings': [{'value': '0', 'newvalue': 'Down'}, {'value': '1', 'newvalue': 'Up'}]}]
 
 doc = {'zabbix_export': {'version': '7.0', 'template_groups': [{'uuid': uid('group', GROUP), 'name': GROUP}], 'templates': [
     template(TA, 'Gigamon GigaVUE node by SNMP: ICMP/SNMP availability, MIB-II system data and IF-MIB interface discovery (status, 64-bit traffic, errors, discards).\n'
@@ -482,8 +521,8 @@ doc = {'zabbix_export': {'version': '7.0', 'template_groups': [{'uuid': uid('gro
              None, B_lld, B_macros, B_vms, tags(**{'class': 'network', 'target': 'gigamon'})),
     template(TC, 'Gigamon GigaSMART (GIGAMONGIGASMART, 1.3.6.1.4.1.26866.5): eport heartbeat, eport interfaces, tunnel gateway/destination health, GSOP NetFlow resource failures. Link only to nodes with GigaSMART.',
              C_items, C_lld, C_macros, C_vms, tags(**{'class': 'network', 'target': 'gigamon'})),
-    template(TD, 'GigaVUE-FM notifications (GIGAMON-FM-SNMP, 1.3.6.1.4.1.26866.6.1.*) received as SNMP traps. The MIB defines no pollable objects for FM. Needs snmptrapd + zabbix_trap_receiver and a host whose SNMP interface IP equals the trap source address.',
-             D_items, None, [], None, tags(**{'class': 'software', 'target': 'gigamon-fm'})),
+    template(TD, 'GigaVUE-FM monitoring WITHOUT SNMP polling (FM does not answer SNMP GET/WALK). (1) Liveness from the Zabbix server: ICMP, HTTPS port, HTTP status of the web UI. (2) FM notifications (GIGAMON-FM-SNMP, 1.3.6.1.4.1.26866.6.1.*) received as SNMP traps: needs snmptrapd + zabbix_trap_receiver and a host whose SNMP interface IP equals the trap source address. No resource metrics (CPU/memory/disk): use the hypervisor or an agent if Gigamon supports one.',
+             D_items, None, D_macros, D_vms, tags(**{'class': 'software', 'target': 'gigamon-fm'})),
 ]}}
 # trap items must not carry trends/units; SNMP_TRAP LOG items have no value-type quirks
 with open(OUT, 'w', encoding='utf-8') as f:

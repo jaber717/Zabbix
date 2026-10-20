@@ -11,6 +11,7 @@ RULES = {  # type: (allowed param counts, validator)
     'MULTIPLIER': ({1}, lambda p: re.fullmatch(r'-?\d+(\.\d+)?', p[0]) is not None),
     'DISCARD_UNCHANGED_HEARTBEAT': ({1}, lambda p: re.fullmatch(r'\d+[smhdw]?', p[0]) is not None),
     'CHANGE_PER_SECOND': ({0}, lambda p: True),
+    'REGEX': ({2}, lambda p: re.compile(p[0]) is not None),
 }
 fails, n, longest = [], 0, 0
 
