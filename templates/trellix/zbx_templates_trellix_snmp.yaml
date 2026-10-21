@@ -1,0 +1,2782 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+  - uuid: 5f0c60664626481f800886e5b2c7561f
+    name: Templates/Security
+  templates:
+  - uuid: 6949ec134843462580f9aecaa6e4a245
+    template: Trellix by SNMP
+    name: Trellix by SNMP
+    description: 'Trellix (FireEye) appliance by SNMP, built from FE-FIREEYE-MIB (1.3.6.1.4.1.25597): ICMP/SNMP availability, MIB-II system data, temperature, RAID/disks, power, fans, software/content/licence state, AVC, submission totals. Link to every NX/EX/FX/AX/CM-class appliance that answers SNMP. Not verified on a live appliance.'
+    groups:
+    - name: Templates/Security
+    items:
+    - uuid: 4015fbf61a524d9c8efef5f30da3b1b3
+      name: ICMP ping
+      type: SIMPLE
+      key: icmpping
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      valuemap:
+        name: Trellix service state
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: 999e9b16ea1d49918b41164d358ddbf0
+        expression: max(/Trellix by SNMP/icmpping,#3)=0
+        name: 'Trellix: Unavailable by ICMP ping'
+        priority: HIGH
+        description: No ICMP echo reply in 3 consecutive checks.
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: a680ef00b57a4cda8f7bfb7a60f5e992
+      name: ICMP loss
+      type: SIMPLE
+      key: icmppingloss
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: FLOAT
+      units: '%'
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: cab25697bcaf484785c6c6afcc98438f
+        expression: min(/Trellix by SNMP/icmppingloss,5m)>{$TRELLIX.ICMP.LOSS.WARN} and min(/Trellix by SNMP/icmppingloss,5m)<100
+        name: 'Trellix: High ICMP ping loss ({ITEM.VALUE})'
+        priority: WARNING
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: 6e2522f409cf4e088c3a3312c6a930f5
+      name: ICMP response time
+      type: SIMPLE
+      key: icmppingsec
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: FLOAT
+      units: s
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: 4786aeb808d14c0b8542ff9f6906598d
+        expression: min(/Trellix by SNMP/icmppingsec,5m)>{$TRELLIX.ICMP.RESPONSE.TIME.WARN}
+        name: 'Trellix: High ICMP ping response time ({ITEM.VALUE})'
+        priority: WARNING
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: da81139c7e4e43118ce31406b2a9f4fd
+      name: SNMP agent availability
+      type: INTERNAL
+      key: zabbix[host,snmp,available]
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Availability of the SNMP interface as seen by the Zabbix server/proxy.
+      valuemap:
+        name: Trellix SNMP availability
+      tags:
+      - tag: component
+        value: availability
+      triggers:
+      - uuid: 5569a83d211d475b8dcd0d4d07bd2c02
+        expression: max(/Trellix by SNMP/zabbix[host,snmp,available],{$TRELLIX.SNMP.TIMEOUT})=0
+        name: 'Trellix: No SNMP data collection'
+        priority: AVERAGE
+        description: 'SNMP polling failed for the whole {$TRELLIX.SNMP.TIMEOUT}: check community/credentials, the SNMP allow-list on the appliance and UDP/161 reachability. Counter64 objects need SNMPv2c or v3.'
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: eb82643c958246fc8917bb8cfe7a6f3a
+      name: System description
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.1.1.0
+      key: system.descr
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: TEXT
+      description: MIB-II sysDescr.
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: system
+    - uuid: c2c7a70d1f8447b88338dcd47c21aa2c
+      name: System name
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.1.5.0
+      key: system.name
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: MIB-II sysName.
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: system
+    - uuid: 14f24abfac1946ba8624854866f177e9
+      name: System object ID
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.1.2.0
+      key: system.objectid
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: MIB-II sysObjectID (expected under 1.3.6.1.4.1.25597; not verified against a live appliance).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: system
+    - uuid: 702b40a5008d48f78f55e22f1ef2fd80
+      name: Uptime
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.1.3.0
+      key: system.uptime
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: FLOAT
+      units: uptime
+      description: MIB-II sysUpTime (timeticks / 100).
+      preprocessing:
+      - type: MULTIPLIER
+        parameters:
+        - '0.01'
+      tags:
+      - tag: component
+        value: system
+      triggers:
+      - uuid: 4a9cafdf9cda4819849f9b3c01f25089
+        expression: last(/Trellix by SNMP/system.uptime)<10m
+        name: 'Trellix: Restarted (uptime {ITEM.LASTVALUE})'
+        priority: INFO
+        description: 'Uptime below 10 minutes: the appliance restarted or the SNMP agent was reset.'
+        tags:
+        - tag: scope
+          value: availability
+      - uuid: 0d1987f69d3645f68258835018d881ad
+        expression: nodata(/Trellix by SNMP/system.uptime,{$TRELLIX.NODATA.TIMEOUT})=1
+        name: 'Trellix: No SNMP data for {$TRELLIX.NODATA.TIMEOUT}'
+        priority: AVERAGE
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: b06f8e1689914647882c00561a3f4e1f
+      name: Hardware model
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.1.1.2.0
+      key: trellix.model
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: MIB object feHardwareModel (1.3.6.1.4.1.25597.11.1.1.2).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: system
+    - uuid: 552898f25c564f54889230c378f9deea
+      name: Serial number
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.1.1.3.0
+      key: trellix.serial
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: MIB object feSerialNumber (1.3.6.1.4.1.25597.11.1.1.3).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: system
+    - uuid: 85b129f3839d42508762bed9891e8e12
+      name: Overall system status (text)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.1.1.1.0
+      key: trellix.system.status
+      delay: 1m
+      history: 31d
+      trends: '0'
+      value_type: TEXT
+      description: Free-text status string. The MIB does not define its possible values, so no trigger is based on it; health is judged from the *IsHealthy truth-value objects and from traps. MIB object feSystemStatus (1.3.6.1.4.1.25597.11.1.1.1).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+      tags:
+      - tag: component
+        value: system
+    - uuid: 1a34fa50a7fe4cb2865354fb70cef250
+      name: Temperature
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.1.1.4.0
+      key: trellix.temperature
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: FLOAT
+      units: °C
+      description: System temperature in Celsius. MIB object feTemperatureValue (1.3.6.1.4.1.25597.11.1.1.4).
+      tags:
+      - tag: component
+        value: temperature
+      triggers:
+      - uuid: 27fff445991f4c878c8a951ef9009c7b
+        expression: min(/Trellix by SNMP/trellix.temperature,5m)>{$TRELLIX.TEMP.WARN}
+        name: 'Trellix: High temperature ({ITEM.VALUE})'
+        priority: WARNING
+        description: The default threshold is a tunable assumption, not a vendor figure. The appliance also sends feExcessiveTemperature.
+        tags:
+        - tag: scope
+          value: temperature
+    - uuid: d0b415a85b7f49b48fd859ea543a52b7
+      name: Temperature status (text)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.1.1.5.0
+      key: trellix.temperature.status
+      delay: 5m
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: MIB object feTemperatureStatus (1.3.6.1.4.1.25597.11.1.1.5).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+      tags:
+      - tag: component
+        value: temperature
+    - uuid: 17d4dd8450b34c248ff60f8a253067c1
+      name: Temperature is healthy
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.1.1.6.0
+      key: trellix.temperature.healthy
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feTemperatureIsHealthy (1.3.6.1.4.1.25597.11.1.1.6).
+      valuemap:
+        name: Trellix TruthValue
+      tags:
+      - tag: component
+        value: temperature
+      triggers:
+      - uuid: d902a695dec442be869e967a6f7810d1
+        expression: last(/Trellix by SNMP/trellix.temperature.healthy)=2
+        name: 'Trellix: Temperature not healthy'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: last(/Trellix by SNMP/trellix.temperature.healthy)=1
+        priority: HIGH
+        description: 'TruthValue false(2): the appliance reports an abnormal temperature.'
+        tags:
+        - tag: scope
+          value: temperature
+    - uuid: cf4d78d96a7b4bd488cf4ac4e92a1d0f
+      name: RAID status (text)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.2.1.1.0
+      key: trellix.raid.status
+      delay: 1m
+      history: 31d
+      trends: '0'
+      value_type: TEXT
+      description: MIB object feRaidStatus (1.3.6.1.4.1.25597.11.2.1.1).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+      tags:
+      - tag: component
+        value: storage
+    - uuid: 1a192496a5f44c618797653fae1675b8
+      name: RAID is healthy
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.2.1.2.0
+      key: trellix.raid.healthy
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feRaidIsHealthy (1.3.6.1.4.1.25597.11.2.1.2).
+      valuemap:
+        name: Trellix TruthValue
+      tags:
+      - tag: component
+        value: storage
+      triggers:
+      - uuid: 10723e6fdcdd4df0823a2eaee6fb20c2
+        expression: last(/Trellix by SNMP/trellix.raid.healthy)=2
+        name: 'Trellix: RAID not healthy'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: last(/Trellix by SNMP/trellix.raid.healthy)=1
+        priority: HIGH
+        description: 'TruthValue false(2): RAID is degraded or failed.'
+        tags:
+        - tag: scope
+          value: storage
+    - uuid: 49d501b5fa4d47958ec68e8b927ca2f3
+      name: Power supply status (text)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.3.1.1.0
+      key: trellix.psu.status
+      delay: 1m
+      history: 31d
+      trends: '0'
+      value_type: TEXT
+      description: MIB object fePowerSupplyOverallStatus (1.3.6.1.4.1.25597.11.3.1.1).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+      tags:
+      - tag: component
+        value: power
+    - uuid: b4c3418393d24aee8d584ead33f13aeb
+      name: Power supply is healthy
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.3.1.2.0
+      key: trellix.psu.healthy
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object fePowerSupplyOverallIsHealthy (1.3.6.1.4.1.25597.11.3.1.2).
+      valuemap:
+        name: Trellix TruthValue
+      tags:
+      - tag: component
+        value: power
+      triggers:
+      - uuid: e94a301cedcb4b2e85c77c83b47a714a
+        expression: last(/Trellix by SNMP/trellix.psu.healthy)=2
+        name: 'Trellix: Power supply not healthy'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: last(/Trellix by SNMP/trellix.psu.healthy)=1
+        priority: HIGH
+        description: TruthValue false(2).
+        tags:
+        - tag: scope
+          value: power
+    - uuid: 1534b5e343f344328f23fa15a2aff665
+      name: Fan status overall (text)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.4.1.1.0
+      key: trellix.fan.status
+      delay: 1m
+      history: 31d
+      trends: '0'
+      value_type: TEXT
+      description: MIB object feFanOverallStatus (1.3.6.1.4.1.25597.11.4.1.1).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+      tags:
+      - tag: component
+        value: fan
+    - uuid: 24b635f5d566440a87c6462307a2a04c
+      name: Fans are healthy
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.4.1.2.0
+      key: trellix.fan.healthy
+      delay: 1m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feFanOverallIsHealthy (1.3.6.1.4.1.25597.11.4.1.2).
+      valuemap:
+        name: Trellix TruthValue
+      tags:
+      - tag: component
+        value: fan
+      triggers:
+      - uuid: 9072fc56a4064063868627507b967708
+        expression: last(/Trellix by SNMP/trellix.fan.healthy)=2
+        name: 'Trellix: Fan not healthy'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: last(/Trellix by SNMP/trellix.fan.healthy)=1
+        priority: AVERAGE
+        description: TruthValue false(2).
+        tags:
+        - tag: scope
+          value: fan
+    - uuid: 9d9e31d3a73246898930490b7ff5e9d6
+      name: Installed system image
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.5.1.1.0
+      key: trellix.image.installed
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: MIB object feInstalledSystemImage (1.3.6.1.4.1.25597.11.5.1.1).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: software
+    - uuid: 92fef718c44a43d98a32fc15d6ff00b7
+      name: System image version (current)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.5.1.2.0
+      key: trellix.image.current
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: MIB object feSystemImageVersionCurrent (1.3.6.1.4.1.25597.11.5.1.2).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: software
+    - uuid: 55a8767ea2954a3d8210ecdb44f61406
+      name: System image version (latest)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.5.1.3.0
+      key: trellix.image.latest
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: MIB object feSystemImageVersionLatest (1.3.6.1.4.1.25597.11.5.1.3).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: software
+    - uuid: a234cd51aff24c018a5524cc2b9bafe3
+      name: System image is the latest
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.5.1.4.0
+      key: trellix.image.is_latest
+      delay: 1h
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feIsSystemImageLatest (1.3.6.1.4.1.25597.11.5.1.4).
+      valuemap:
+        name: Trellix TruthValue
+      tags:
+      - tag: component
+        value: software
+      triggers:
+      - uuid: 0e0fc8e3a7b4434581e9e293d28f49f4
+        expression: last(/Trellix by SNMP/trellix.image.is_latest)=2
+        name: 'Trellix: A newer system image is available'
+        priority: INFO
+        tags:
+        - tag: scope
+          value: software
+    - uuid: 8b040e1f139c496485850b7c3ce10e8c
+      name: Security content version
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.5.1.5.0
+      key: trellix.content.version
+      delay: 1h
+      history: 31d
+      trends: '0'
+      value_type: CHAR
+      description: MIB object feSecurityContentVersion (1.3.6.1.4.1.25597.11.5.1.5).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: software
+    - uuid: df59e3eb43bf439d89140cce51442c8e
+      name: Last security content update passed
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.5.1.6.0
+      key: trellix.content.update.passed
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feLastContentUpdatePassed (1.3.6.1.4.1.25597.11.5.1.6).
+      valuemap:
+        name: Trellix TruthValue
+      tags:
+      - tag: component
+        value: software
+      triggers:
+      - uuid: 3579251c80894f2084688c3046f6bc15
+        expression: last(/Trellix by SNMP/trellix.content.update.passed)=2
+        name: 'Trellix: Last security content update failed'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: last(/Trellix by SNMP/trellix.content.update.passed)=1
+        priority: AVERAGE
+        tags:
+        - tag: scope
+          value: software
+    - uuid: 1da488c0105f4e5f8dd2d859e17e9d21
+      name: Last security content update time
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.5.1.7.0
+      key: trellix.content.update.time
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: MIB object feLastContentUpdateTime (1.3.6.1.4.1.25597.11.5.1.7).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: software
+    - uuid: b8c85dce600744e885598205376140b8
+      name: Active VMs
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.5.1.9.0
+      key: trellix.vms.active
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feActiveVMs (1.3.6.1.4.1.25597.11.5.1.9).
+      tags:
+      - tag: component
+        value: analysis
+    - uuid: b64df3b1036648ae8c83253f02c12fb8
+      name: Product licence is active
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.5.1.10.0
+      key: trellix.license.product
+      delay: 1h
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feProductLicenseActive (1.3.6.1.4.1.25597.11.5.1.10).
+      valuemap:
+        name: Trellix TruthValue
+      tags:
+      - tag: component
+        value: license
+      triggers:
+      - uuid: e6416d487e3d4f1d807e9ad8ccd0a23b
+        expression: last(/Trellix by SNMP/trellix.license.product)=2
+        name: 'Trellix: Product licence not active'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: last(/Trellix by SNMP/trellix.license.product)=1
+        priority: AVERAGE
+        tags:
+        - tag: scope
+          value: license
+    - uuid: eeea4853b0cf4a13816d3774b3bbaf55
+      name: Content licence is active
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.5.1.11.0
+      key: trellix.license.content
+      delay: 1h
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feContentLicenseActive (1.3.6.1.4.1.25597.11.5.1.11).
+      valuemap:
+        name: Trellix TruthValue
+      tags:
+      - tag: component
+        value: license
+      triggers:
+      - uuid: 1438de3a4d864514810bb442f5543ebf
+        expression: last(/Trellix by SNMP/trellix.license.content)=2
+        name: 'Trellix: Content licence not active'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: last(/Trellix by SNMP/trellix.license.content)=1
+        priority: AVERAGE
+        tags:
+        - tag: scope
+          value: license
+    - uuid: 3cf5410b96da4b04838fa06a41694705
+      name: Support licence is active
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.5.1.12.0
+      key: trellix.license.support
+      delay: 1h
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feSupportLicenseActive (1.3.6.1.4.1.25597.11.5.1.12).
+      valuemap:
+        name: Trellix TruthValue
+      tags:
+      - tag: component
+        value: license
+      triggers:
+      - uuid: 82a9c2c221d14f318f691c273e68ce3f
+        expression: last(/Trellix by SNMP/trellix.license.support)=2
+        name: 'Trellix: Support licence not active'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: last(/Trellix by SNMP/trellix.license.support)=1
+        priority: WARNING
+        tags:
+        - tag: scope
+          value: license
+    - uuid: 4ff7fd98f52a42af8c1807c93aff67ef
+      name: AVC overload status
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.7.1.1.0
+      key: trellix.avc.overload
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: AVC-provided appliance overloaded status (true = overloaded). MIB object feAvcOverloadStatus (1.3.6.1.4.1.25597.11.7.1.1).
+      valuemap:
+        name: Trellix TruthValue
+      tags:
+      - tag: component
+        value: analysis
+      triggers:
+      - uuid: bb305598b27d490687577fe04481a1db
+        expression: last(/Trellix by SNMP/trellix.avc.overload)=1
+        name: 'Trellix: Appliance overloaded (AVC)'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: last(/Trellix by SNMP/trellix.avc.overload)=2
+        priority: WARNING
+        tags:
+        - tag: scope
+          value: analysis
+    - uuid: b180e8eaf7d9491588253707b912d8da
+      name: AVC overload statistics (text)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.7.1.2.0
+      key: trellix.avc.stats
+      delay: 5m
+      history: 7d
+      trends: '0'
+      value_type: TEXT
+      description: MIB object feAvcMoreOverloadStats (1.3.6.1.4.1.25597.11.7.1.2).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: analysis
+    - uuid: bbf1fa43c9d140db83e0d2f1f6ce7f5c
+      name: AVC suggested max VMs
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.7.1.3.0
+      key: trellix.avc.maxvms
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feAvcSuggestedMaxVMs (1.3.6.1.4.1.25597.11.7.1.3).
+      tags:
+      - tag: component
+        value: analysis
+    - uuid: 37ca5136228e48c68445f4aa14540ab7
+      name: Submissions total (low 32 bit)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.6.1.1.0
+      key: trellix.submission.count.low
+      delay: 5m
+      history: 7d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feSubmissionCountL (1.3.6.1.4.1.25597.11.6.1.1).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: 4b29f54b948e46288c5738bfe8b1f077
+      name: Submissions total (high 32 bit)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.6.1.2.0
+      key: trellix.submission.count.high
+      delay: 5m
+      history: 7d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feSubmissionCountH (1.3.6.1.4.1.25597.11.6.1.2).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: 68a0d8b8273342c28bf9e1c0342b4bbd
+      name: Submissions total
+      type: CALCULATED
+      key: trellix.submission.count
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      params: last(/Trellix by SNMP/trellix.submission.count.high)*4294967296+last(/Trellix by SNMP/trellix.submission.count.low)
+      description: (high << 32) + low. The MIB calls it the "total submission count"; whether it is cumulative or windowed is not stated, so it is stored unchanged (no rate).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: 039480b7ac3540e584d855cb3a1c043b
+      name: Submissions done (low 32 bit)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.6.1.3.0
+      key: trellix.submission.donecount.low
+      delay: 5m
+      history: 7d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feSubmissionDoneCountL (1.3.6.1.4.1.25597.11.6.1.3).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: b68a8d6192de4f828fd8c98cc488946f
+      name: Submissions done (high 32 bit)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.6.1.4.0
+      key: trellix.submission.donecount.high
+      delay: 5m
+      history: 7d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feSubmissionDoneCountH (1.3.6.1.4.1.25597.11.6.1.4).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: 004d8f87ae1d418385cd7e714be97b92
+      name: Submissions done
+      type: CALCULATED
+      key: trellix.submission.donecount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      params: last(/Trellix by SNMP/trellix.submission.donecount.high)*4294967296+last(/Trellix by SNMP/trellix.submission.donecount.low)
+      description: (high << 32) + low. The MIB calls it the "total submission count"; whether it is cumulative or windowed is not stated, so it is stored unchanged (no rate).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: ffa266d553fd420186512908cc879168
+      name: Submissions timed out (low 32 bit)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.6.1.5.0
+      key: trellix.submission.timedoutcount.low
+      delay: 5m
+      history: 7d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feSubmissionTimedOutCountL (1.3.6.1.4.1.25597.11.6.1.5).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: e1ba567d3cab4dc48bc2ffc0ce973400
+      name: Submissions timed out (high 32 bit)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.6.1.6.0
+      key: trellix.submission.timedoutcount.high
+      delay: 5m
+      history: 7d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feSubmissionTimedOutCountH (1.3.6.1.4.1.25597.11.6.1.6).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: 56716dbb7dad44088577787134ff5a85
+      name: Submissions timed out
+      type: CALCULATED
+      key: trellix.submission.timedoutcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      params: last(/Trellix by SNMP/trellix.submission.timedoutcount.high)*4294967296+last(/Trellix by SNMP/trellix.submission.timedoutcount.low)
+      description: (high << 32) + low. The MIB calls it the "total submission count"; whether it is cumulative or windowed is not stated, so it is stored unchanged (no rate).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: 05e66b41fe45446085a682987cd68ac9
+      name: Submissions 50-74% aged (low 32 bit)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.6.1.7.0
+      key: trellix.submission.aging50to74cnt.low
+      delay: 5m
+      history: 7d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feSubmissionAging50to74CntL (1.3.6.1.4.1.25597.11.6.1.7).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: ea000d6ef4fe4c318b45b8d32433234e
+      name: Submissions 50-74% aged (high 32 bit)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.6.1.8.0
+      key: trellix.submission.aging50to74cnt.high
+      delay: 5m
+      history: 7d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feSubmissionAging50to74CntH (1.3.6.1.4.1.25597.11.6.1.8).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: b66efdb338d745d785e377ff37ad7ea2
+      name: Submissions 50-74% aged
+      type: CALCULATED
+      key: trellix.submission.aging50to74cnt
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      params: last(/Trellix by SNMP/trellix.submission.aging50to74cnt.high)*4294967296+last(/Trellix by SNMP/trellix.submission.aging50to74cnt.low)
+      description: (high << 32) + low. The MIB calls it the "total submission count"; whether it is cumulative or windowed is not stated, so it is stored unchanged (no rate).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: 23904c71643046fc8a3312386c83f873
+      name: Submissions 75-100% aged (low 32 bit)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.6.1.9.0
+      key: trellix.submission.aging75to100cnt.low
+      delay: 5m
+      history: 7d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feSubmissionAging75to100CntL (1.3.6.1.4.1.25597.11.6.1.9).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: b46dde5b4e654d9a8df70fc4d1bb38d8
+      name: Submissions 75-100% aged (high 32 bit)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.11.6.1.10.0
+      key: trellix.submission.aging75to100cnt.high
+      delay: 5m
+      history: 7d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feSubmissionAging75to100CntH (1.3.6.1.4.1.25597.11.6.1.10).
+      tags:
+      - tag: component
+        value: submission
+    - uuid: c220deaadbc142f58554f7bf0d4ece12
+      name: Submissions 75-100% aged
+      type: CALCULATED
+      key: trellix.submission.aging75to100cnt
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      params: last(/Trellix by SNMP/trellix.submission.aging75to100cnt.high)*4294967296+last(/Trellix by SNMP/trellix.submission.aging75to100cnt.low)
+      description: (high << 32) + low. The MIB calls it the "total submission count"; whether it is cumulative or windowed is not stated, so it is stored unchanged (no rate).
+      tags:
+      - tag: component
+        value: submission
+    discovery_rules:
+    - uuid: 57ccd593d7d74cd588b0c4c030f929b0
+      name: Physical disk discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#DISKNAME},1.3.6.1.4.1.25597.11.2.1.3.1.2]
+      key: trellix.disk.discovery
+      delay: 1h
+      lifetime: 7d
+      description: Discovers rows of fePhysicalDiskTable (1.3.6.1.4.1.25597.11.2.1.3).
+      item_prototypes:
+      - uuid: fea442deb81144608028fd952a9db50b
+        name: 'Disk {#DISKNAME}: Status (text)'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.2.1.3.1.3.{#SNMPINDEX}
+        key: trellix.disk.status[{#SNMPINDEX}]
+        delay: 5m
+        history: 7d
+        trends: '0'
+        value_type: CHAR
+        description: MIB object fePhysicalDiskStatus (1.3.6.1.4.1.25597.11.2.1.3.1.3).
+        preprocessing:
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 6h
+        tags:
+        - tag: component
+          value: storage
+        - tag: disk
+          value: '{#DISKNAME}'
+      - uuid: 496d5936b73649828eb8abb9b6481961
+        name: 'Disk {#DISKNAME}: Is healthy'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.2.1.3.1.4.{#SNMPINDEX}
+        key: trellix.disk.healthy[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object fePhysicalDiskIsHealthy (1.3.6.1.4.1.25597.11.2.1.3.1.4).
+        valuemap:
+          name: Trellix TruthValue
+        tags:
+        - tag: component
+          value: storage
+        - tag: disk
+          value: '{#DISKNAME}'
+        trigger_prototypes:
+        - uuid: fcf58729bfb84a4780973202d989296b
+          expression: last(/Trellix by SNMP/trellix.disk.healthy[{#SNMPINDEX}])=2
+          name: 'Trellix: Disk {#DISKNAME} not healthy'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Trellix by SNMP/trellix.disk.healthy[{#SNMPINDEX}])=1
+          priority: HIGH
+          tags:
+          - tag: scope
+            value: storage
+      - uuid: 108096b1f25c427788b8200ff094f63d
+        name: 'Disk {#DISKNAME}: Self assessment (text)'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.2.1.3.1.6.{#SNMPINDEX}
+        key: trellix.disk.selfassess[{#SNMPINDEX}]
+        delay: 1h
+        history: 7d
+        trends: '0'
+        value_type: CHAR
+        description: MIB object fePhysicalDiskSelfAssess (1.3.6.1.4.1.25597.11.2.1.3.1.6).
+        preprocessing:
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 1d
+        tags:
+        - tag: component
+          value: storage
+        - tag: disk
+          value: '{#DISKNAME}'
+      - uuid: 52367c4028b44a3089587e5a449bcc0f
+        name: 'Disk {#DISKNAME}: Device configuration (text)'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.2.1.3.1.5.{#SNMPINDEX}
+        key: trellix.disk.devsupport[{#SNMPINDEX}]
+        delay: 1h
+        history: 7d
+        trends: '0'
+        value_type: CHAR
+        description: MIB object fePhysicalDiskDeviceSupport (1.3.6.1.4.1.25597.11.2.1.3.1.5).
+        preprocessing:
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 1d
+        tags:
+        - tag: component
+          value: storage
+        - tag: disk
+          value: '{#DISKNAME}'
+      - uuid: f9b6df4aad1549038ca9f50908c4e208
+        name: 'Disk {#DISKNAME}: Capacity (text)'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.2.1.3.1.7.{#SNMPINDEX}
+        key: trellix.disk.size[{#SNMPINDEX}]
+        delay: 1h
+        history: 7d
+        trends: '0'
+        value_type: CHAR
+        description: The MIB types this as OCTET STRING, so the value is kept as text. MIB object fePhysicalDiskTotalBytes (1.3.6.1.4.1.25597.11.2.1.3.1.7).
+        preprocessing:
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 1d
+        tags:
+        - tag: component
+          value: storage
+        - tag: disk
+          value: '{#DISKNAME}'
+    - uuid: ac2874434d7a44868c0d9b5e988afb7e
+      name: Fan discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#FANNAME},1.3.6.1.4.1.25597.11.4.1.3.1.5]
+      key: trellix.fan.discovery
+      delay: 1h
+      lifetime: 7d
+      description: Discovers rows of feFanStatusTable (1.3.6.1.4.1.25597.11.4.1.3).
+      item_prototypes:
+      - uuid: 57efce5340844fa78381a4e9dea2cc90
+        name: 'Fan {#FANNAME}: Status (text)'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.4.1.3.1.2.{#SNMPINDEX}
+        key: trellix.fan.st[{#SNMPINDEX}]
+        delay: 5m
+        history: 7d
+        trends: '0'
+        value_type: CHAR
+        description: MIB object feFanStatus (1.3.6.1.4.1.25597.11.4.1.3.1.2).
+        preprocessing:
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 6h
+        tags:
+        - tag: component
+          value: fan
+        - tag: fan
+          value: '{#FANNAME}'
+      - uuid: 9292dd8f44ca4f39865da61fd87b99ab
+        name: 'Fan {#FANNAME}: Is healthy'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.4.1.3.1.3.{#SNMPINDEX}
+        key: trellix.fan.ok[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object feFanIsHealthy (1.3.6.1.4.1.25597.11.4.1.3.1.3).
+        valuemap:
+          name: Trellix TruthValue
+        tags:
+        - tag: component
+          value: fan
+        - tag: fan
+          value: '{#FANNAME}'
+        trigger_prototypes:
+        - uuid: 666c864c0cae469984fbec7d3533a480
+          expression: last(/Trellix by SNMP/trellix.fan.ok[{#SNMPINDEX}])=2
+          name: 'Trellix: Fan {#FANNAME} not healthy'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Trellix by SNMP/trellix.fan.ok[{#SNMPINDEX}])=1
+          priority: AVERAGE
+          tags:
+          - tag: scope
+            value: fan
+      - uuid: 38e08a4cf3d749768975bb6b6287bd6d
+        name: 'Fan {#FANNAME}: Speed'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.4.1.3.1.4.{#SNMPINDEX}
+        key: trellix.fan.speed[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        units: rpm
+        description: MIB object feFanSpeed (1.3.6.1.4.1.25597.11.4.1.3.1.4).
+        tags:
+        - tag: component
+          value: fan
+        - tag: fan
+          value: '{#FANNAME}'
+    - uuid: 8de13c0b12a24452855cc123d8bb93f3
+      name: Guest image discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#GINAME},1.3.6.1.4.1.25597.11.5.1.8.1.2]
+      key: trellix.gi.discovery
+      delay: 1h
+      lifetime: 7d
+      description: Discovers rows of feGIVersionTable (1.3.6.1.4.1.25597.11.5.1.8).
+      item_prototypes:
+      - uuid: 0f9bf6971edf413d82d578568337b2c9
+        name: 'Guest image {#GINAME}: Version'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.5.1.8.1.3.{#SNMPINDEX}
+        key: trellix.gi.version[{#SNMPINDEX}]
+        delay: 1h
+        history: 31d
+        trends: '0'
+        value_type: CHAR
+        description: MIB object feGIVersion (1.3.6.1.4.1.25597.11.5.1.8.1.3).
+        preprocessing:
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 1d
+        tags:
+        - tag: component
+          value: analysis
+        - tag: guestimage
+          value: '{#GINAME}'
+      - uuid: 51ddbba58ef84b9686085c53dc229982
+        name: 'Guest image {#GINAME}: Enabled'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.5.1.8.1.4.{#SNMPINDEX}
+        key: trellix.gi.enabled[{#SNMPINDEX}]
+        delay: 1h
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object feGIEnabled (1.3.6.1.4.1.25597.11.5.1.8.1.4).
+        valuemap:
+          name: Trellix TruthValue
+        preprocessing:
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 1d
+        tags:
+        - tag: component
+          value: analysis
+        - tag: guestimage
+          value: '{#GINAME}'
+      - uuid: f95bff8d892c4add8d413ed06ef8ac3f
+        name: 'Guest image {#GINAME}: Install date/time'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.5.1.8.1.5.{#SNMPINDEX}
+        key: trellix.gi.installed[{#SNMPINDEX}]
+        delay: 1h
+        history: 31d
+        trends: '0'
+        value_type: CHAR
+        description: MIB object feGIInstallDateTime (1.3.6.1.4.1.25597.11.5.1.8.1.5).
+        preprocessing:
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 1d
+        tags:
+        - tag: component
+          value: analysis
+        - tag: guestimage
+          value: '{#GINAME}'
+    - uuid: 517fdf6799aa487a89606c7ba45d47b0
+      name: Licensed feature discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#LICFEATURE},1.3.6.1.4.1.25597.11.5.1.16.1.1]
+      key: trellix.licfeature.discovery
+      delay: 1h
+      lifetime: 7d
+      description: Discovers rows of feLicenseFeatureTable (1.3.6.1.4.1.25597.11.5.1.16).
+      item_prototypes:
+      - uuid: d07c8d26e9cb46be801841ea357526ae
+        name: 'Licence {#LICFEATURE}: Active'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.5.1.16.1.3.{#SNMPINDEX}
+        key: trellix.licfeature.active[{#SNMPINDEX}]
+        delay: 1h
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object feLicenseActive (1.3.6.1.4.1.25597.11.5.1.16.1.3).
+        valuemap:
+          name: Trellix TruthValue
+        tags:
+        - tag: component
+          value: license
+        - tag: feature
+          value: '{#LICFEATURE}'
+        trigger_prototypes:
+        - uuid: ac81ea099bcb43c58229867408baf4e2
+          expression: last(/Trellix by SNMP/trellix.licfeature.active[{#SNMPINDEX}])=2
+          name: 'Trellix: Licence {#LICFEATURE} not active'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Trellix by SNMP/trellix.licfeature.active[{#SNMPINDEX}])=1
+          priority: AVERAGE
+          tags:
+          - tag: scope
+            value: license
+      - uuid: e59648407c3443ff87dc21148c751af0
+        name: 'Licence {#LICFEATURE}: Description'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.5.1.16.1.2.{#SNMPINDEX}
+        key: trellix.licfeature.descr[{#SNMPINDEX}]
+        delay: 1d
+        history: 7d
+        trends: '0'
+        value_type: CHAR
+        description: MIB object feLicenseFeatureDescr (1.3.6.1.4.1.25597.11.5.1.16.1.2).
+        preprocessing:
+        - type: DISCARD_UNCHANGED_HEARTBEAT
+          parameters:
+          - 7d
+        tags:
+        - tag: component
+          value: license
+        - tag: feature
+          value: '{#LICFEATURE}'
+      - uuid: cb38dda9ca92451485a3bd9eebf5f17d
+        name: 'Licence {#LICFEATURE}: Days until expiration'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.11.5.1.16.1.5.{#SNMPINDEX}
+        key: trellix.licfeature.days[{#SNMPINDEX}]
+        delay: 1h
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        units: d
+        description: 'DISABLED by default: the MIB says this object returns nothing for perpetual, inactive or expired features, which would leave the item unsupported. Enable it only for features you know expire. MIB object feLicenseDaysUntilExpiration (1.3.6.1.4.1.25597.11.5.1.16.1.5).'
+        status: DISABLED
+        tags:
+        - tag: component
+          value: license
+        - tag: feature
+          value: '{#LICFEATURE}'
+        trigger_prototypes:
+        - uuid: 9a0349239db8482e802b2065a9f85e79
+          expression: last(/Trellix by SNMP/trellix.licfeature.days[{#SNMPINDEX}])<{$TRELLIX.LICENSE.DAYS.WARN}
+          name: 'Trellix: Licence {#LICFEATURE} expires in {ITEM.LASTVALUE} days'
+          priority: WARNING
+          tags:
+          - tag: scope
+            value: license
+    macros:
+    - macro: '{$TRELLIX.ICMP.LOSS.WARN}'
+      value: '20'
+      description: ICMP loss (%) above which the warning fires.
+    - macro: '{$TRELLIX.ICMP.RESPONSE.TIME.WARN}'
+      value: '0.15'
+      description: ICMP response time (s) above which the warning fires.
+    - macro: '{$TRELLIX.SNMP.TIMEOUT}'
+      value: 5m
+      description: How long SNMP must be unavailable before the trigger fires.
+    - macro: '{$TRELLIX.NODATA.TIMEOUT}'
+      value: 30m
+      description: No-data period for the uptime item.
+    - macro: '{$TRELLIX.TEMP.WARN}'
+      value: '70'
+      description: Temperature (C) warning threshold. Assumed default, not a vendor value.
+    - macro: '{$TRELLIX.LICENSE.DAYS.WARN}'
+      value: '30'
+      description: Days left on a licensed feature below which the (disabled-by-default) expiry trigger fires.
+    tags:
+    - tag: class
+      value: security
+    - tag: target
+      value: trellix
+    valuemaps:
+    - uuid: 016010adc19b466485f8513cc47e4235
+      name: Trellix service state
+      mappings:
+      - value: '0'
+        newvalue: Down
+      - value: '1'
+        newvalue: Up
+    - uuid: 19536f4a80834a308c756e40a825f56a
+      name: Trellix SNMP availability
+      mappings:
+      - value: '0'
+        newvalue: Not available
+      - value: '1'
+        newvalue: Available
+      - value: '2'
+        newvalue: Unknown
+    - uuid: e57e04c0f029478b85bd8e8798d658cd
+      name: Trellix TruthValue
+      mappings:
+      - value: '1'
+        newvalue: 'True'
+      - value: '2'
+        newvalue: 'False'
+  - uuid: 3b4246a43c6344638eda4b0b4387a34c
+    template: Trellix CMS by SNMP
+    name: Trellix CMS by SNMP
+    description: 'Trellix Central Management (feCMS, 25597.12): attached-appliance counts and per-appliance disk/fan/PSU/RAID/temperature check results. Link in addition to "Trellix by SNMP" on CMS appliances.'
+    groups:
+    - name: Templates/Security
+    items:
+    - uuid: e7c18c3b3dbe4c5c86066b8cee6c09ca
+      name: Appliances attached
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.12.1.1.0
+      key: trellix.cms.appliancesattached
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feTotalAppliancesAttached (1.3.6.1.4.1.25597.12.1.1).
+      tags:
+      - tag: component
+        value: cms
+    - uuid: 1f5a0b96d8664b6a8bad157cd1e09f4f
+      name: WMPS attached
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.12.1.2.0
+      key: trellix.cms.wmpsattached
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feTotalWMPSAttached (1.3.6.1.4.1.25597.12.1.2).
+      tags:
+      - tag: component
+        value: cms
+    - uuid: e5ecd8b832534a9b8e23bc09cac7f1b9
+      name: EMPS attached
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.12.1.3.0
+      key: trellix.cms.empsattached
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feTotalEMPSAttached (1.3.6.1.4.1.25597.12.1.3).
+      tags:
+      - tag: component
+        value: cms
+    - uuid: 01e8b37f277a4a7582c16d8491c170e0
+      name: FMPS attached
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.12.1.4.0
+      key: trellix.cms.fmpsattached
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feTotalFMPSAttached (1.3.6.1.4.1.25597.12.1.4).
+      tags:
+      - tag: component
+        value: cms
+    - uuid: 7fd33acd8ed64d1e80d5b207ebe83ec0
+      name: MAS attached
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.12.1.5.0
+      key: trellix.cms.masattached
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feTotalMASAttached (1.3.6.1.4.1.25597.12.1.5).
+      tags:
+      - tag: component
+        value: cms
+    discovery_rules:
+    - uuid: ac68b18272ed43d6839fbd8c0e12137a
+      name: CMS managed appliance discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#CMSAPP},1.3.6.1.4.1.25597.12.1.6.1.2]
+      key: trellix.cms.discovery
+      delay: 1h
+      lifetime: 7d
+      description: Discovers rows of feCMSApplianceTable (1.3.6.1.4.1.25597.12.1.6).
+      item_prototypes:
+      - uuid: 75f19060817d457289946cf7dd4dabb3
+        name: 'Appliance {#CMSAPP}: Disk space check passed'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.12.1.6.1.3.{#SNMPINDEX}
+        key: trellix.cms.app.disk[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object feCMSApplianceDiskSpacePassed (1.3.6.1.4.1.25597.12.1.6.1.3).
+        valuemap:
+          name: Trellix TruthValue
+        tags:
+        - tag: component
+          value: cms
+        - tag: appliance
+          value: '{#CMSAPP}'
+        trigger_prototypes:
+        - uuid: 02a012364dbf4dde8e51c48ba41ca64b
+          expression: last(/Trellix CMS by SNMP/trellix.cms.app.disk[{#SNMPINDEX}])=2
+          name: 'Trellix CMS: Appliance {#CMSAPP} failed Disk space check'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Trellix CMS by SNMP/trellix.cms.app.disk[{#SNMPINDEX}])=1
+          priority: AVERAGE
+          tags:
+          - tag: scope
+            value: cms
+      - uuid: 0dfa1f205b6c472987315f5fa8779435
+        name: 'Appliance {#CMSAPP}: Fan check passed'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.12.1.6.1.4.{#SNMPINDEX}
+        key: trellix.cms.app.fan[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object feCMSApplianceFanPassed (1.3.6.1.4.1.25597.12.1.6.1.4).
+        valuemap:
+          name: Trellix TruthValue
+        tags:
+        - tag: component
+          value: cms
+        - tag: appliance
+          value: '{#CMSAPP}'
+        trigger_prototypes:
+        - uuid: 9b3f11bb40d140ca8038360e8fe90232
+          expression: last(/Trellix CMS by SNMP/trellix.cms.app.fan[{#SNMPINDEX}])=2
+          name: 'Trellix CMS: Appliance {#CMSAPP} failed Fan check'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Trellix CMS by SNMP/trellix.cms.app.fan[{#SNMPINDEX}])=1
+          priority: AVERAGE
+          tags:
+          - tag: scope
+            value: cms
+      - uuid: b6fc5e2605d547ea8f2c0c44f7217bb1
+        name: 'Appliance {#CMSAPP}: Power supply check passed'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.12.1.6.1.5.{#SNMPINDEX}
+        key: trellix.cms.app.psu[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object feCMSAppliancePowerSupplyPassed (1.3.6.1.4.1.25597.12.1.6.1.5).
+        valuemap:
+          name: Trellix TruthValue
+        tags:
+        - tag: component
+          value: cms
+        - tag: appliance
+          value: '{#CMSAPP}'
+        trigger_prototypes:
+        - uuid: b8ffec7d4dfa4c71849afb851e39e65f
+          expression: last(/Trellix CMS by SNMP/trellix.cms.app.psu[{#SNMPINDEX}])=2
+          name: 'Trellix CMS: Appliance {#CMSAPP} failed Power supply check'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Trellix CMS by SNMP/trellix.cms.app.psu[{#SNMPINDEX}])=1
+          priority: AVERAGE
+          tags:
+          - tag: scope
+            value: cms
+      - uuid: 2309bca050734d598eb7e86c6e9f957d
+        name: 'Appliance {#CMSAPP}: RAID check passed'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.12.1.6.1.6.{#SNMPINDEX}
+        key: trellix.cms.app.raid[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object feCMSApplianceRaidPassed (1.3.6.1.4.1.25597.12.1.6.1.6).
+        valuemap:
+          name: Trellix TruthValue
+        tags:
+        - tag: component
+          value: cms
+        - tag: appliance
+          value: '{#CMSAPP}'
+        trigger_prototypes:
+        - uuid: 702e28f61afa487e8286695fe9bca580
+          expression: last(/Trellix CMS by SNMP/trellix.cms.app.raid[{#SNMPINDEX}])=2
+          name: 'Trellix CMS: Appliance {#CMSAPP} failed RAID check'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Trellix CMS by SNMP/trellix.cms.app.raid[{#SNMPINDEX}])=1
+          priority: AVERAGE
+          tags:
+          - tag: scope
+            value: cms
+      - uuid: d4ea7b7ab6544c5785f476c526cc31eb
+        name: 'Appliance {#CMSAPP}: Temperature check passed'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.12.1.6.1.7.{#SNMPINDEX}
+        key: trellix.cms.app.temp[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: MIB object feCMSApplianceTemperaturePassed (1.3.6.1.4.1.25597.12.1.6.1.7).
+        valuemap:
+          name: Trellix TruthValue
+        tags:
+        - tag: component
+          value: cms
+        - tag: appliance
+          value: '{#CMSAPP}'
+        trigger_prototypes:
+        - uuid: 382ad7657c64476089f3e7418c980ab6
+          expression: last(/Trellix CMS by SNMP/trellix.cms.app.temp[{#SNMPINDEX}])=2
+          name: 'Trellix CMS: Appliance {#CMSAPP} failed Temperature check'
+          recovery_mode: RECOVERY_EXPRESSION
+          recovery_expression: last(/Trellix CMS by SNMP/trellix.cms.app.temp[{#SNMPINDEX}])=1
+          priority: AVERAGE
+          tags:
+          - tag: scope
+            value: cms
+    tags:
+    - tag: class
+      value: security
+    - tag: target
+      value: trellix
+    valuemaps:
+    - uuid: 871397a8b3d047ef833f56f0ba361878
+      name: Trellix service state
+      mappings:
+      - value: '0'
+        newvalue: Down
+      - value: '1'
+        newvalue: Up
+    - uuid: 186752a1fcca40418d00d67aeb87a348
+      name: Trellix SNMP availability
+      mappings:
+      - value: '0'
+        newvalue: Not available
+      - value: '1'
+        newvalue: Available
+      - value: '2'
+        newvalue: Unknown
+    - uuid: 1507494db4094419872dead0623a9beb
+      name: Trellix TruthValue
+      mappings:
+      - value: '1'
+        newvalue: 'True'
+      - value: '2'
+        newvalue: 'False'
+  - uuid: 266679fadd3240078a2370b53f468765
+    template: Trellix EMPS by SNMP
+    name: Trellix EMPS by SNMP
+    description: 'Trellix email appliance (feEMPS, 25597.13): email/URL/attachment statistics and queue snapshots. Link in addition to "Trellix by SNMP" on email-analysis appliances.'
+    groups:
+    - name: Templates/Security
+    items:
+    - uuid: dda0f3ad70d64d8e8b2244262f7a0633
+      name: Total email count (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.1.0
+      key: trellix.emps.totalemailcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feTotalEmailCount (1.3.6.1.4.1.25597.13.1.1).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 2d6a201a359846a083ac4c038498458c
+      name: Infected email count (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.4.0
+      key: trellix.emps.infectedemailcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feInfectedEmailCount (1.3.6.1.4.1.25597.13.1.4).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 86a48fbb505c4dee83c8a0e139484cac
+      name: Analyzed email count (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.7.0
+      key: trellix.emps.analyzedemailcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feAnalyzedEmailCount (1.3.6.1.4.1.25597.13.1.7).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 03703d4e36f94b1989686b86e4a4b674
+      name: Total url count (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.10.0
+      key: trellix.emps.totalurlcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feTotalUrlCount (1.3.6.1.4.1.25597.13.1.10).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 24d8055e07a24e21821caf814696ec4f
+      name: Infected url count (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.13.0
+      key: trellix.emps.infectedurlcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feInfectedUrlCount (1.3.6.1.4.1.25597.13.1.13).
+      tags:
+      - tag: component
+        value: email
+    - uuid: d4076f9ae051430383c7e436ada24f44
+      name: Analyzed url count (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.16.0
+      key: trellix.emps.analyzedurlcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feAnalyzedUrlCount (1.3.6.1.4.1.25597.13.1.16).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 2933d3778767448e82d019acd73e0b10
+      name: Total attachment count (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.19.0
+      key: trellix.emps.totalattachmentcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feTotalAttachmentCount (1.3.6.1.4.1.25597.13.1.19).
+      tags:
+      - tag: component
+        value: email
+    - uuid: f623a69c8fa941ae825f8707cbc5da03
+      name: Infected attachment count (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.22.0
+      key: trellix.emps.infectedattachmentcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feInfectedAttachmentCount (1.3.6.1.4.1.25597.13.1.22).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 2ae6be82c9234cc186fac6f8e7e355e6
+      name: Analyzed attachment count (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.25.0
+      key: trellix.emps.analyzedattachmentcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feAnalyzedAttachmentCount (1.3.6.1.4.1.25597.13.1.25).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 977d5f58561146e0878f36ad497da9fd
+      name: Total email has attachment (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.28.0
+      key: trellix.emps.totalemailhasattachment
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feTotalEmailHasAttachment (1.3.6.1.4.1.25597.13.1.28).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 507674dbf7ed46c8817f92d56567d037
+      name: Total email has url (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.31.0
+      key: trellix.emps.totalemailhasurl
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feTotalEmailHasUrl (1.3.6.1.4.1.25597.13.1.31).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 9348d415d9f5491a80db7aee38373cc4
+      name: Total email has bad attachment (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.34.0
+      key: trellix.emps.totalemailhasbadattachment
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feTotalEmailHasBadAttachment (1.3.6.1.4.1.25597.13.1.34).
+      tags:
+      - tag: component
+        value: email
+    - uuid: ba791f0681034d818ff12174d64139b6
+      name: Total email has bad url (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.37.0
+      key: trellix.emps.totalemailhasbadurl
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feTotalEmailHasBadUrl (1.3.6.1.4.1.25597.13.1.37).
+      tags:
+      - tag: component
+        value: email
+    - uuid: dc9ec794cdf7424b8c86bc3d18d1d6a8
+      name: Quarantine usage
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.40.0
+      key: trellix.emps.equarantineusage
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      units: '%'
+      description: MIB object feeQuarantineUsage (1.3.6.1.4.1.25597.13.1.40).
+      tags:
+      - tag: component
+        value: email
+      triggers:
+      - uuid: bda9ebbcb8414c808a38c647c824a174
+        expression: min(/Trellix EMPS by SNMP/trellix.emps.equarantineusage,10m)>{$TRELLIX.EMPS.QUARANTINE.WARN}
+        name: 'Trellix EMPS: Quarantine usage high ({ITEM.VALUE}%)'
+        priority: WARNING
+        description: Default threshold is an assumption.
+        tags:
+        - tag: scope
+          value: email
+    - uuid: e879cb01821041758c048aad28e4b163
+      name: Bypass email count (past window)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.41.0
+      key: trellix.emps.bypassemailcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 whose MIB description says it is the value for the past hour (configurable), maintained across reboots - a windowed value, not a monotonic counter, so no rate is calculated. MIB object feBypassEmailCount (1.3.6.1.4.1.25597.13.1.41).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 8cd333f6ffad455284adbb9cf01a9cf1
+      name: Deferred email count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.44.0
+      key: trellix.emps.deferredemailcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feDeferredEmailCount (1.3.6.1.4.1.25597.13.1.44).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 1f88df205bc049e98cda1a9535bfa2bd
+      name: Hold queue email count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.45.0
+      key: trellix.emps.holdqueueemailcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feHoldQueueEmailCount (1.3.6.1.4.1.25597.13.1.45).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 6bb75470362142b6858fac2b347ac136
+      name: Open smtp connections
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.46.0
+      key: trellix.emps.opensmtpconnections
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feOpenSmtpConnections (1.3.6.1.4.1.25597.13.1.46).
+      tags:
+      - tag: component
+        value: email
+    - uuid: be87e773386648c68e8115a87be5182b
+      name: Incoming email count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.47.0
+      key: trellix.emps.incomingemailcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feIncomingEmailCount (1.3.6.1.4.1.25597.13.1.47).
+      tags:
+      - tag: component
+        value: email
+    - uuid: ee3ba189171f4dfe8372e2e927b813ee
+      name: Active email count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.48.0
+      key: trellix.emps.activeemailcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feActiveEmailCount (1.3.6.1.4.1.25597.13.1.48).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 5385029e89e14d3482f3ee571f2c619b
+      name: Drop email count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.49.0
+      key: trellix.emps.dropemailcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feDropEmailCount (1.3.6.1.4.1.25597.13.1.49).
+      tags:
+      - tag: component
+        value: email
+    - uuid: 11e32df039ea4db98039f9a95b50e1cb
+      name: Sampling email start time
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.50.0
+      key: trellix.emps.samplingemailstarttime
+      delay: 5m
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: MIB object feSamplingEmailStartTime (1.3.6.1.4.1.25597.13.1.50).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: email
+    - uuid: db410c55b8444954824bc98c0e57b58b
+      name: Sampling email end time
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.51.0
+      key: trellix.emps.samplingemailendtime
+      delay: 5m
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: MIB object feSamplingEmailEndTime (1.3.6.1.4.1.25597.13.1.51).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      tags:
+      - tag: component
+        value: email
+    - uuid: 096196de226f4a0d88b8987b508cc2e5
+      name: Sampling email received rate
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.13.1.52.0
+      key: trellix.emps.samplingemailreceivedrate
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feSamplingEmailReceivedRate (1.3.6.1.4.1.25597.13.1.52).
+      tags:
+      - tag: component
+        value: email
+    macros:
+    - macro: '{$TRELLIX.EMPS.QUARANTINE.WARN}'
+      value: '80'
+      description: Quarantine usage (%) above which the warning fires. Assumed default.
+    tags:
+    - tag: class
+      value: security
+    - tag: target
+      value: trellix
+  - uuid: 7ccd62f2fe694fe58e8fdd5d39fde026
+    template: Trellix WMPS by SNMP
+    name: Trellix WMPS by SNMP
+    description: 'Trellix network appliance (feWMPS, 25597.14): deployment check, MVX sizing, traffic/flow loss, detection statistics by time span, alert/threat/file-type counts. Link in addition to "Trellix by SNMP" on network-analysis appliances.'
+    groups:
+    - name: Templates/Security
+    items:
+    - uuid: 19f42aff7b2641628600a36570977e43
+      name: Deployment check status (text)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.1.0
+      key: trellix.wmps.dc.status
+      delay: 5m
+      history: 31d
+      trends: '0'
+      value_type: TEXT
+      description: MIB object feDeploymentCheckStatus (1.3.6.1.4.1.25597.14.1.1).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+      tags:
+      - tag: component
+        value: deployment-check
+    - uuid: a2cb6ddebbf943c282c775169e88ca50
+      name: Deployment check is healthy (raw)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.2.0
+      key: trellix.wmps.dc.healthy
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Typed Unsigned32 (not TruthValue); the MIB does not define the values, so it is stored raw and not used in a trigger. feDeploymentCheckFailure/Recover traps are used instead. MIB object feDeploymentCheckIsHealthy (1.3.6.1.4.1.25597.14.1.2).
+      tags:
+      - tag: component
+        value: deployment-check
+    - uuid: cc947b19a6494cf18e1f1b2bd69fdf90
+      name: Deployment check message
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.3.0
+      key: trellix.wmps.dc.message
+      delay: 5m
+      history: 31d
+      trends: '0'
+      value_type: TEXT
+      description: MIB object feDeploymentCheckMessage (1.3.6.1.4.1.25597.14.1.3).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+      tags:
+      - tag: component
+        value: deployment-check
+    - uuid: 307078012aed44c18d0b44074d891b73
+      name: Deployment check data size
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.6.0
+      key: trellix.wmps.dc.datasize
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      units: B
+      description: MIB object feDeploymentCheckDataSize (1.3.6.1.4.1.25597.14.1.6).
+      tags:
+      - tag: component
+        value: deployment-check
+    - uuid: 0941c8a313904bb3800b303fdfa08a4c
+      name: Deployment check pkt count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.7.0
+      key: trellix.wmps.dc.pktcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feDeploymentCheckPktCount (1.3.6.1.4.1.25597.14.1.7).
+      tags:
+      - tag: component
+        value: deployment-check
+    - uuid: 96170a92f0ae460382c3cadf11bf165d
+      name: Deployment check re trans pkt count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.8.0
+      key: trellix.wmps.dc.retranspktcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feDeploymentCheckReTransPktCount (1.3.6.1.4.1.25597.14.1.8).
+      tags:
+      - tag: component
+        value: deployment-check
+    - uuid: f676a1908c23489e8afeccdf780b06b0
+      name: Deployment check dup ack pkt count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.9.0
+      key: trellix.wmps.dc.dupackpktcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feDeploymentCheckDupAckPktCount (1.3.6.1.4.1.25597.14.1.9).
+      tags:
+      - tag: component
+        value: deployment-check
+    - uuid: 8afb212a99a94cc8800cda43dfa3bfbc
+      name: Deployment check ooopkt count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.10.0
+      key: trellix.wmps.dc.ooopktcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feDeploymentCheckOOOPktCount (1.3.6.1.4.1.25597.14.1.10).
+      tags:
+      - tag: component
+        value: deployment-check
+    - uuid: 4abe86793cfd40cf8c8840f19616f35b
+      name: Deployment check ack usn pkt count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.11.0
+      key: trellix.wmps.dc.ackusnpktcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feDeploymentCheckAckUsnPktCount (1.3.6.1.4.1.25597.14.1.11).
+      tags:
+      - tag: component
+        value: deployment-check
+    - uuid: c5f20502e3034ecf8bb68eab48b5918b
+      name: Deployment check pseg ncpkt count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.12.0
+      key: trellix.wmps.dc.psegncpktcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feDeploymentCheckPSegNCPktCount (1.3.6.1.4.1.25597.14.1.12).
+      tags:
+      - tag: component
+        value: deployment-check
+    - uuid: 1f4009e6993242d5839a009c3960a2a6
+      name: Deployment check mformed pkt count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.13.0
+      key: trellix.wmps.dc.mformedpktcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feDeploymentCheckMFormedPktCount (1.3.6.1.4.1.25597.14.1.13).
+      tags:
+      - tag: component
+        value: deployment-check
+    - uuid: 9eafbacde2f44b1086a1618f3a8cd217
+      name: Deployment check stream count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.14.0
+      key: trellix.wmps.dc.streamcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feDeploymentCheckStreamCount (1.3.6.1.4.1.25597.14.1.14).
+      tags:
+      - tag: component
+        value: deployment-check
+    - uuid: bc0928b2f5b6467584650f22e0c6f60f
+      name: Deployment check asym stream count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.15.0
+      key: trellix.wmps.dc.asymstreamcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: MIB object feDeploymentCheckAsymStreamCount (1.3.6.1.4.1.25597.14.1.15).
+      tags:
+      - tag: component
+        value: deployment-check
+    - uuid: bfa8d479e74445c98a4d4bfd5d55957a
+      name: Wmpsutilization summary
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.17.1.0
+      key: trellix.wmps.sizing.utilizationsummary
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Typed Counter32 but described as a utilization/status measure; stored raw (no rate). Threshold crossings arrive as feWMPSSizingThresholdExceeded/Normal traps. MIB object feWMPSUtilizationSummary (1.3.6.1.4.1.25597.14.1.17.1).
+      tags:
+      - tag: component
+        value: sizing
+    - uuid: 8c6c3e5f303745d588f87d35980ba1e8
+      name: Wmpsweb analysis utilization
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.17.2.0
+      key: trellix.wmps.sizing.webanalysisutilization
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Typed Counter32 but described as a utilization/status measure; stored raw (no rate). Threshold crossings arrive as feWMPSSizingThresholdExceeded/Normal traps. MIB object feWMPSWebAnalysisUtilization (1.3.6.1.4.1.25597.14.1.17.2).
+      tags:
+      - tag: component
+        value: sizing
+    - uuid: 1b84bd6ba87949fe85e1902267e8078c
+      name: Wmpsweb analysis utilization stat
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.17.3.0
+      key: trellix.wmps.sizing.webanalysisutilizationstat
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Typed Counter32 but described as a utilization/status measure; stored raw (no rate). Threshold crossings arrive as feWMPSSizingThresholdExceeded/Normal traps. MIB object feWMPSWebAnalysisUtilizationStat (1.3.6.1.4.1.25597.14.1.17.3).
+      tags:
+      - tag: component
+        value: sizing
+    - uuid: debaf3708a19472a85d189d27e5b9eef
+      name: Wmpsbinary analysis backlog
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.17.4.0
+      key: trellix.wmps.sizing.binaryanalysisbacklog
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Typed Counter32 but described as a utilization/status measure; stored raw (no rate). Threshold crossings arrive as feWMPSSizingThresholdExceeded/Normal traps. MIB object feWMPSBinaryAnalysisBacklog (1.3.6.1.4.1.25597.14.1.17.4).
+      tags:
+      - tag: component
+        value: sizing
+    - uuid: 16b9dcd5365b49408c25c6c87b4c3a11
+      name: Wmpsbinary analysis backlog stat
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.17.5.0
+      key: trellix.wmps.sizing.binaryanalysisbacklogstat
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Typed Counter32 but described as a utilization/status measure; stored raw (no rate). Threshold crossings arrive as feWMPSSizingThresholdExceeded/Normal traps. MIB object feWMPSBinaryAnalysisBacklogStat (1.3.6.1.4.1.25597.14.1.17.5).
+      tags:
+      - tag: component
+        value: sizing
+    - uuid: 16bd0a4a03204eb58375d4990b508362
+      name: Wmpscurrent web sessions
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.17.6.0
+      key: trellix.wmps.sizing.currentwebsessions
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Typed Counter32 but described as a utilization/status measure; stored raw (no rate). Threshold crossings arrive as feWMPSSizingThresholdExceeded/Normal traps. MIB object feWMPSCurrentWebSessions (1.3.6.1.4.1.25597.14.1.17.6).
+      tags:
+      - tag: component
+        value: sizing
+    - uuid: 3edb10f4bc8743d38cecf2de63e15514
+      name: Wmpscurrent web session stat
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.17.7.0
+      key: trellix.wmps.sizing.currentwebsessionstat
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Typed Counter32 but described as a utilization/status measure; stored raw (no rate). Threshold crossings arrive as feWMPSSizingThresholdExceeded/Normal traps. MIB object feWMPSCurrentWebSessionStat (1.3.6.1.4.1.25597.14.1.17.7).
+      tags:
+      - tag: component
+        value: sizing
+    - uuid: c0a341d461c2477583c2abf039b2df52
+      name: Wmpstotal bandwidth
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.17.8.0
+      key: trellix.wmps.sizing.totalbandwidth
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Typed Counter32 but described as a utilization/status measure; stored raw (no rate). Threshold crossings arrive as feWMPSSizingThresholdExceeded/Normal traps. MIB object feWMPSTotalBandwidth (1.3.6.1.4.1.25597.14.1.17.8).
+      tags:
+      - tag: component
+        value: sizing
+    - uuid: ec6809ddb316413787e365d26fe6248b
+      name: Wmpstotal bandwidth stat
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.17.9.0
+      key: trellix.wmps.sizing.totalbandwidthstat
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Typed Counter32 but described as a utilization/status measure; stored raw (no rate). Threshold crossings arrive as feWMPSSizingThresholdExceeded/Normal traps. MIB object feWMPSTotalBandwidthStat (1.3.6.1.4.1.25597.14.1.17.9).
+      tags:
+      - tag: component
+        value: sizing
+    - uuid: 9e55a61055fb49228d93ed17217ced67
+      name: Percentage input traffic lost (text)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.21.0
+      key: trellix.wmps.percentageinputtrafficlost
+      delay: 5m
+      history: 31d
+      trends: '0'
+      value_type: CHAR
+      description: The MIB types this as OCTET STRING without stating the format, so it is stored as text. MIB object fePercentageInputTrafficLost (1.3.6.1.4.1.25597.14.1.21).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1h
+      tags:
+      - tag: component
+        value: traffic
+    - uuid: 74761bb33e7248e5874503a1e4582673
+      name: Percentage flow incomplete data (text)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.14.1.22.0
+      key: trellix.wmps.percentageflowincompletedata
+      delay: 5m
+      history: 31d
+      trends: '0'
+      value_type: CHAR
+      description: The MIB types this as OCTET STRING without stating the format, so it is stored as text. MIB object fePercentageFlowIncompleteData (1.3.6.1.4.1.25597.14.1.22).
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1h
+      tags:
+      - tag: component
+        value: traffic
+    discovery_rules:
+    - uuid: c8a58dbe725c4ff38151ba4b500de7c1
+      name: Detection statistics discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#TIMESPAN},1.3.6.1.4.1.25597.14.1.16.1.1.1]
+      key: trellix.wmps.det.discovery
+      delay: 1h
+      lifetime: 7d
+      description: Discovers rows of feWMPSDetectionStatsTable (1.3.6.1.4.1.25597.14.1.16.1).
+      item_prototypes:
+      - uuid: 11347c6837fd4b3586ad401066137335
+        name: Aptattack count [{#TIMESPAN}]
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.14.1.16.1.1.2.{#SNMPINDEX}
+        key: trellix.wmps.det.aptattackcount[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: Windowed count for the time span (not a monotonic counter). MIB object feWMPSAPTAttackCount (1.3.6.1.4.1.25597.14.1.16.1.1.2).
+        tags:
+        - tag: component
+          value: detection
+        - tag: timespan
+          value: '{#TIMESPAN}'
+      - uuid: 8abbff34a1ff45c780eea223d42dc6ab
+        name: New global threat count [{#TIMESPAN}]
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.14.1.16.1.1.5.{#SNMPINDEX}
+        key: trellix.wmps.det.newglobalthreatcount[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: Windowed count for the time span (not a monotonic counter). MIB object feWMPSNewGlobalThreatCount (1.3.6.1.4.1.25597.14.1.16.1.1.5).
+        tags:
+        - tag: component
+          value: detection
+        - tag: timespan
+          value: '{#TIMESPAN}'
+      - uuid: a0539f1ab0d3418384429b4102a9b16a
+        name: Infected host count [{#TIMESPAN}]
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.14.1.16.1.1.8.{#SNMPINDEX}
+        key: trellix.wmps.det.infectedhostcount[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: Windowed count for the time span (not a monotonic counter). MIB object feWMPSInfectedHostCount (1.3.6.1.4.1.25597.14.1.16.1.1.8).
+        tags:
+        - tag: component
+          value: detection
+        - tag: timespan
+          value: '{#TIMESPAN}'
+      - uuid: 2d09ded49c5a4b6e8db49feccd47dcb9
+        name: Objects analyzed count [{#TIMESPAN}]
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.14.1.16.1.1.11.{#SNMPINDEX}
+        key: trellix.wmps.det.objectsanalyzedcount[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: Windowed count for the time span (not a monotonic counter). MIB object feWMPSObjectsAnalyzedCount (1.3.6.1.4.1.25597.14.1.16.1.1.11).
+        tags:
+        - tag: component
+          value: detection
+        - tag: timespan
+          value: '{#TIMESPAN}'
+      - uuid: c0975b8b401048c48b94448a5d6ed49c
+        name: Urls analyzed count [{#TIMESPAN}]
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.14.1.16.1.1.14.{#SNMPINDEX}
+        key: trellix.wmps.det.urlsanalyzedcount[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: Windowed count for the time span (not a monotonic counter). MIB object feWMPSURLsAnalyzedCount (1.3.6.1.4.1.25597.14.1.16.1.1.14).
+        tags:
+        - tag: component
+          value: detection
+        - tag: timespan
+          value: '{#TIMESPAN}'
+      - uuid: be4293cff9514c65881a25e702b49375
+        name: Urls malicious count [{#TIMESPAN}]
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.14.1.16.1.1.17.{#SNMPINDEX}
+        key: trellix.wmps.det.urlsmaliciouscount[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: Windowed count for the time span (not a monotonic counter). MIB object feWMPSURLsMaliciousCount (1.3.6.1.4.1.25597.14.1.16.1.1.17).
+        tags:
+        - tag: component
+          value: detection
+        - tag: timespan
+          value: '{#TIMESPAN}'
+    - uuid: c63a31dbfc7a4fd689f57682d61e71df
+      name: Alert type discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#TIMESPAN},1.3.6.1.4.1.25597.14.1.16.2.1.1,{#NAME},1.3.6.1.4.1.25597.14.1.16.2.1.2]
+      key: trellix.wmps.alert.discovery
+      delay: 1h
+      lifetime: 7d
+      description: Discovers rows of feWMPSAlertTable (1.3.6.1.4.1.25597.14.1.16.2).
+      item_prototypes:
+      - uuid: 4f3e9a0a07f44bab83d7858717860c37
+        name: 'Alert {#NAME} [{#TIMESPAN}]: Count'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.14.1.16.2.1.3.{#SNMPINDEX}
+        key: trellix.wmps.alert[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: Windowed count for the time span (not a monotonic counter). MIB object feWMPSAlertCount (1.3.6.1.4.1.25597.14.1.16.2.1.3).
+        tags:
+        - tag: component
+          value: detection
+        - tag: timespan
+          value: '{#TIMESPAN}'
+        - tag: name
+          value: '{#NAME}'
+    - uuid: 696dd5d0e140423781c5de7301f4c63a
+      name: Threat type discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#TIMESPAN},1.3.6.1.4.1.25597.14.1.16.3.1.1,{#NAME},1.3.6.1.4.1.25597.14.1.16.3.1.2]
+      key: trellix.wmps.threat.discovery
+      delay: 1h
+      lifetime: 7d
+      description: Discovers rows of feWMPSThreatTable (1.3.6.1.4.1.25597.14.1.16.3).
+      item_prototypes:
+      - uuid: 51b78798f09544dd86dad56ef5086be5
+        name: 'Threat {#NAME} [{#TIMESPAN}]: Count'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.14.1.16.3.1.3.{#SNMPINDEX}
+        key: trellix.wmps.threat[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: Windowed count for the time span (not a monotonic counter). MIB object feWMPSThreatCount (1.3.6.1.4.1.25597.14.1.16.3.1.3).
+        tags:
+        - tag: component
+          value: detection
+        - tag: timespan
+          value: '{#TIMESPAN}'
+        - tag: name
+          value: '{#NAME}'
+    - uuid: efd6870833214db589d343ef4806c6b7
+      name: File type discovery
+      type: SNMP_AGENT
+      snmp_oid: discovery[{#TIMESPAN},1.3.6.1.4.1.25597.14.1.16.4.1.1,{#NAME},1.3.6.1.4.1.25597.14.1.16.4.1.2]
+      key: trellix.wmps.filetype.discovery
+      delay: 1h
+      lifetime: 7d
+      description: Discovers rows of feWMPSFileTypeTable (1.3.6.1.4.1.25597.14.1.16.4).
+      item_prototypes:
+      - uuid: e6b6e237f1774d5284a7c8f0e1c41946
+        name: 'File type {#NAME} [{#TIMESPAN}]: Count'
+        type: SNMP_AGENT
+        snmp_oid: 1.3.6.1.4.1.25597.14.1.16.4.1.3.{#SNMPINDEX}
+        key: trellix.wmps.filetype[{#SNMPINDEX}]
+        delay: 5m
+        history: 31d
+        trends: 365d
+        value_type: UNSIGNED
+        description: Windowed count for the time span (not a monotonic counter). MIB object feWMPSFileTypeCount (1.3.6.1.4.1.25597.14.1.16.4.1.3).
+        tags:
+        - tag: component
+          value: detection
+        - tag: timespan
+          value: '{#TIMESPAN}'
+        - tag: name
+          value: '{#NAME}'
+    tags:
+    - tag: class
+      value: security
+    - tag: target
+      value: trellix
+  - uuid: ab6954a4feb24b9e856521a7894c934f
+    template: Trellix MAS by SNMP
+    name: Trellix MAS by SNMP
+    description: 'Trellix malware analysis (feMAS, 25597.15): analysed/malicious object, URL, file and live-mode counts. Link in addition to "Trellix by SNMP" on analysis appliances.'
+    groups:
+    - name: Templates/Security
+    items:
+    - uuid: 03fe5c3b9d764a96809e1e7a51094f71
+      name: Total object analyzed count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.15.1.1.0
+      key: trellix.mas.totalobjectanalyzedcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 described as a count of objects. Cumulative vs windowed is not stated by the MIB, so the raw value is stored (use change()/delta in your own graphs). MIB object feTotalObjectAnalyzedCount (1.3.6.1.4.1.25597.15.1.1).
+      tags:
+      - tag: component
+        value: analysis
+    - uuid: fd71530140844b208984dde829d4ced2
+      name: Total malicious object count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.15.1.4.0
+      key: trellix.mas.totalmaliciousobjectcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 described as a count of objects. Cumulative vs windowed is not stated by the MIB, so the raw value is stored (use change()/delta in your own graphs). MIB object feTotalMaliciousObjectCount (1.3.6.1.4.1.25597.15.1.4).
+      tags:
+      - tag: component
+        value: analysis
+    - uuid: dd9d797b1f4c483f895ca93988cdd214
+      name: Total url analyzed count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.15.1.7.0
+      key: trellix.mas.totalurlanalyzedcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 described as a count of objects. Cumulative vs windowed is not stated by the MIB, so the raw value is stored (use change()/delta in your own graphs). MIB object feTotalUrlAnalyzedCount (1.3.6.1.4.1.25597.15.1.7).
+      tags:
+      - tag: component
+        value: analysis
+    - uuid: d5012cf056ea482c8a2187c833ead9e0
+      name: Total malicious url count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.15.1.10.0
+      key: trellix.mas.totalmaliciousurlcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 described as a count of objects. Cumulative vs windowed is not stated by the MIB, so the raw value is stored (use change()/delta in your own graphs). MIB object feTotalMaliciousUrlCount (1.3.6.1.4.1.25597.15.1.10).
+      tags:
+      - tag: component
+        value: analysis
+    - uuid: e6c56fe5ab34462684463d235e28f990
+      name: Total file uploaded count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.15.1.13.0
+      key: trellix.mas.totalfileuploadedcount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 described as a count of objects. Cumulative vs windowed is not stated by the MIB, so the raw value is stored (use change()/delta in your own graphs). MIB object feTotalFileUploadedCount (1.3.6.1.4.1.25597.15.1.13).
+      tags:
+      - tag: component
+        value: analysis
+    - uuid: 48265821ab8c4ec7846eae5b13a869bd
+      name: Total malicious file count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.15.1.16.0
+      key: trellix.mas.totalmaliciousfilecount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 described as a count of objects. Cumulative vs windowed is not stated by the MIB, so the raw value is stored (use change()/delta in your own graphs). MIB object feTotalMaliciousFileCount (1.3.6.1.4.1.25597.15.1.16).
+      tags:
+      - tag: component
+        value: analysis
+    - uuid: aa32c4317b674f1e81dfd64788e9d1a6
+      name: Total live mode count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.15.1.19.0
+      key: trellix.mas.totallivemodecount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 described as a count of objects. Cumulative vs windowed is not stated by the MIB, so the raw value is stored (use change()/delta in your own graphs). MIB object feTotalLiveModeCount (1.3.6.1.4.1.25597.15.1.19).
+      tags:
+      - tag: component
+        value: analysis
+    - uuid: fdcadd31165f47f68677cdf8d22df5b2
+      name: Total malicious live mode count
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.25597.15.1.22.0
+      key: trellix.mas.totalmaliciouslivemodecount
+      delay: 5m
+      history: 31d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Counter64 described as a count of objects. Cumulative vs windowed is not stated by the MIB, so the raw value is stored (use change()/delta in your own graphs). MIB object feTotalMaliciousLiveModeCount (1.3.6.1.4.1.25597.15.1.22).
+      tags:
+      - tag: component
+        value: analysis
+    tags:
+    - tag: class
+      value: security
+    - tag: target
+      value: trellix
+  - uuid: 519b00612ea04be08130008c8360a3d5
+    template: Trellix by SNMP traps
+    name: Trellix by SNMP traps
+    description: All 55 FE-FIREEYE-MIB notifications (25597.*) received as SNMP traps, with automatic recovery for failure/recover pairs. Needs snmptrapd + zabbix_trap_receiver and a host whose SNMP interface IP equals the trap source address. Link to every appliance.
+    groups:
+    - name: Templates/Security
+    items:
+    - uuid: d1b0c40387ff44eb889ba49956adbe22
+      name: 'SNMP traps: Trellix notifications'
+      type: SNMP_TRAP
+      key: snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"]
+      delay: '0'
+      history: 30d
+      value_type: LOG
+      description: All FE-FIREEYE-MIB notifications (55, under 1.3.6.1.4.1.25597). Matches numeric OIDs or MIB names, so it works with or without the MIB loaded in snmptrapd. Receiver setup is in the README.
+      tags:
+      - tag: component
+        value: traps
+      triggers:
+      - uuid: be911ee27a3a4c098df48470fb919a50
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feExcessiveTemperature([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]1[.]0[.]1([^0-9]|$)")=1
+        name: 'Trellix: Excessive temperature'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feNormalTemperature([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]1[.]0[.]2([^0-9]|$)")=1
+        priority: HIGH
+        description: Raised by feExcessiveTemperature; recovers automatically on feNormalTemperature.
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 7e8be675d9ad4cf888a5852fbc8e181f
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feRaidFailure([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]2[.]0[.]1([^0-9]|$)")=1
+        name: 'Trellix: RAID failure'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feRaidRecover([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]2[.]0[.]2([^0-9]|$)")=1
+        priority: HIGH
+        description: Raised by feRaidFailure; recovers automatically on feRaidRecover.
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: f185270c1c2047d284f4dba5f2e5d199
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","fePhysicalDiskFailure([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]2[.]0[.]3([^0-9]|$)")=1
+        name: 'Trellix: Physical disk failure'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","fePhysicalDiskRecover([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]2[.]0[.]4([^0-9]|$)")=1
+        priority: HIGH
+        description: Raised by fePhysicalDiskFailure; recovers automatically on fePhysicalDiskRecover.
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: af0ef9990518496d8c6769e3eaa55a6e
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","fePowerSupplyFailure([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]3[.]0[.]1([^0-9]|$)")=1
+        name: 'Trellix: Power supply failure'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","fePowerSupplyRecover([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]3[.]0[.]2([^0-9]|$)")=1
+        priority: HIGH
+        description: Raised by fePowerSupplyFailure; recovers automatically on fePowerSupplyRecover.
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 1b3e70e473944596860b9a980d892741
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feFanFailure([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]4[.]0[.]1([^0-9]|$)")=1
+        name: 'Trellix: Fan failure'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feFanRecover([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]4[.]0[.]2([^0-9]|$)")=1
+        priority: AVERAGE
+        description: Raised by feFanFailure; recovers automatically on feFanRecover.
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 1170bea30f564c1a85a2bd5dbd38a16d
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feTokenServerUnreachable([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]5[.]0[.]6([^0-9]|$)")=1
+        name: 'Trellix: Token server unreachable'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feTokenServerReachable([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]5[.]0[.]7([^0-9]|$)")=1
+        priority: AVERAGE
+        description: Raised by feTokenServerUnreachable; recovers automatically on feTokenServerReachable.
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 2a0df4c7c1cf4a5185d447a77de96a4b
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feSmtpInterfaceRefuseConnection([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]13[.]0[.]3([^0-9]|$)")=1
+        name: 'Trellix: SMTP interface refusing connections'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feSmtpInterfaceRecover([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]13[.]0[.]4([^0-9]|$)")=1
+        priority: AVERAGE
+        description: Raised by feSmtpInterfaceRefuseConnection; recovers automatically on feSmtpInterfaceRecover.
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 03002a980fd4481a83bf9e92fc40647f
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feEMPSBypassStateEntered([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]13[.]0[.]5([^0-9]|$)")=1
+        name: 'Trellix: EMPS in bypass state'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feEMPSBypassStateExited([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]13[.]0[.]6([^0-9]|$)")=1
+        priority: AVERAGE
+        description: Raised by feEMPSBypassStateEntered; recovers automatically on feEMPSBypassStateExited.
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 7edca0d652924e8982120b35eb0ad204
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feDeploymentCheckFailure([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]14[.]0[.]3([^0-9]|$)")=1
+        name: 'Trellix: Deployment check failed'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feDeploymentCheckRecover([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]14[.]0[.]4([^0-9]|$)")=1
+        priority: AVERAGE
+        description: Raised by feDeploymentCheckFailure; recovers automatically on feDeploymentCheckRecover.
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 38f8f28a258c43938e999e7ba3d86edd
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feWMPSSizingThresholdExceeded([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]14[.]0[.]5([^0-9]|$)")=1
+        name: 'Trellix: Sizing threshold exceeded'
+        recovery_mode: RECOVERY_EXPRESSION
+        recovery_expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feWMPSSizingThresholdNormal([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]14[.]0[.]6([^0-9]|$)")=1
+        priority: AVERAGE
+        description: Raised by feWMPSSizingThresholdExceeded; recovers automatically on feWMPSSizingThresholdNormal.
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 339dc3b97668407286076f7e6d4fdee7
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","trellixAlert([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]3[.]0[.]1([^0-9]|$)|executionAnomaly([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]3[.]0[.]2([^0-9]|$)|networkAnomaly([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]3[.]0[.]3([^0-9]|$)|signatureMatch([^A-Za-z0-9]|$)")=1 or find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","(^|[^0-9])25597[.]3[.]0[.]4([^0-9]|$)|ccConnect([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]3[.]0[.]9([^0-9]|$)|ccSigmatch([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]3[.]0[.]10([^0-9]|$)|osChange([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]3[.]0[.]11([^0-9]|$)")=1 or find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","ipsAlert([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]3[.]0[.]12([^0-9]|$)|feMaliciousMaid([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]15[.]0[.]1([^0-9]|$)")=1
+        name: 'Trellix: Threat detection (alert / anomaly / signature / callback)'
+        priority: AVERAGE
+        description: 'Notification(s): trellixAlert, executionAnomaly, networkAnomaly, signatureMatch, ccConnect, ccSigmatch, osChange, ipsAlert, feMaliciousMaid. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 17d085aea0214ee58edb96fb21722e03
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feProcessCrash([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]1[.]0[.]5([^0-9]|$)")=1
+        name: 'Trellix: Process crash'
+        priority: HIGH
+        description: 'Notification(s): feProcessCrash. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: b2e238d1ada24d598a304045c76ef101
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feCMSHAUnexpectedFailover([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]12[.]0[.]1([^0-9]|$)|feCMSHANxHealthFailure([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]12[.]0[.]3([^0-9]|$)")=1
+        name: 'Trellix: CMS HA failover or NX health failure'
+        priority: HIGH
+        description: 'Notification(s): feCMSHAUnexpectedFailover, feCMSHANxHealthFailure. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 52e515a77f7f49ac85da1313258f729f
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feCMSHAManualFailover([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]12[.]0[.]2([^0-9]|$)")=1
+        name: 'Trellix: CMS HA manual failover'
+        priority: WARNING
+        description: 'Notification(s): feCMSHAManualFailover. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: db5f5d286ee949b7862604984bdfcb2a
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feAggregationFailure([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]12[.]0[.]6([^0-9]|$)")=1
+        name: 'Trellix: CMS aggregation failure'
+        priority: AVERAGE
+        description: 'Notification(s): feAggregationFailure. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 08daba2137114c618106e9b67abe9f8d
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feMVXClusterStateChanged([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]12[.]0[.]4([^0-9]|$)|feMVXClusterUtilExceedThreshold([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]12[.]0[.]5([^0-9]|$)|feMVXEnrollmentFailed([^A-Za-z0-9]|$)")=1 or find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","(^|[^0-9])25597[.]14[.]0[.]7([^0-9]|$)")=1
+        name: 'Trellix: MVX cluster state / utilisation / enrollment problem'
+        priority: AVERAGE
+        description: 'Notification(s): feMVXClusterStateChanged, feMVXClusterUtilExceedThreshold, feMVXEnrollmentFailed. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 3560f522303e4f3b8cd5a9aac6a7e5c2
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feSecurityUpdateFailed([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]5[.]0[.]2([^0-9]|$)")=1
+        name: 'Trellix: Security content update failed'
+        priority: AVERAGE
+        description: 'Notification(s): feSecurityUpdateFailed. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 428d01479c8941b98681aac8beea6910
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feGIDownloadFailureLowDiskSpace([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]5[.]0[.]8([^0-9]|$)|feGIDownloadFailureGeneric([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]5[.]0[.]9([^0-9]|$)")=1
+        name: 'Trellix: Guest image download failed'
+        priority: AVERAGE
+        description: 'Notification(s): feGIDownloadFailureLowDiskSpace, feGIDownloadFailureGeneric. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 3930f366fd874e97867d4435c42823d6
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feLicenseStateChanged([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]5[.]0[.]1([^0-9]|$)|feTokenStateChanged([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]5[.]0[.]4([^0-9]|$)|feTokenDupeDetected([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]5[.]0[.]5([^0-9]|$)")=1
+        name: 'Trellix: Licence or token state changed / duplicate token'
+        priority: AVERAGE
+        description: 'Notification(s): feLicenseStateChanged, feTokenStateChanged, feTokenDupeDetected. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 32fa36ff00db48e480ba0f59112a8eb1
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feDeferredQueueThreshold([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]13[.]0[.]1([^0-9]|$)|feBypassCountThreshold([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]13[.]0[.]2([^0-9]|$)")=1
+        name: 'Trellix: Email queue / bypass threshold exceeded'
+        priority: AVERAGE
+        description: 'Notification(s): feDeferredQueueThreshold, feBypassCountThreshold. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: eeefa522192849228ad6ed73cd1f8ee7
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feHardwareBypassEntered([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]14[.]0[.]2([^0-9]|$)|feHttpThroughputNotIncrease([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]14[.]0[.]1([^0-9]|$)")=1
+        name: 'Trellix: Hardware bypass entered / HTTP throughput not increasing'
+        priority: AVERAGE
+        description: 'Notification(s): feHardwareBypassEntered, feHttpThroughputNotIncrease. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 3542202151274b10830af7a6bdb959cc
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feAvcOverloadStateEvent([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]7[.]0[.]1([^0-9]|$)|feAvcSuggestedMaxVMEvent([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]7[.]0[.]2([^0-9]|$)")=1
+        name: 'Trellix: AVC overload / suggested max VM changed'
+        priority: WARNING
+        description: 'Notification(s): feAvcOverloadStateEvent, feAvcSuggestedMaxVMEvent. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: d92d4eae0b07474d83dfe4538e64c3e3
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feIfLinkChange([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]1[.]0[.]3([^0-9]|$)|feFaasVpnConnectionChange([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]1[.]0[.]4([^0-9]|$)")=1
+        name: 'Trellix: Interface link change / FaaS VPN change'
+        priority: WARNING
+        description: 'Notification(s): feIfLinkChange, feFaasVpnConnectionChange. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+      - uuid: 2192cafdd53342da8f840b6bbeb4e1ca
+        expression: find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","feLogin([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]1[.]0[.]7([^0-9]|$)|feLogout([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]1[.]0[.]8([^0-9]|$)|feSyslogRotation([^A-Za-z0-9]|$)|(^|[^0-9])25597[.]11[.]1[.]0[.]6([^0-9]|$)|feTestTrap([^A-Za-z0-9]|$)")=1 or find(/Trellix by SNMP traps/snmptrap["25597[.]|FE-FIREEYE-MIB|fe[A-Z]|trellixAlert|executionAnomaly|networkAnomaly|signatureMatch|ccConnect|ccSigmatch|osChange|ipsAlert"],#1,"regexp","(^|[^0-9])25597[.]11[.]5[.]0[.]3([^0-9]|$)")=1
+        name: 'Trellix: Login / logout / syslog rotation / test trap'
+        priority: INFO
+        description: 'Notification(s): feLogin, feLogout, feSyslogRotation, feTestTrap. No recovery notification exists; close manually after investigation.'
+        recovery_mode: NONE
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: trap
+    - uuid: 51a3254c86894e6982b57585342754c8
+      name: SNMP traps (fallback)
+      type: SNMP_TRAP
+      key: snmptrap.fallback
+      delay: '0'
+      history: 7d
+      value_type: LOG
+      description: Traps from this host that match no snmptrap[] item.
+      tags:
+      - tag: component
+        value: traps
+    tags:
+    - tag: class
+      value: security
+    - tag: target
+      value: trellix
