@@ -87,3 +87,9 @@ Offline tests run the real CLI against an in-memory model of the Zabbix 7.0 API.
 ## Not in this tool
 
 Device configuration, SNMP traps (see `docs/DESIGN.md` for why polling is used), the SMTP/media type (never modified), existing dashboards, hosts and stock templates.
+
+## Optional: Network Health (v1.0.3, UNTESTED, disabled by default)
+
+A second, independent inventory `config/network-health.<env>.yaml` (shipped empty) and command `./apply-health.sh`
+add OSPF neighbor, BGP peer, device unreachable, CPU, memory and SNMP-stale alerts for explicitly listed devices only.
+Interface Alerting above is unchanged and never reads that file. See `docs/NETWORK-HEALTH.md` and `RELEASE-v1.0.3.md`.

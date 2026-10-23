@@ -1,0 +1,2 @@
+# LAB Network Health inventory (v1.0.3, UNTESTED). EMPTY = disabled. Same format as network-health.production.yaml.
+devices: {}

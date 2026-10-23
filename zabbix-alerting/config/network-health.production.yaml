@@ -1,0 +1,21 @@
+# PRODUCTION Network Health inventory (v1.0.3, UNTESTED). Independent of config/interfaces.production.yaml.
+# EMPTY = Network Health disabled: nothing is imported, linked or changed.
+# A feature is ON for a device only if its key is listed under that device. Example (see docs/NETWORK-HEALTH.md):
+#
+# defaults:                              # optional: per-feature settings, never enables anything
+#   cpu:    {threshold: 90, recovery: 80, window: 5m, severity: high}
+#   memory: {threshold: 90, recovery: 85, window: 5m, severity: high}
+#
+# devices:
+#   EDGE-RTR-01:                         # exact Zabbix technical Host name (may also be in interfaces.production.yaml)
+#     site: DC1
+#     platform: cisco-ios                # cisco-ios | cisco-nxos | huawei-vrp | host-resources  (only for cpu/memory)
+#     device_unreachable: {severity: disaster}
+#     snmp_stale: {}
+#     cpu: {}
+#     memory: {threshold: 85, recovery: 80}
+#     ospf: {}
+#     bgp: {severity: disaster, exclude: ["192.0.2.9"]}
+#
+#   ./apply-health.sh --env production --check
+devices: {}
