@@ -1,5 +1,10 @@
 # Interface alerting as code (Zabbix 7.0)
 
+> **New in v1.1.0 (candidate):** you no longer write the inventory by hand. `./onboard.sh --env production` discovers
+> ports read-only, lets you approve them in the terminal, generates both inventories, audits coverage and gates
+> deployment. See `docs/ONBOARDING.md`. Everything below still applies: onboarding only produces the inventory files.
+
+
 List the interfaces that must alert in **one YAML file**. Three commands validate, preview and apply it.
 Everything else stays monitored exactly as before.
 

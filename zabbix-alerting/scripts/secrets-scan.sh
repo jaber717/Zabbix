@@ -2,10 +2,10 @@
 # Scan the release scope (working tree AND full Git history of zabbix-alerting/ and handover/) for secrets.
 #   ./scripts/secrets-scan.sh            exit 0 = nothing found, 1 = findings (printed with file, never the secret)
 set -u   # (no pipefail: grep returns 1 on "no match", which is the good case)
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
 ROOT="$(git rev-parse --show-toplevel)"
 PATHS=("zabbix-alerting" "handover")
-cd "$ROOT"
+cd "$ROOT" || exit 2
 
 # name|regex  (findings print only name + location, never the matching text)
 PATTERNS=(

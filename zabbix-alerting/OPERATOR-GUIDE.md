@@ -1,5 +1,8 @@
 # Operator guide - Interface alerting as code
 
+**Preferred since v1.1.0:** `./onboard.sh --env production` (discovery, review, generation, coverage audit, gated
+deploy) - `docs/ONBOARDING.md`. The manual editing below remains valid; hand edits are detected and re-reviewed.
+
 You list the interfaces that must alert in one YAML file. Three commands check, preview and apply it. Run everything from
 `Zabbix/zabbix-alerting/`. Add `--env production` for production (and `--confirm production` to apply there).
 

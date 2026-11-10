@@ -8,7 +8,7 @@
 # prints PASS/FAIL for every step. It only ever talks to --env lab.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$HERE"
+cd "$HERE" || exit 2
 if [ -f "$HERE/.env" ]; then set -a; . "$HERE/.env"; set +a; fi
 CFG="examples/lab-validation.yaml"
 pass=0; fail=0

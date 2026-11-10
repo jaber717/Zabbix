@@ -1,0 +1,29 @@
+# Optional onboarding policy. Copy to config/onboarding-rules.yaml to change the built-in defaults
+# (netalert/onboarding.py DEFAULT_RULES). Unknown keys are rejected. Suggestions only: nothing here approves anything.
+
+# Ports matching this regex (by interface name) are never proposed as candidates.
+exclude_ports: '(?i)^(lo|loopback|null|nu|vlan|vl|tunnel|tu|mgmt|management|ma|bdi|nve|dialer|virtual-|inband|vif|sup-eth|cpu|stackport|ap)\d*'
+
+# Role suggestion from the port description (ifAlias); first match in order ISP, DCI, WAN, P2P.
+roles:
+  ISP: '(?i)(\bisp\b|internet|transit|upstream)'
+  DCI: '(?i)(\bdci\b|inter[- ]?dc\b|data ?cent(er|re) interconnect)'
+  WAN: '(?i)(\bwan\b|\bmpls\b|l2vpn|\bvpls\b|\bmetro\b)'
+  P2P: '(?i)(\bp2p\b|\bptp\b|point[- ]to[- ]point)'
+
+# Provider names in descriptions that mean ISP (whole word, case-insensitive).
+isp_names: [STC, Mobily, Zain, Salam]
+
+# Severity POLICY per role. 'disaster' is only ever used if you set it here (or per port with `s`).
+severity: {ISP: high, WAN: high, DCI: high, P2P: high}
+
+# Agreed thresholds written into new interface entries.
+interface_policy:
+  utilization: {enabled: true, threshold: 70, recovery: 65}
+
+# Network Health: severity per feature, and features suggested for devices that have approved ports.
+health_severity: {device_unreachable: high, snmp_stale: high, cpu: high, memory: high, ospf: high, bgp: high}
+health_suggest: [device_unreachable, snmp_stale]
+
+stale_after: 15m      # a status item older than this (or 3x its poll interval) is STALE
+site_tag: site        # Zabbix host tag used as `site` for new hosts (else NetBox site, else empty)

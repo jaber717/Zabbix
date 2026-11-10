@@ -1,5 +1,8 @@
 # Production installation (direct from GitHub)
 
+> For a GitHub-direct install on RHEL 9 with discovery-assisted onboarding (v1.1.0 candidate) see `docs/ONBOARDING.md` §2.
+> This guide remains the v1.0.2 procedure.
+
 Runs on the company's Zabbix VM (or any Linux host that can reach the Zabbix API). Needs `git`, `python3` (3.8+) and PyYAML.
 **Production has its own inventory and notification settings. Nothing from LAB is reused**: no LAB routers, no Telegram
 bot token / chat id, no SNMP credentials. This repository contains none of them.
