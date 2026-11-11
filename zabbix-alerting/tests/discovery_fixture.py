@@ -6,6 +6,7 @@ This is a model written from the Zabbix 7.0 API documentation, not a recording o
 import copy
 import re
 
+from tests import zabbix70_contract as contract
 from tests.fake_zabbix import Fail, MockZabbix, invalid
 
 NOW = 1_800_000_000
@@ -90,7 +91,7 @@ class DiscoveryZabbix(MockZabbix):
         return tid
 
     def add_delivery(self, triggerid, actionid, problem=True, recovery=True, status="1", userid=None, clock=None,
-                     mediatypeid=None):
+                     mediatypeid=None, recovery_alert_on="recovery"):
         """Zabbix alert history: one problem event and ITS recovery event, each with a SENT message from `actionid`
         to `userid` (default: the first user). Recovery alerts carry p_eventid = the problem event."""
         userid = userid or sorted(self.users)[0]
@@ -104,8 +105,11 @@ class DiscoveryZabbix(MockZabbix):
             self.events.append({"eventid": pe, "objectid": triggerid, "value": "1", "clock": str(clock),
                                 "r_eventid": re_ if recovery else "0", "alerts": [alert(pe, "0", clock)]})
         if recovery:
+            ra = alert(re_ if recovery_alert_on == "recovery" else pe, pe, clock + 600)
             self.events.append({"eventid": re_, "objectid": triggerid, "value": "0", "clock": str(clock + 600),
-                                "r_eventid": "0", "alerts": [alert(re_, pe, clock + 600)]})
+                                "r_eventid": "0", "alerts": [ra] if recovery_alert_on == "recovery" else []})
+            if recovery_alert_on == "problem" and problem:
+                self.events[-2]["alerts"].append(ra)
         return pe, re_
 
     def add_user(self, username, groupids, medias=()):
@@ -130,6 +134,9 @@ class DiscoveryZabbix(MockZabbix):
             raise self.fail_on[method]
         if method in self.deny:
             raise invalid("No permissions to call \"%s\"." % method)
+        bad = [v for v in contract.violations(method, params) if "deprecated" not in v]
+        if bad:                                  # the real API validator rejects these; deprecated ones still work
+            raise invalid("Invalid parameter: %s" % bad[0])
         return MockZabbix._dispatch(self, method, params, authenticated)
 
     # ------------------------------------------------------------------ reads
@@ -189,8 +196,8 @@ class DiscoveryZabbix(MockZabbix):
             sig = (name, iid[0], params)
             if sig not in memo:
                 memo[sig] = "%s%02d" % (t["triggerid"], len(memo) + 1)
-                funcs.append({"functionid": memo[sig], "itemid": iid[0], "triggerid": t["triggerid"],
-                              "name": name, "parameter": "$" + params})
+                funcs.append({"functionid": memo[sig], "itemid": iid[0], "function": name,
+                              "parameter": "$" + params})       # Zabbix 7.0 function object
             return "{%s}" % memo[sig]
         conv = lambda e: FUNC_CALL.sub(one, e or "")
         return conv(t["expression"]), conv(t["recovery_expression"]), funcs
@@ -209,7 +216,8 @@ class DiscoveryZabbix(MockZabbix):
                 if "recovery_expression" in r:
                     r["recovery_expression"] = re_
                 if "selectFunctions" in p:
-                    r["functions"] = funcs
+                    sel = p["selectFunctions"]
+                    r["functions"] = [f if sel == "extend" else dict((k, f[k]) for k in sel if k in f) for f in funcs]
             if "selectItems" in p:
                 r["items"] = [{"itemid": i} for i in t["itemids"]]
             if "selectTags" in p:
@@ -244,8 +252,10 @@ class DiscoveryZabbix(MockZabbix):
             if int(e["clock"]) < int(p.get("time_from", 0)):
                 continue
             r = dict((k, v) for k, v in e.items() if k != "alerts")
-            if "select_alerts" in p:
-                r["alerts"] = copy.deepcopy(e["alerts"])
+            sel = p.get("selectAlerts", p.get("select_alerts"))     # select_alerts: deprecated, still honoured
+            if sel is not None:
+                r["alerts"] = [a if sel == "extend" else dict((k, a[k]) for k in sel if k in a)
+                               for a in copy.deepcopy(e["alerts"])]
             out.append(r)
         return out
 

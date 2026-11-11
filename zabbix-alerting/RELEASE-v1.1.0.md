@@ -1,11 +1,11 @@
-# Release v1.1.0 — Discovery-assisted onboarding (CANDIDATE rc3, remediated twice)
+# Release v1.1.0 — Discovery-assisted onboarding (CANDIDATE rc4)
 
 **Status: CANDIDATE, NO-GO for production. Not tagged, no GitHub Release, not merged, not deployed.** rc1 (`98bd925`)
 received an independent CONDITIONAL NO-GO (fixed in rc2, `docs/REMEDIATION-v1.1.md`); the follow-up review of rc2
 (`31ffc94`) found five more defects, all verified and fixed in rc3 with regression tests that fail on rc2 — see
-`docs/REMEDIATION-v1.1-rc3.md` (findings with file/line references, LAB hypotheses, remaining gates). Current figures:
-298 tests, 297 pass, 1 NOT RUN (real-Zabbix replay), Python 3.9 and 3.13; release gate PASS. The rc1 notes below are
-kept for history.
+`docs/REMEDIATION-v1.1-rc3.md` (findings with file/line references, LAB hypotheses, remaining gates). rc4 fixes two
+Zabbix 7.0 API-contract defects found in rc3 (addendum in the same report). Next step is the read-only LAB procedure,
+`docs/LAB-VALIDATION-v1.1.md`; no further features. The rc1 notes below are kept for history.
 
 Tag `v1.0.2` is unchanged and remains the only accepted release. Builds on the v1.0.3 proposal (Network Health, untested).
 

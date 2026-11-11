@@ -4,9 +4,9 @@
 and devices, lets you approve them in a terminal, generates both inventories, audits monitoring coverage, and gates
 deployment. The existing `apply.sh` / `apply-health.sh` still do every write.
 
-> **Status:** offline only — 298 tests on an in-memory Zabbix 7.0 model (Python 3.9 and 3.13); the real-API replay test
+> **Status:** offline only — 308 tests on an in-memory Zabbix 7.0 model (Python 3.9 and 3.13); the real-API replay test
 > is NOT RUN until LAB recordings exist. Never run against LAB or Production yet. Review findings and their fixes:
-> `docs/REMEDIATION-v1.1.md`, `docs/REMEDIATION-v1.1-rc3.md`. Remaining gates: section 8.
+> `docs/REMEDIATION-v1.1.md`, `docs/REMEDIATION-v1.1-rc3.md`. Remaining gates: section 8 and `docs/LAB-VALIDATION-v1.1.md`.
 
 ## 1. What it does, and what it never does
 
@@ -171,6 +171,8 @@ live plans, so a deploy can only apply exactly what was reviewed. An empty inter
 | Remove the project's alerting entirely | manual: `./apply.sh --env production --allow-empty --confirm production` |
 
 ## 8. Remaining validation gates (not yet done)
+
+Step-by-step, read-only first: `docs/LAB-VALIDATION-v1.1.md`.
 
 1. LAB: `scripts/capture-api-fixtures.py --env lab` (written outside the repository; the script refuses a path inside
    it and refuses to write if any original string survives sanitizing), then

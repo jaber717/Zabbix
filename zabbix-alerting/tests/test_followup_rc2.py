@@ -161,7 +161,7 @@ class ExpressionValidation(Base):
         self.assertTrue(any('{$IFCONTROL:"Hu0/0/0/0"}=1' in e for e in exprs), exprs)   # gate kept, then resolved
 
     def test_unknown_function_reference_fails_closed(self):
-        e = discovery.rebuild("{1}=2 and {99}=1", {"1": {"itemid": "5", "name": "last", "parameter": "$"}},
+        e = discovery.rebuild("{1}=2 and {99}=1", {"1": {"itemid": "5", "function": "last", "parameter": "$"}},
                               {"5": {"host": "R", "key": "net.if.status[ifOperStatus.1]"}})
         self.assertEqual(e, "last(/R/net.if.status[ifOperStatus.1])=2 and {UNKNOWN}=1")
         self.assertIsNone(exprcheck.conjuncts(e))

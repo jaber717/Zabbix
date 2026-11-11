@@ -210,7 +210,7 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
             "output": ["triggerid", "description", "event_name", "priority", "status", "value", "state",
                        "error", "manual_close", "expression", "recovery_mode", "recovery_expression"],
             "itemids": chunk, "selectItems": ["itemid"], "selectTags": ["tag", "value"],
-            "selectFunctions": ["functionid", "itemid", "name", "parameter"], "expandDescription": True})
+            "selectFunctions": ["functionid", "itemid", "function", "parameter"], "expandDescription": True})
     _fetch_missing_items(client, snap, set(f["itemid"] for t in raw for f in t.get("functions", [])) |
                          set(i["itemid"] for t in raw for i in t.get("items", [])))
     for it in snap["items"].values():
@@ -321,17 +321,20 @@ def _delivery(client, snap, limits, now):
         rows = _optional(client, limits, "event/alert history (delivery evidence)", "event.get", {
             "output": ["eventid", "objectid", "value", "clock", "r_eventid"], "source": 0, "object": 0,
             "objectids": chunk, "time_from": now - snap["delivery_days"] * 86400,
-            "select_alerts": ["alertid", "actionid", "status", "alerttype", "eventid", "p_eventid", "mediatypeid",
-                              "userid", "clock"]})
+            "selectAlerts": ["alertid", "actionid", "status", "alerttype", "eventid", "p_eventid", "mediatypeid",
+                             "userid", "clock"]})
         if rows is None:
             return
         for e in rows:
             events.setdefault(e["objectid"], []).append({
                 "eventid": e["eventid"], "value": str(e.get("value")), "clock": int(e.get("clock") or 0),
                 "r_eventid": str(e.get("r_eventid") or "0"),
-                "alerts": [dict((k, str(a.get(k, ""))) for k in ("alertid", "actionid", "status", "alerttype",
+                "alerts": [dict((k, str(a.get(k, ""))) for k in ("alertid", "actionid", "status", "alerttype", "eventid",
                                                                  "p_eventid", "mediatypeid", "userid", "clock"))
                            for a in e.get("alerts", [])]})
+            if "alerts" not in e:                          # selectAlerts ignored/unsupported: evidence unknown
+                limits.append("event.get returned no 'alerts' property - delivery evidence not readable")
+                return
     snap["events"] = events
 
 
@@ -394,7 +397,10 @@ def rebuild(expr, functions, items):
         rest = par[1:] if par.startswith("$") else None
         if rest is None:
             return "{UNKNOWN}"
-        return "%s(/%s/%s%s)" % (f["name"], it["host"], it["key"], rest)
+        fn = f.get("function")                         # Zabbix 7.0 function object: functionid/itemid/function/parameter
+        if not fn or not re.match(r"^[a-z_]+$", str(fn)):
+            return "{UNKNOWN}"
+        return "%s(/%s/%s%s)" % (fn, it["host"], it["key"], rest)
     return FUNC_REF.sub(one, expr or "")
 
 

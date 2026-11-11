@@ -207,9 +207,24 @@ def eval_filter(flt, host, trig, snap=None):
 
 # --------------------------------------------------------------------------------- recipients / operations
 
+def opmessage(op):
+    """The operation's opmessage object. Live 7.0 returns an object (the v1.0.2 planner reads it that way in LAB);
+    the 7.0 action.get docs example shows an array for problem operations - accept a one-element array, and treat
+    anything else as unknown (None) so the caller fails closed."""
+    m = op.get("opmessage")
+    if isinstance(m, dict):
+        return m
+    if isinstance(m, list) and len(m) == 1 and isinstance(m[0], dict):
+        return m[0]
+    return None if m else {}
+
+
 def _eligible(snap, op, host, trig):
     """(set of eligible recipient userids, [reasons]) for ONE message operation."""
-    mt = str((op.get("opmessage") or {}).get("mediatypeid", "0"))
+    om = opmessage(op)
+    if om is None:
+        return set(), ["operation message has an unrecognised shape"]
+    mt = str(om.get("mediatypeid", "0"))
     mts = snap["mediatypes"]
     if mt != "0" and not mts.get(mt, {}).get("enabled"):
         return set(), ["media type %s disabled or not readable" % mts.get(mt, {}).get("name", mt)]
@@ -314,31 +329,35 @@ def _sent(a, actionid):
 
 
 def correlated_pairs(snap, trig, actionid, recipients):
-    """Problem/Recovery pairs of ONE event that prove delivery through `actionid` to a CURRENT recipient:
-    a SENT problem message on problem event P and a SENT recovery message on P's recovery event (alert p_eventid
-    = P, and P.r_eventid when Zabbix reports it), both to the same user who is still an eligible recipient.
-    Returns None when history is unreadable, else a list (newest first)."""
+    """Problem/Recovery pairs of ONE event that prove delivery through `actionid` to a CURRENT recipient.
+
+    Problem message: a SENT message alert of the action whose eventid is problem event P and p_eventid is 0.
+    Recovery message: a SENT message alert of the action whose p_eventid is P (Zabbix 7.0 alert object: "ID of the
+    problem event that generated the alert"), from wherever selectAlerts returned it; P must have recovered
+    (r_eventid <> 0) and, when the alert's own eventid is given, it must be P's recovery event.
+    Both to the same user who is still an eligible recipient. None = history unreadable; else newest first."""
     if snap.get("events") is None:
         return None
     evs = snap["events"].get(trig["triggerid"], [])
+    by_id = dict((str(e["eventid"]), e) for e in evs)
+    alerts = [(e, a) for e in evs for a in e.get("alerts", []) if _sent(a, actionid)]
     out = []
     for p in evs:
-        if str(p.get("value")) != "1":
+        pid = str(p["eventid"])
+        if str(p.get("value")) != "1" or str(p.get("r_eventid") or "0") == "0":
             continue
-        psent = [a for a in p.get("alerts", []) if _sent(a, actionid) and str(a.get("p_eventid") or "0") == "0"]
-        if not psent:
-            continue
-        for r in evs:
-            if str(r.get("value")) != "0":
-                continue
-            if str(p.get("r_eventid") or "0") not in ("0", str(r["eventid"])):
-                continue
-            rsent = [a for a in r.get("alerts", []) if _sent(a, actionid) and str(a.get("p_eventid")) == str(p["eventid"])]
-            users = (set(str(a.get("userid")) for a in psent) & set(str(a.get("userid")) for a in rsent)
-                     & set(str(u) for u in recipients))
-            if users:
-                out.append({"problem": str(p["eventid"]), "recovery": str(r["eventid"]), "clock": int(p["clock"]),
-                            "recovery_clock": int(r["clock"]), "users": sorted(users)})
+        rid = str(p["r_eventid"])
+        psent = [a for e, a in alerts if str(a.get("p_eventid") or "0") == "0"
+                 and str(a.get("eventid") or e["eventid"]) == pid]
+        rsent = [a for e, a in alerts if str(a.get("p_eventid") or "0") == pid
+                 and str(a.get("eventid") or e["eventid"]) in (rid, pid)]
+        users = (set(str(a.get("userid")) for a in psent) & set(str(a.get("userid")) for a in rsent)
+                 & set(str(u) for u in recipients))
+        if users:
+            r = by_id.get(rid)
+            out.append({"problem": pid, "recovery": rid, "clock": int(p["clock"]),
+                        "recovery_clock": int(r["clock"]) if r else max(int(a.get("clock") or 0) for a in rsent),
+                        "users": sorted(users)})
     return sorted(out, key=lambda x: -x["clock"])
 
 
@@ -613,7 +632,7 @@ def audit(snap, model):
         if str(a.get("status")) != "0":
             continue
         for o in a.get("operations", []) + a.get("recovery_operations", []):
-            mt = str((o.get("opmessage") or {}).get("mediatypeid", "0"))
+            mt = str((opmessage(o) or {}).get("mediatypeid", "0"))
             if mt != "0":
                 used.add(mt)
     for mt in sorted(used):

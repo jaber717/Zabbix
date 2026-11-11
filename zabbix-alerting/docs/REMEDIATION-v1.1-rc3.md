@@ -140,3 +140,29 @@ Hypotheses, not verified facts:
 
 **GO is not claimed.** It requires the real Zabbix API (1–4), the OSPF/BGP templates (7) and the Problem/Recovery
 e-mail path (5) validated in LAB, then the production gates in `docs/ONBOARDING.md` §8.
+
+## Addendum — rc4: Zabbix 7.0 API contract (review of rc3 `64387e7`)
+
+Checked against the 7.0 method reference (trigger.get, event.get, host.get, item.get, template.get, action.get,
+user.get, usergroup.get, alert object).
+
+| # | Finding | Verdict on 64387e7 | Fix |
+|---|---|---|---|
+| A1 | `trigger.get selectFunctions` asked for `name`; `rebuild()` read `f["name"]` | **Verified defect, fatal**: 7.0 function objects are `functionid, itemid, function, parameter`. A validating server rejects the request (discovery aborts); a lenient one returns no `name` → `KeyError` in `rebuild()`. Hidden because the rc3 discovery mock (written by me) returned `name`; the v1.0.2 planner (`planner.py:110`) and original mock already used `function` | `discovery.py` requests and reads `function`; an absent/invalid function name becomes `{UNKNOWN}` (fails closed) |
+| A2 | `event.get` used `select_alerts` | **Verified**: deprecated in 7.0 (still honoured per the docs, replaced by `selectAlerts`) | `selectAlerts`; an event without an `alerts` property makes history "not readable" (never PROTECTED) |
+| A3 | (audit) recovery-alert placement | Not settled by the docs (alert `eventid` = "event that triggered the action") | correlation keys on `p_eventid` = problem event and accepts the alert on the recovery **or** problem event; LAB probe C6 records which |
+| A4 | (audit) `action.get` docs example shows `opmessage` as an array (malformed example, PHP `=>` inside) | Live 7.0 returns an object (v1.0.2 LAB acceptance ran `planner.py:196` on it) | `coverage.opmessage()` accepts object or one-element array, anything else fails closed |
+
+Audit result for every other read request: all parameters documented and not deprecated (host, item, template,
+action, user, usergroup, trigger, event). Not verifiable from the docs pages and therefore LAB probe items:
+`hostgroup_rights` field names, interface `available`/`error`, mediatype/hostgroup/usermacro parameter lists,
+`expandExpression` macro behaviour.
+
+Contract tests (`tests/test_api_contract.py`, `tests/zabbix70_contract.py`): every discovery request checked
+against the transcribed 7.0 parameter lists, and discovery + correlation run against hand-written,
+documentation-shaped responses (not the mock). On 64387e7: 1 failure + 8 errors of 8 tests (contract violations:
+`selectFunctions` field `name`, deprecated `select_alerts`); on rc4: 10/10 pass (incl. 2 probe tests).
+The discovery mock now rejects undocumented parameters/fields like the API validator and returns `function`.
+
+Read-only LAB procedure and contract probe: `docs/LAB-VALIDATION-v1.1.md`, `scripts/lab-contract-probe.py`.
+Feature work stops here; next step is LAB.
