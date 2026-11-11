@@ -4,10 +4,12 @@ Writes still go through MockZabbix (same enforcement), so the real apply path ca
 This is a model written from the Zabbix 7.0 API documentation, not a recording of a production server.
 """
 import copy
+import re
 
 from tests.fake_zabbix import Fail, MockZabbix, invalid
 
 NOW = 1_800_000_000
+FUNC_CALL = re.compile(r"\b([a-z]+)\(/([^/()]+)/([^,()\[]+(?:\[[^\]]*\])?)((?:,[^()]*)?)\)")
 
 
 class DiscoveryZabbix(MockZabbix):
@@ -76,24 +78,35 @@ class DiscoveryZabbix(MockZabbix):
     def link(self, hostid, templateid):
         self.hosts[hostid]["templates"].append(templateid)
 
-    def add_trigger(self, name, itemids, priority=4, enabled=True, tags=(), value="0", state="0", expression=""):
+    def add_trigger(self, name, itemids, priority=4, enabled=True, tags=(), value="0", state="0", expression="",
+                    recovery_expression=""):
         tid = self.nid()
         self.triggers[tid] = {"triggerid": tid, "description": name, "event_name": "", "priority": str(priority),
                               "status": "0" if enabled else "1", "value": value, "state": state, "error": "",
                               "manual_close": "1", "itemids": list(itemids), "expression": expression,
-                              "recovery_mode": "0", "recovery_expression": "",
+                              "recovery_mode": "1" if recovery_expression else "0",
+                              "recovery_expression": recovery_expression,
                               "tags": [{"tag": k, "value": v} for k, v in tags]}
         return tid
 
-    def add_delivery(self, triggerid, actionid, problem=True, recovery=True, status="1"):
-        """Zabbix alert history: a problem event (and its recovery) with SENT messages from an action."""
+    def add_delivery(self, triggerid, actionid, problem=True, recovery=True, status="1", userid=None, clock=None,
+                     mediatypeid=None):
+        """Zabbix alert history: one problem event and ITS recovery event, each with a SENT message from `actionid`
+        to `userid` (default: the first user). Recovery alerts carry p_eventid = the problem event."""
+        userid = userid or sorted(self.users)[0]
+        mediatypeid = mediatypeid or (self.users[userid]["medias"][0]["mediatypeid"] if self.users[userid]["medias"] else "0")
+        clock = NOW - 3600 if clock is None else clock
         pe, re_ = self.nid(), self.nid()
+        alert = lambda ev, pev, c: {"alertid": self.nid(), "actionid": actionid, "status": status, "alerttype": "0",
+                                    "eventid": ev, "p_eventid": pev, "userid": userid, "mediatypeid": mediatypeid,
+                                    "clock": str(c)}
         if problem:
-            self.events.append({"eventid": pe, "objectid": triggerid, "value": "1", "clock": str(NOW - 3600), "alerts": [
-                {"alertid": self.nid(), "actionid": actionid, "status": status, "alerttype": "0", "p_eventid": "0"}]})
+            self.events.append({"eventid": pe, "objectid": triggerid, "value": "1", "clock": str(clock),
+                                "r_eventid": re_ if recovery else "0", "alerts": [alert(pe, "0", clock)]})
         if recovery:
-            self.events.append({"eventid": re_, "objectid": triggerid, "value": "0", "clock": str(NOW - 3000), "alerts": [
-                {"alertid": self.nid(), "actionid": actionid, "status": status, "alerttype": "0", "p_eventid": pe}]})
+            self.events.append({"eventid": re_, "objectid": triggerid, "value": "0", "clock": str(clock + 600),
+                                "r_eventid": "0", "alerts": [alert(re_, pe, clock + 600)]})
+        return pe, re_
 
     def add_user(self, username, groupids, medias=()):
         uid = self.nid()
@@ -156,10 +169,31 @@ class DiscoveryZabbix(MockZabbix):
             if not ok:
                 continue
             r = self._out(dict((k, v) for k, v in it.items() if k != "tags"), p.get("output"))
+            if p.get("selectHosts"):
+                r["hosts"] = [{"hostid": it["hostid"], "host": self.hosts[it["hostid"]]["host"]}]
             if p.get("selectTags"):
                 r["tags"] = copy.deepcopy(it["tags"])
             out.append(r)
         return out
+
+    def _raw(self, t):
+        """Zabbix stores expressions with {functionid} references; trigger.get returns that form unless
+        expandExpression is set. Returns (expression, recovery_expression, functions)."""
+        funcs, memo = [], {}
+
+        def one(m):
+            name, host, key, params = m.group(1), m.group(2), m.group(3), m.group(4)
+            hid = self.host_id(host)
+            iid = [i for i, it in self.items.items() if it["hostid"] == hid and it["key_"] == key]
+            assert iid, "mock: expression references unknown item /%s/%s" % (host, key)
+            sig = (name, iid[0], params)
+            if sig not in memo:
+                memo[sig] = "%s%02d" % (t["triggerid"], len(memo) + 1)
+                funcs.append({"functionid": memo[sig], "itemid": iid[0], "triggerid": t["triggerid"],
+                              "name": name, "parameter": "$" + params})
+            return "{%s}" % memo[sig]
+        conv = lambda e: FUNC_CALL.sub(one, e or "")
+        return conv(t["expression"]), conv(t["recovery_expression"]), funcs
 
     def m_trigger_get(self, p):
         want = set(p.get("itemids") or [])
@@ -168,6 +202,14 @@ class DiscoveryZabbix(MockZabbix):
             if want and not want.intersection(t["itemids"]):
                 continue
             r = self._out(dict((k, v) for k, v in t.items() if k not in ("itemids", "tags")), p.get("output"))
+            if not p.get("expandExpression"):
+                e, re_, funcs = self._raw(t)
+                if "expression" in r:
+                    r["expression"] = e
+                if "recovery_expression" in r:
+                    r["recovery_expression"] = re_
+                if "selectFunctions" in p:
+                    r["functions"] = funcs
             if "selectItems" in p:
                 r["items"] = [{"itemid": i} for i in t["itemids"]]
             if "selectTags" in p:
@@ -271,3 +313,37 @@ def stock_util(host, port, idx):
     return ('(avg(/{h}/net.if.in[ifHCInOctets.{i}],15m)>({{$IF.UTIL.MAX:"{p}"}}/100)*last(/{h}/net.if.speed[ifHighSpeed.{i}]) '
             'or avg(/{h}/net.if.out[ifHCOutOctets.{i}],15m)>({{$IF.UTIL.MAX:"{p}"}}/100)*last(/{h}/net.if.speed[ifHighSpeed.{i}])) '
             'and last(/{h}/net.if.speed[ifHighSpeed.{i}])>0').format(h=host, i=idx, p=port)
+
+
+def netops_trigger_exprs(host, port, idx, alert, prio):
+    """(problem, recovery) of the NETOPS template's link_down / util_rx / util_tx triggers as LLD creates them
+    on a host (same shapes as netalert/template.py, LLD macros substituted)."""
+    k = lambda kind: "/%s/netops.if.%s[%s]" % (host, kind, idx)
+    c = lambda m: '{$NETOPS.%s:"%s"}' % (m, port)
+    gate = '%s=%d' % (c("SEV"), prio)
+    if alert == "link_down":
+        return ("%s=1 and %s and last(%s)<>1" % (c("LINK"), gate, k("oper")),
+                "last(%s)=1 and (%s=0 or changecount(%s,%s)<%s)" % (
+                    k("oper"), c("FLAP.ON"), k("oper"), c("FLAP.WINDOW"), c("FLAP.COUNT")))
+    kind = "in" if alert == "util_rx" else "out"
+    return ("%s=1 and %s and last(%s)*100>%s*last(%s) and last(%s)>0" % (
+                c("UTIL.ON"), gate, k(kind), c("UTIL.MAX"), k("speed"), k("speed")),
+            "last(%s)*100<%s*last(%s)" % (k(kind), c("UTIL.RECOVER"), k("speed")))
+
+
+def add_netops(z, host, port, idx, alerts=("util_rx", "util_tx"), prio=4, thr="70", rec="65", items=None):
+    """NETOPS template result on one port: items (LLD), the per-port macros apply.sh writes, and the triggers.
+    Returns (item ids, {alert: triggerid})."""
+    hid = z.host_id(host)
+    own = items or z.add_netops_items(hid, port, idx)
+    for m, v in (("LINK", "1"), ("SEV", str(prio)), ("UTIL.ON", "1"), ("UTIL.MAX", thr), ("UTIL.RECOVER", rec),
+                 ("FLAP.ON", "1"), ("FLAP.WINDOW", "5m"), ("FLAP.COUNT", "3")):
+        z.add_macro(hid, '{$NETOPS.%s:"%s"}' % (m, port), v)
+    trig = {}
+    for alert in alerts:
+        problem, recovery = netops_trigger_exprs(host, port, idx, alert, prio)
+        use = [own["oper"]] if alert == "link_down" else [own["in" if alert == "util_rx" else "out"], own["speed"]]
+        trig[alert] = z.add_trigger("NETOPS %s %s %s" % (host, port, alert), use, priority=prio,
+                                    tags=[("netops_alert", alert), ("if_name", port)], expression=problem,
+                                    recovery_expression=recovery)
+    return own, trig

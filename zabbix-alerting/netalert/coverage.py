@@ -3,20 +3,28 @@
 Two protected levels, never inferred from the mere existence of a trigger or an action:
 
   CONFIG VERIFIED (DELIVERY NOT TESTED) - every link of the chain is proven from live configuration:
-    fresh data; an enabled trigger whose EXPRESSION tests link-down on this port (and one that tests utilization);
-    every gating macro in those expressions resolves (host -> template ancestry -> global) to an open gate;
-    an enabled trigger action whose conditions provably match the event (full tag set incl. template tags,
-    nested host groups, template ancestry); an immediate problem operation AND a recovery operation, each with
-    at least one eligible recipient: active media of an enabled media type, the event severity, an unrestricted
-    active period, an enabled user group and read permission on the host (a deny anywhere wins).
-  PROTECTED (DELIVERY TESTED) - the above, plus Zabbix's own alert history shows a SENT problem message and a
-    SENT recovery message from that action for that trigger inside the evidence window.
+    an enabled link-down trigger and RX + TX utilization triggers of the approved policy (70%/65% unless the
+    inventory says otherwise) whose expressions pass the conservative validator (netalert/exprcheck.py: plain
+    conjunctions of recognised conditions only, gates resolved host -> template ancestry -> global, constants
+    evaluated, recovery possible); EVERY item those triggers use readable, enabled, supported and fresh (dependent
+    items judged by their master); an enabled action whose conditions provably match the event (full tag set incl.
+    template tags, nested host groups, template ancestry); an immediate problem operation AND a recovery operation,
+    each with at least one eligible recipient (active media of an enabled media type, the event severity, an
+    unrestricted active period, an enabled user group, read permission on the host - a deny anywhere wins).
+  PROTECTED (DELIVERY TESTED) - the above, plus a fault-test record (--record-fault-test) whose Problem event and
+    ITS Recovery event were both SENT by that action to the same current recipient, and whose configuration
+    fingerprint (trigger, macro values, action, recipients, media) still matches. Older sent messages are reported
+    as historical delivery evidence only.
 
-Anything that cannot be proven (unreadable users/templates/history, custom formulas with unknown inputs,
-time-period conditions, unresolvable macros, unknown expression semantics) fails closed and is reported.
+Anything that cannot be proven (unreadable users/templates/history/items, custom formulas with unknown inputs,
+time-period conditions, unresolvable macros, unknown expression logic) fails closed and is reported.
 """
+import hashlib
+import json
 import re
 import time
+
+from . import exprcheck
 
 PROT, CONFIG, PART, NOTC, STALE, REVIEW = (
     "PROTECTED (DELIVERY TESTED)", "CONFIG VERIFIED (DELIVERY NOT TESTED)", "PARTIALLY COVERED", "NOT COVERED",
@@ -25,7 +33,6 @@ CLASSES = (PROT, CONFIG, PART, NOTC, STALE, REVIEW)
 PROTECTED_CLASSES = (PROT, CONFIG)
 SEV_NAMES = {0: "not classified", 1: "information", 2: "warning", 3: "average", 4: "high", 5: "disaster"}
 ALWAYS = "1-7,00:00-24:00"
-MACRO_CMP = re.compile(r'(\{\$[A-Z0-9_.]+(?::"(?:[^"\\]|\\.)*")?\})\s*(=|<>)\s*"?(-?\d+)"?')
 MACRO_ANY = re.compile(r'\{\$[A-Z0-9_.]+(?::[^}]*)?\}')
 
 
@@ -66,40 +73,10 @@ def resolve_macro(snap, host, macro):
     return None
 
 
-def gates(snap, host, expression):
-    """(open, [reasons]): every '{$M}=N' / '{$M}<>N' in the expression must resolve and hold."""
-    reasons = []
-    for macro, op, val in MACRO_CMP.findall(expression or ""):
-        v = resolve_macro(snap, host, macro)
-        if v is None:
-            reasons.append("gate %s cannot be resolved" % macro)
-            continue
-        hold = (str(v).strip() == val) if op == "=" else (str(v).strip() != val)
-        if not hold:
-            reasons.append("gated off by %s=%s" % (macro, v))
-    return not reasons, reasons
-
-
 # ------------------------------------------------------------------------------------- expression semantics
 
 def _fn(key):
     return r"\b(last|min|max|avg|count|find)\(/[^/()]+/%s(?:,[^)]*)?\)" % re.escape(key)
-
-
-def tests_link_down(expr, keys):
-    """True only if the expression compares the port's oper-status item with down(2) / not-up(1)."""
-    for k in keys:
-        if re.search(_fn(k) + r'\s*(=\s*"?2"?|<>\s*"?1"?|>=\s*"?2"?|>\s*"?1"?)(?![\d.])', expr or ""):
-            return True
-    return False
-
-
-def tests_utilization(expr, keys):
-    """True only if a traffic item of this port is compared with '>' against something (a threshold)."""
-    for k in keys:
-        if re.search(_fn(k) + r'[^()<>=]*>(?!=)', expr or "") or re.search(_fn(k) + r'[^()<>=]*>=', expr or ""):
-            return True
-    return False
 
 
 def tests_icmp_down(expr, keys):
@@ -231,16 +208,16 @@ def eval_filter(flt, host, trig, snap=None):
 # --------------------------------------------------------------------------------- recipients / operations
 
 def _eligible(snap, op, host, trig):
-    """(eligible recipient count, [reasons]) for ONE message operation."""
+    """(set of eligible recipient userids, [reasons]) for ONE message operation."""
     mt = str((op.get("opmessage") or {}).get("mediatypeid", "0"))
     mts = snap["mediatypes"]
     if mt != "0" and not mts.get(mt, {}).get("enabled"):
-        return 0, ["media type %s disabled or not readable" % mts.get(mt, {}).get("name", mt)]
+        return set(), ["media type %s disabled or not readable" % mts.get(mt, {}).get("name", mt)]
     if snap["users"] is None or snap["usergroups"] is None:
-        return 0, ["recipients not readable with this token"]
+        return set(), ["recipients not readable with this token"]
     groups = set(g["usrgrpid"] for g in op.get("opmessage_grp", []))
     users = set(u["userid"] for u in op.get("opmessage_usr", []))
-    n, why = 0, set()
+    ok_users, why = set(), set()
     for u in snap["users"]:
         if u["userid"] not in users and not groups.intersection(u["groups"]):
             continue
@@ -275,14 +252,15 @@ def _eligible(snap, op, host, trig):
             ok = True
             break
         if ok:
-            n += 1
+            ok_users.add(u["userid"])
         elif not any(x.startswith(u["username"]) for x in why):
             why.add("%s: no matching media" % u["username"])
-    return n, sorted(why)
+    return ok_users, sorted(why)
 
 
 def notification(snap, host, trig):
-    """('READY'|'PARTIAL'|'NONE', [details], actionid or None). READY = problem AND recovery recipients proven."""
+    """('READY'|'PARTIAL'|'NONE', [details], actionid or None, recipients). READY = problem AND recovery recipients
+    proven; recipients = userids proven for BOTH the problem and the recovery message of that action."""
     best, details = "NONE", []
     for a in snap["actions"]:
         if str(a.get("status", "0")) != "0":
@@ -294,54 +272,151 @@ def notification(snap, host, trig):
         if not ops:
             continue
         immediate = [o for o in ops if str(o.get("esc_step_from", "1")) in ("1", "0", "")]
-        pn, why = 0, []
+        pu, why = set(), []
         for o in immediate:
             c, w = _eligible(snap, o, host, trig)
-            pn += c
+            pu |= c
             why += w
-        rn = 0
+        ru = set()
         recs = a.get("recovery_operations", []) or []
         for o in recs:
             t = str(o.get("operationtype"))
             if t == "11":
-                rn += pn                                          # notify all involved = whoever got the problem
+                ru |= pu                                          # notify all involved = whoever got the problem
             elif t == "0":
                 c, w = _eligible(snap, o, host, trig)
-                rn += c
+                ru |= c
                 why += ["recovery: " + x for x in w]
-        if m is True and pn and rn:
-            return "READY", ["action '%s': %d problem / %d recovery recipient(s) proven" % (a["name"], pn, rn)], a["actionid"]
+        if m is True and pu and ru:
+            return "READY", ["action '%s': %d problem / %d recovery recipient(s) proven" % (
+                a["name"], len(pu), len(ru))], a["actionid"], sorted(pu & ru)
         gaps = []
         if m is None:
             gaps.append("conditions cannot be fully evaluated")
         if not immediate:
             gaps.append("no immediate (step 1) problem operation")
-        elif not pn:
+        elif not pu:
             gaps.append("no eligible problem recipient")
         if not recs:
             gaps.append("no recovery operation")
-        elif not rn:
+        elif not ru:
             gaps.append("no eligible recovery recipient")
         details.append("action '%s': %s%s" % (a["name"], "; ".join(gaps) or "unproven",
                                               (" (%s)" % "; ".join(sorted(set(why))[:3])) if why else ""))
         best = "PARTIAL"
-    return best, details or ["no enabled trigger action matches"], None
+    return best, details or ["no enabled trigger action matches"], None, []
 
 
-def delivered(snap, trig, actionid):
-    """True / False / None (history not readable): SENT problem AND recovery message from this action."""
+# ------------------------------------------------------------------------------------- delivery evidence
+
+def _sent(a, actionid):
+    return str(a.get("actionid")) == str(actionid) and str(a.get("alerttype", "0")) == "0" and str(a.get("status")) == "1"
+
+
+def correlated_pairs(snap, trig, actionid, recipients):
+    """Problem/Recovery pairs of ONE event that prove delivery through `actionid` to a CURRENT recipient:
+    a SENT problem message on problem event P and a SENT recovery message on P's recovery event (alert p_eventid
+    = P, and P.r_eventid when Zabbix reports it), both to the same user who is still an eligible recipient.
+    Returns None when history is unreadable, else a list (newest first)."""
     if snap.get("events") is None:
         return None
-    kinds = snap["events"].get(trig["triggerid"], {}).get(actionid, set())
-    return "problem" in kinds and "recovery" in kinds
+    evs = snap["events"].get(trig["triggerid"], [])
+    out = []
+    for p in evs:
+        if str(p.get("value")) != "1":
+            continue
+        psent = [a for a in p.get("alerts", []) if _sent(a, actionid) and str(a.get("p_eventid") or "0") == "0"]
+        if not psent:
+            continue
+        for r in evs:
+            if str(r.get("value")) != "0":
+                continue
+            if str(p.get("r_eventid") or "0") not in ("0", str(r["eventid"])):
+                continue
+            rsent = [a for a in r.get("alerts", []) if _sent(a, actionid) and str(a.get("p_eventid")) == str(p["eventid"])]
+            users = (set(str(a.get("userid")) for a in psent) & set(str(a.get("userid")) for a in rsent)
+                     & set(str(u) for u in recipients))
+            if users:
+                out.append({"problem": str(p["eventid"]), "recovery": str(r["eventid"]), "clock": int(p["clock"]),
+                            "recovery_clock": int(r["clock"]), "users": sorted(users)})
+    return sorted(out, key=lambda x: -x["clock"])
+
+
+def fingerprint(snap, host, trig, actionid, recipients):
+    """Digest of everything the delivery path depends on: trigger logic and the values of its macros, the action
+    (conditions, operations), and each recipient's groups, permissions and media. A fault test is only valid for
+    the configuration it was performed with."""
+    expr = trig.get("expression", "") + " " + trig.get("recovery_expression", "")
+    macros = sorted(set((m, resolve_macro(snap, host, m)) for m in MACRO_ANY.findall(expr)))
+    action = [a for a in snap["actions"] if str(a["actionid"]) == str(actionid)]
+    action = dict((k, action[0].get(k)) for k in ("actionid", "status", "filter", "operations",
+                                                  "recovery_operations", "esc_period")) if action else None
+    users = [u for u in (snap["users"] or []) if u["userid"] in recipients]
+    groups = sorted(set(g for u in users for g in u["groups"]))
+    blob = json.dumps({
+        "trigger": [trig["triggerid"], trig.get("expression"), trig.get("recovery_mode"),
+                    trig.get("recovery_expression"), trig.get("priority"), trig.get("enabled")],
+        "macros": macros, "action": action, "host_groups": host["groupids"],
+        "users": [[u["userid"], u["groups"], sorted(json.dumps(m, sort_keys=True) for m in u["medias"])] for u in users],
+        "usergroups": [[g, (snap["usergroups"] or {}).get(g)] for g in groups],
+        "mediatypes": sorted((k, v.get("enabled")) for k, v in snap["mediatypes"].items()
+                             if any(m["mediatypeid"] == k for u in users for m in u["medias"]))},
+        sort_keys=True, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 
 # ------------------------------------------------------------------------------------- classification
 
+def _quality_problems(snap, t):
+    """Every item the trigger uses must be readable, enabled, supported and fresh (dependent items by master)."""
+    bad = []
+    items = snap.get("items") or {}
+    for i in t.get("itemids", []):
+        it = items.get(i)
+        if not it:
+            bad.append("item %s not readable" % i)
+        elif it.get("quality") != "fresh":
+            bad.append("%s %s" % (it["key"], it.get("quality", "unknown")))
+    return bad
+
+
 def _trigger_ok(snap, h, t):
     if not t["enabled"]:
         return False, ["disabled"]
-    return gates(snap, h, t.get("expression", ""))
+    bad = _quality_problems(snap, t)
+    if bad:
+        return False, ["data: " + "; ".join(bad)]
+    res = exprcheck.conjuncts(t.get("expression", ""))
+    if res is None:
+        return False, ["expression logic not recognised"]
+    why = []
+    for c in res:
+        g = exprcheck._gate_or_const(c, lambda m: resolve_macro(snap, h, m))
+        if g is not None and g[0] != "ok":
+            why.append(g[1])
+    return not why, why
+
+
+def gates(snap, host, expression):
+    """(open, [reasons]): every top-level gate / constant comparison must resolve and hold."""
+    res = exprcheck.conjuncts(expression)
+    if res is None:
+        return False, ["expression logic not recognised"]
+    why = []
+    for c in res:
+        g = exprcheck._gate_or_const(c, lambda m: resolve_macro(snap, host, m))
+        if g is not None and g[0] != "ok":
+            why.append(g[1])
+    return not why, why
+
+
+def policy(row):
+    """Approved utilization policy (threshold, recovery) for this port: the inventory entry, else 70/65."""
+    u = ((getattr(row, "yaml", None) or {}).get("utilization") or {}) if isinstance(getattr(row, "yaml", None), dict) else {}
+    try:
+        return float(u.get("threshold", 70)), float(u.get("recovery", 65))
+    except (TypeError, ValueError):
+        return 70.0, 65.0
 
 
 def port_coverage(snap, row):
@@ -357,36 +432,54 @@ def port_coverage(snap, row):
         return STALE, ["host disabled"], {}
     if h["snmp"]["available"] == "2":
         return STALE, ["SNMP interface unavailable: %s" % (h["snmp"]["error"] or "no error text")], {}
-    if p["fresh"] != "fresh":
+    if p["fresh"] != "fresh" and not p["own"]:
         return STALE, ["status item %s" % p["fresh"]], {}
     status_keys = [x["key"] for k, x in p["items"].items() if k == "status"] + \
         [k for k in p["own"] if k.startswith("netops.if.oper[")]
-    traffic_keys = [x["key"] for k, x in p["items"].items() if k in ("in", "out")] + \
-        [k for k in p["own"] if k.startswith(("netops.if.in[", "netops.if.out["))]
-    link, util, unproven, off = [], [], [], []      # unproven = might work but cannot be shown; off = cannot fire
+    traffic = dict((k, "rx" if k.startswith("netops.if.in[") else "tx") for k in p["own"]
+                   if k.startswith(("netops.if.in[", "netops.if.out[")))
+    speed_keys = [k for k in p["own"] if k.startswith("netops.if.speed[")]
+    stock_traffic = [x["key"] for k, x in p["items"].items() if k in ("in", "out")]
+    pol = policy(row)
+    resolve = lambda m: resolve_macro(snap, h, m)
+    link, util, unproven, off, stale = [], {}, [], [], []
     for t in h["triggers"]:
         if row.port not in t["ports"]:
             continue
-        is_link = tests_link_down(t.get("expression", ""), status_keys)
-        is_util = tests_utilization(t.get("expression", ""), traffic_keys)
+        lv, lwhy = exprcheck.assess_link(t, status_keys, resolve)
+        uv, udir, uwhy = exprcheck.assess_util(t, traffic, speed_keys, resolve, pol)
+        if lv == "none" and uv == "none":
+            if exprcheck.uses(t.get("expression", ""), stock_traffic):
+                unproven.append("'%s': utilization trigger is not the approved %g%%/%g%% policy (only the NETOPS "
+                                "template implements it)" % ((t["name"],) + pol))
+            elif exprcheck.uses(t.get("expression", ""), status_keys):
+                unproven.append("'%s': expression does not prove a link-down test" % t["name"])
+            continue
+        v, why = (lv, lwhy) if lv != "none" else (uv, uwhy)
         if not t["enabled"]:
-            if is_link or is_util:
-                off.append("'%s' is disabled" % t["name"])
+            off.append("'%s' is disabled" % t["name"])
             continue
-        if not (is_link or is_util):
-            unproven.append("'%s': expression does not prove a link-down or utilization test" % t["name"])
+        if v == "off":
+            off.append("'%s': %s" % (t["name"], "; ".join(why)))
             continue
-        ok, why = _trigger_ok(snap, h, t)
-        if not ok:
-            (unproven if any("cannot be resolved" in w for w in why) else off).append(
-                "'%s': %s" % (t["name"], "; ".join(why)))
+        if v == "unknown":
+            unproven.append("'%s': %s" % (t["name"], "; ".join(why) or "cannot be proven"))
             continue
-        (link if is_link else util).append(t)
-    ev = {"link": [t["name"] for t in link], "util": [t["name"] for t in util], "managed": bool(p["own"]),
-          "unproven": unproven, "off": off}
-    if any(t["unknown"] for t in link + util):
+        bad = _quality_problems(snap, t)
+        if bad:
+            stale.append("'%s': data %s" % (t["name"], "; ".join(bad)))
+            continue
+        if lv == "ok":
+            link.append(t)
+        else:
+            util.setdefault(udir, []).append(t)
+    ev = {"link": [t["name"] for t in link], "util": [t["name"] for d in util.values() for t in d],
+          "managed": bool(p["own"]), "unproven": unproven, "off": off, "stale": stale}
+    if any(t["unknown"] for t in link + [t for d in util.values() for t in d]):
         return STALE, ["trigger in UNKNOWN state"], ev
     if not link:
+        if stale:
+            return STALE, ["link-down trigger exists but its data is not current"] + stale[:3] + unproven[:2], ev
         why = ["no enabled, ungated trigger whose expression tests link-down on this port"] + unproven[:3] + off[:3]
         if row.status == "APPROVED" and not p["own"]:
             why.append("approved but not yet deployed")
@@ -397,25 +490,62 @@ def port_coverage(snap, row):
     ev["notify"] = (ready or verdicts)[0][2]
     if not ready:
         gaps.append("link alert has no proven Problem+Recovery notification path: %s" % "; ".join(verdicts[0][2]))
-    if not util:
-        gaps.append("no proven utilization alert (agreed policy 70%/65%)")
-    else:
-        uv = [notification(snap, h, t) for t in util]
-        if not any(v[0] == "READY" for v in uv):
-            gaps.append("utilization alert has no proven notification path")
+    for d in ("rx", "tx"):
+        if not util.get(d):
+            gaps.append("no proven %s utilization alert at the approved policy %g%%/%g%%" % ((d.upper(),) + pol))
+        elif not any(notification(snap, h, t)[0] == "READY" for t in util[d]):
+            gaps.append("%s utilization alert has no proven notification path" % d.upper())
     if h.get("maintenance"):
         gaps.append("host is in maintenance (notifications may be suppressed)")
     if row.status == "APPROVED" and not p["own"]:
         gaps.append("approved but not yet deployed by this project")
     if gaps or reasons:
-        return PART, gaps + reasons + unproven[:2], ev
-    tested = [delivered(snap, v[0], v[3]) for v in ready]
-    if any(x is True for x in tested):
-        ev["delivery"] = ["SENT problem + recovery in the last %d days" % snap.get("delivery_days", 90)]
-        return PROT, [], ev
-    ev["delivery"] = ["no SENT problem+recovery pair in the last %d days" % snap.get("delivery_days", 90)
-                      if any(x is False for x in tested) else "alert history not readable"]
+        return PART, gaps + reasons + stale[:2] + unproven[:2], ev
+    # ---- delivery: only an explicit fault test bound to THIS configuration proves current delivery ----------
+    hist, cands = [], []
+    for t, _, _, aid, recips in ready:
+        pairs = correlated_pairs(snap, t, aid, recips)
+        if pairs is None:
+            ev["delivery"] = ["alert history not readable"]
+            return CONFIG, ev["delivery"], ev
+        fp = fingerprint(snap, h, t, aid, recips)
+        cands.append({"trigger": t, "actionid": aid, "pairs": pairs, "fingerprint": fp})
+        hist += pairs
+    ev["candidates"] = cands
+    rec = (snap.get("fault_tests") or {}).get(row.id)
+    if rec:
+        for c in cands:
+            if str(rec.get("triggerid")) != str(c["trigger"]["triggerid"]) or str(rec.get("actionid")) != str(c["actionid"]):
+                continue
+            if rec.get("fingerprint") != c["fingerprint"]:
+                ev["delivery"] = ["fault test of %s no longer matches the configuration (trigger, macros, action, "
+                                  "recipients or media changed since): repeat the fault test" % _ts(rec.get("problem_clock"))]
+                return CONFIG, ev["delivery"], ev
+            if any(x["problem"] == str(rec.get("problem_eventid")) and x["recovery"] == str(rec.get("recovery_eventid"))
+                   for x in c["pairs"]):
+                ev["delivery"] = ["fault test %s: Problem event %s + Recovery event %s sent to %d current recipient(s); "
+                                  "configuration unchanged since" % (_ts(rec["problem_clock"]), rec["problem_eventid"],
+                                                                     rec["recovery_eventid"], len(rec.get("users", [])))]
+                return PROT, [], ev
+            ev["delivery"] = ["recorded fault test events are no longer in the %d-day alert history: repeat the fault "
+                              "test" % snap.get("delivery_days", 90)]
+            return CONFIG, ev["delivery"], ev
+    if hist:
+        last = max(hist, key=lambda x: x["clock"])
+        ev["delivery"] = ["historical delivery evidence only: Problem %s + Recovery %s (%s) sent to current recipient(s) "
+                          "- not bound to the current configuration; run a fault test and --record-fault-test"
+                          % (last["problem"], last["recovery"], _ts(last["clock"]))]
+    else:
+        ev["delivery"] = ["no correlated SENT Problem+Recovery pair to a current recipient in the last %d days"
+                          % snap.get("delivery_days", 90)]
     return CONFIG, ev["delivery"], ev
+
+
+def _ts(clock):
+    try:
+        return time.strftime("%Y-%m-%d %H:%M", time.localtime(int(clock)))
+    except (TypeError, ValueError):
+        return "?"
 
 
 HEALTH_ALERTS = {"ospf": ("ospf_neighbor", "ospf_blind", "ospf_expected"),
@@ -525,8 +655,9 @@ def render(snap, model, result, env_name, url):
          "", "Scope: %d host(s), %d discovered port(s); %d port(s) in audit scope (candidates, approved, project-managed)."
          % (len(snap["hosts"]), sum(len(h["ports"]) for h in snap["hosts"].values()), len(result["ports"])),
          "Coverage is reported only for this scope. Anything listed under *Limits* could not be discovered.",
-         "CONFIG VERIFIED means the configuration proves detection and notification; only DELIVERY TESTED also has",
-         "Zabbix's own record of a sent Problem and Recovery message. Neither is a substitute for a fault test.", "",
+         "CONFIG VERIFIED means the configuration proves detection and notification; DELIVERY TESTED additionally needs",
+         "a recorded fault test (one Problem event and its Recovery, both sent to a current recipient) whose configuration",
+         "fingerprint is unchanged. Older sent messages are listed as historical evidence only.", "",
          "| Class | Ports |", "|---|---|"]
     L += ["| %s | %d |" % (k, c[k]) for k in CLASSES]
     L += ["", "## Ports", "", "| Class | Host | Port | Description | Role | Decision | Reasons / evidence |",

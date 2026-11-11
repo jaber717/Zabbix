@@ -11,15 +11,20 @@ import unittest
 from netalert import coverage, netbox
 from netalert import onboarding as ob
 from netalert.zbx import ApiUnavailable, HttpTransport, ZabbixClient
-from tests.discovery_fixture import DiscoveryZabbix, stock_link, stock_util
+from tests.discovery_fixture import DiscoveryZabbix, add_netops, stock_link, stock_util
 from tests.helpers import write
 from tests.test_onboarding import World, row_no
 
 
-def util(w, host="EDGE-RTR-01", port="Hu0/0/0/0", idx="1"):
+def util(w, host="EDGE-RTR-01", port="Hu0/0/0/0", idx="1", **kw):
+    """Utilization alerts of the approved policy (70%/65%, RX and TX) - only the NETOPS template implements it."""
+    return add_netops(w.z, host, port, idx, **kw)
+
+
+def stock_bw(w, host="EDGE-RTR-01", port="Hu0/0/0/0", idx="1"):
     hid = w.z.host_id(host)
     ids = [i for i, it in w.z.items.items() if it["hostid"] == hid and it["key_"] in (
-        "net.if.in[ifHCInOctets.%s]" % idx, "net.if.out[ifHCOutOctets.%s]" % idx)]
+        "net.if.in[ifHCInOctets.%s]" % idx, "net.if.out[ifHCOutOctets.%s]" % idx, "net.if.speed[ifHighSpeed.%s]" % idx)]
     return w.z.add_trigger("%s bandwidth" % port, ids, expression=stock_util(host, port, idx))
 
 
@@ -54,7 +59,7 @@ class CoverageNeverOverclaims(Base):
         st = [i for i, it in z.items.items() if it["hostid"] == self.w.ids["r1"] and it["key_"] == "net.if.status[ifOperStatus.9]"][0]
         z.add_trigger("Gi0/0/0/9 down", [st], expression=stock_link("EDGE-RTR-01", "Gi0/0/0/9", "9"))
         c, why = self.assertNotProtected("EDGE-RTR-01|Gi0/0/0/9")
-        self.assertIn("no proven utilization alert", " ".join(why))
+        self.assertIn("no proven RX utilization alert at the approved policy 70%/65%", " ".join(why))
 
     def test_trigger_on_status_item_must_test_link_down(self):                   # R2
         for t in self.w.z.triggers.values():
@@ -147,6 +152,11 @@ class CoverageNeverOverclaims(Base):
         self.w.z.add_delivery(stock, act, status="2")                  # failed sends do not count
         self.assertEqual(cls(self.w)[0], coverage.CONFIG)
         self.w.z.add_delivery(stock, act)
+        c, why, _ = cls(self.w)
+        self.assertEqual(c, coverage.CONFIG)                           # correlated, but only historical evidence
+        self.assertIn("historical delivery evidence only", " ".join(why))
+        rc, out = self.w.run("--record-fault-test", "EDGE-RTR-01|Hu0/0/0/0")
+        self.assertEqual(rc, 0, out)
         self.assertEqual(cls(self.w)[0], coverage.PROT)
         self.w.z.deny.add("event.get")                                 # history unreadable: never DELIVERY TESTED
         c, why, _ = cls(self.w)

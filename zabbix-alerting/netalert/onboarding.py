@@ -84,6 +84,7 @@ def paths(base, env_name):
     return {"interfaces": os.path.join(c, "interfaces.%s.yaml" % env_name),
             "health": os.path.join(c, "network-health.%s.yaml" % env_name),
             "decisions": os.path.join(c, "onboarding.%s.yaml" % env_name),
+            "fault_tests": os.path.join(c, "fault-tests.%s.yaml" % env_name),
             "state": os.path.join(base, "state", "onboarding", env_name)}
 
 

@@ -143,7 +143,7 @@ class Session(object):
                 self.out("   coverage: %s" % cls)
                 for w in why:
                     self.out("     - %s" % w)
-                for k in ("link", "util", "notify"):
+                for k in ("link", "util", "stale", "notify", "delivery"):
                     if ev.get(k):
                         self.out("     %s: %s" % (k, "; ".join(ev[k])))
                 for b in r.blockers + r.issues + r.review:

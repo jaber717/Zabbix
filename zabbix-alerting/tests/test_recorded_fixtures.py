@@ -13,14 +13,15 @@ from netalert.zbx import ZabbixClient
 from tests.discovery_fixture import NOW, standard_world
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-RECORDED = sorted(glob.glob(os.path.join(HERE, "fixtures", "recorded", "*.json")))
+RECORDED_DIR = os.environ.get("NETALERT_RECORDED_DIR") or os.path.join(HERE, "fixtures", "recorded")
+RECORDED = sorted(glob.glob(os.path.join(RECORDED_DIR, "*.json")))
 
 
 class RecordedRealZabbix(unittest.TestCase):
     def test_replay_real_recordings(self):
         if not RECORDED:
-            self.skipTest("NOT RUN: no recorded real-Zabbix fixtures in tests/fixtures/recorded/ "
-                          "(capture them in LAB with scripts/capture-api-fixtures.py)")
+            self.skipTest("NOT RUN: no recorded real-Zabbix fixtures (set NETALERT_RECORDED_DIR to a directory of "
+                          "captures made in LAB with scripts/capture-api-fixtures.py)")
         for path in RECORDED:
             with self.subTest(fixture=os.path.basename(path)):
                 with open(path, encoding="utf-8") as fh:

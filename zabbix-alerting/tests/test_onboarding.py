@@ -17,7 +17,7 @@ from netalert import onboarding as ob
 from netalert.zbx import ApiUnavailable, ZabbixClient
 import re
 
-from tests.discovery_fixture import NOW, DiscoveryZabbix, standard_world, stock_util
+from tests.discovery_fixture import NOW, DiscoveryZabbix, add_netops, netops_trigger_exprs, standard_world
 from tests.helpers import LAB_YAML, PROD_YAML, write
 
 IDENT = {"globalmacroid": "1", "macro": "{$NETOPS.ENVIRONMENT}", "value": "production",
@@ -91,7 +91,9 @@ class World(object):
         return yaml.safe_load(self.read(rel))
 
     def snapshot(self):
-        return discovery.discover(ZabbixClient(self.z.transport("tok"), read_only=True), now=NOW)
+        snap = discovery.discover(ZabbixClient(self.z.transport("tok"), read_only=True), now=NOW)
+        snap["fault_tests"] = onboard_cli.load_fault_tests(ob.paths(self.base, "production")["fault_tests"])
+        return snap
 
     def model(self):
         b = self.base
@@ -427,16 +429,13 @@ class Coverage(Base):
         return coverage.port_coverage(snap, m["by_id"][rid])
 
     def _util_trigger(self, host, index):
-        hid = self.w.z.host_id(host)
-        ids = [i for i, it in self.w.z.items.items() if it["hostid"] == hid and it["key_"] in (
-            "net.if.in[ifHCInOctets.%s]" % index, "net.if.out[ifHCOutOctets.%s]" % index)]
         port = {"1": "Hu0/0/0/0", "2": "Te0/0/0/1"}[index]
-        return self.w.z.add_trigger("%s high bandwidth" % host, ids, expression=stock_util(host, port, index))
+        return add_netops(self.w.z, host, port, index)
 
     def test_stock_link_trigger_without_utilization_is_partial(self):
         cls, why, ev = self._cls("EDGE-RTR-01|Hu0/0/0/0")
         self.assertEqual(cls, coverage.PART)
-        self.assertIn("no proven utilization alert", " ".join(why))
+        self.assertIn("no proven RX utilization alert at the approved policy 70%/65%", " ".join(why))
 
     def test_protected_requires_link_util_fresh_and_ready_notification(self):
         self._util_trigger("EDGE-RTR-01", "1")
@@ -598,9 +597,10 @@ class Gates(Base):
         own = z.add_netops_items(hid, "Hu0/0/0/0", "1")
         for alert in ("link_down", "util_rx", "util_tx"):
             for prio in (2, 3, 4, 5):                              # four severity variants; macros pick one
+                problem, recovery = netops_trigger_exprs("EDGE-RTR-01", "Hu0/0/0/0", "1", alert, prio)
                 z.add_trigger("NETOPS %s" % alert, list(own.values()), priority=prio,
                               tags=[("netops_alert", alert), ("if_name", "Hu0/0/0/0")],
-                              expression=netops_expr(alert, prio))
+                              expression=problem, recovery_expression=recovery)
         for t in list(z.triggers.values()):                        # remove the stock trigger: project coverage only
             if "(stock)" in t["description"]:
                 t["status"] = "1"
@@ -616,6 +616,13 @@ class Gates(Base):
         netops = [a for a in z.actions.values() if a["name"].startswith("NETOPS-IaC")][0]["actionid"]
         link = [t for t in z.triggers.values() if t["description"] == "NETOPS link_down" and t["priority"] == "4"][0]
         z.add_delivery(link["triggerid"], netops)
+        cls, why, ev = coverage.port_coverage(self.w.snapshot(), self.w.model()["by_id"]["EDGE-RTR-01|Hu0/0/0/0"])
+        self.assertEqual(cls, coverage.CONFIG, why)                # history alone is not a current fault test
+        self.assertIn("historical delivery evidence only", " ".join(why))
+        writes_before = list(z.writes())
+        rc, out = self.w.run("--record-fault-test", "EDGE-RTR-01|Hu0/0/0/0")
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(z.writes(), writes_before)                # recording reads Zabbix only
         cls, why, ev = coverage.port_coverage(self.w.snapshot(), self.w.model()["by_id"]["EDGE-RTR-01|Hu0/0/0/0"])
         self.assertEqual(cls, coverage.PROT, why)
         # a second onboarding run over the deployed state changes nothing

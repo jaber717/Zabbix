@@ -25,6 +25,7 @@ SHORT = {"hu": "hundredgige", "hundredgige": "hundredgige", "fo": "fortygige", "
          "be": "bundle-ether", "bundle-ether": "bundle-ether", "eth": "ethernet", "et": "ethernet",
          "ethernet": "ethernet"}
 NAME_RE = re.compile(r"^([a-z-]+?)(\d.*)$")
+MAX_PAGES = 1000                  # 1000 pages x limit 1000 = far beyond any inventory; a loop guard, not a limit
 
 
 class NetBoxError(Exception):
@@ -71,12 +72,20 @@ class NetBox(object):
 
     def get_all(self, path, params):
         url = "%s/%s/?%s" % (self.base, path.strip("/"), urllib.parse.urlencode(params, doseq=True))
-        out = []
+        out, seen = [], set()
         while url:
+            if url in seen:
+                raise NetBoxError("NetBox pagination repeated a page (%s) - refused to loop" % url.split("?")[0])
+            if len(seen) >= MAX_PAGES:
+                raise NetBoxError("NetBox pagination exceeded %d pages - refused" % MAX_PAGES)
+            seen.add(url)
             self.calls.append(("GET", url.split("?")[0]))
             data = self._open(url)
-            out += data.get("results", [])
+            page = data.get("results", [])
+            out += page
             url = data.get("next")
+            if url and not page:
+                raise NetBoxError("NetBox returned an empty page with a next link - refused to loop")
             if url:
                 n = urllib.parse.urlsplit(url)
                 if (n.scheme.lower(), n.netloc.lower()) != self._origin or not n.path.startswith(self._prefix):

@@ -81,7 +81,7 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
             "actions": [], "mediatypes": {}, "usergroups": None, "users": None, "stale_after": stale_after,
             "scope": {"groups": sorted(group_names or []), "hosts": sorted(host_names or [])},
             "templates": None, "global_macros": None, "hostgroups": {}, "events": None,
-            "delivery_days": delivery_days}
+            "delivery_days": delivery_days, "items": {}}
 
     params = {"output": ["hostid", "host", "name", "status", "maintenance_status"],
               "selectInterfaces": ["type", "main", "ip", "dns", "available", "error"],
@@ -129,8 +129,7 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
     ids = list(by_id)
     for chunk in _chunks(ids):
         items = client.call("item.get", {
-            "output": ["itemid", "hostid", "key_", "name", "lastvalue", "lastclock", "state", "status", "error",
-                       "delay", "value_type"],
+            "output": ITEM_OUTPUT,
             "hostids": chunk, "selectTags": ["tag", "value"], "tags": [{"tag": "interface", "operator": 4}]})
         for it in items:
             h = by_id.get(it["hostid"])
@@ -145,6 +144,7 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
                                                   "dup": False, "own": {}, "indexes": set()})
             key = it["key_"]
             item_host[it["itemid"]] = h["host"]
+            _remember(snap, it, h["host"])
             if key.startswith(OWN_PREFIXES):
                 p["own"][key] = it["itemid"]
                 item_port[it["itemid"]] = (h["host"], port_name)
@@ -170,8 +170,7 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
             item_port[it["itemid"]] = (h["host"], port_name)
             h["newest_clock"] = max(h["newest_clock"], int(it.get("lastclock") or 0))
         for what, pattern in sorted(HEALTH_SEARCH.items()):
-            for it in client.call("item.get", {"output": ["itemid", "hostid", "key_", "name", "lastvalue", "lastclock",
-                                                          "state", "status", "delay"],
+            for it in client.call("item.get", {"output": ITEM_OUTPUT,
                                                "hostids": chunk, "search": {"key_": pattern},
                                                "selectTags": ["tag", "value"]}):
                 h = by_id.get(it["hostid"])
@@ -185,6 +184,7 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
                      "state": str(it.get("state", "0")), "enabled": str(it.get("status", "0")) == "0",
                      "delay": it.get("delay", "")})
                 item_host[it["itemid"]] = h["host"]
+                _remember(snap, it, h["host"])
 
     for h in snap["hosts"].values():
         for p in h["ports"].values():
@@ -202,28 +202,44 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
             p["fresh"] = freshness(st, now, stale_after)
 
     # ---- triggers that use any port / health item (stock, NETOPS or anything else) -----------------------
+    # Expressions are fetched RAW ({functionid} references, user macros untouched) with their functions and
+    # rebuilt here: expandExpression would let Zabbix substitute macros, hiding gates from the validator.
+    raw = []
     for chunk in _chunks(sorted(item_host), 1000):
-        for t in client.call("trigger.get", {
-                "output": ["triggerid", "description", "event_name", "priority", "status", "value", "state",
-                           "error", "manual_close", "expression", "recovery_mode", "recovery_expression"],
-                "itemids": chunk, "selectItems": ["itemid"], "selectTags": ["tag", "value"],
-                "expandDescription": True, "expandExpression": True}):
-            tid_items = [i["itemid"] for i in t.get("items", [])]
-            hosts = set(item_host[i] for i in tid_items if i in item_host)
-            for hn in hosts:
-                h = snap["hosts"][hn]
-                if any(x["triggerid"] == t["triggerid"] for x in h["triggers"]):
-                    continue
-                ports = sorted(set(item_port[i][1] for i in tid_items if i in item_port and item_port[i][0] == hn))
-                tags = sorted((x["tag"], x.get("value", "")) for x in t.get("tags", []))
-                itags = sorted(set(tg for i in tid_items for tg in snap.get("item_tags", {}).get(i, [])))
-                h["triggers"].append({"item_tags": itags,
-                    "triggerid": t["triggerid"], "name": t.get("description", ""), "priority": int(t.get("priority", 0)),
-                    "enabled": str(t.get("status", "0")) == "0", "problem": str(t.get("value", "0")) == "1",
-                    "unknown": str(t.get("state", "0")) == "1", "itemids": sorted(tid_items), "ports": ports,
-                    "expression": t.get("expression", ""), "recovery_mode": str(t.get("recovery_mode", "0")),
-                    "recovery_expression": t.get("recovery_expression", ""), "event_name": t.get("event_name", ""),
-                    "tags": tags, "netops": any(k == "netops_alert" for k, _ in tags)})
+        raw += client.call("trigger.get", {
+            "output": ["triggerid", "description", "event_name", "priority", "status", "value", "state",
+                       "error", "manual_close", "expression", "recovery_mode", "recovery_expression"],
+            "itemids": chunk, "selectItems": ["itemid"], "selectTags": ["tag", "value"],
+            "selectFunctions": ["functionid", "itemid", "name", "parameter"], "expandDescription": True})
+    _fetch_missing_items(client, snap, set(f["itemid"] for t in raw for f in t.get("functions", [])) |
+                         set(i["itemid"] for t in raw for i in t.get("items", [])))
+    for it in snap["items"].values():
+        if it is not None:
+            it["quality"] = _quality(snap, it, now, stale_after)
+    seen_t = set()
+    for t in raw:
+        if t["triggerid"] in seen_t:
+            continue
+        seen_t.add(t["triggerid"])
+        fns = dict((f["functionid"], f) for f in t.get("functions", []))
+        t["expression"] = rebuild(t.get("expression", ""), fns, snap["items"])
+        t["recovery_expression"] = rebuild(t.get("recovery_expression", ""), fns, snap["items"])
+        tid_items = [i["itemid"] for i in t.get("items", [])]
+        hosts = set(item_host[i] for i in tid_items if i in item_host)
+        for hn in hosts:
+            h = snap["hosts"][hn]
+            if any(x["triggerid"] == t["triggerid"] for x in h["triggers"]):
+                continue
+            ports = sorted(set(item_port[i][1] for i in tid_items if i in item_port and item_port[i][0] == hn))
+            tags = sorted((x["tag"], x.get("value", "")) for x in t.get("tags", []))
+            itags = sorted(set(tg for i in tid_items for tg in snap.get("item_tags", {}).get(i, [])))
+            h["triggers"].append({"item_tags": itags,
+                "triggerid": t["triggerid"], "name": t.get("description", ""), "priority": int(t.get("priority", 0)),
+                "enabled": str(t.get("status", "0")) == "0", "problem": str(t.get("value", "0")) == "1",
+                "unknown": str(t.get("state", "0")) == "1", "itemids": sorted(tid_items), "ports": ports,
+                "expression": t.get("expression", ""), "recovery_mode": str(t.get("recovery_mode", "0")),
+                "recovery_expression": t.get("recovery_expression", ""), "event_name": t.get("event_name", ""),
+                "tags": tags, "netops": any(k == "netops_alert" for k, _ in tags)})
 
     # ---- macro / tag context: template ancestry, global macros, all host groups ---------------------------
     _templates(client, snap, limits)
@@ -297,23 +313,89 @@ def _templates(client, snap, limits):
 
 
 def _delivery(client, snap, limits, now):
-    """Evidence that Zabbix actually sent Problem and Recovery messages for a trigger (status 1 = sent)."""
+    """Raw event/alert history per trigger (correlated into Problem/Recovery pairs by coverage, never aggregated).
+    Recovery messages are alerts on the recovery event whose p_eventid is the problem event."""
     tids = sorted(set(t["triggerid"] for h in snap["hosts"].values() for t in h["triggers"]))
     events = {}
     for chunk in _chunks(tids, 500):
         rows = _optional(client, limits, "event/alert history (delivery evidence)", "event.get", {
-            "output": ["eventid", "objectid", "value", "clock"], "source": 0, "object": 0, "objectids": chunk,
-            "time_from": now - snap["delivery_days"] * 86400,
-            "select_alerts": ["alertid", "actionid", "status", "alerttype", "p_eventid", "mediatypeid"]})
+            "output": ["eventid", "objectid", "value", "clock", "r_eventid"], "source": 0, "object": 0,
+            "objectids": chunk, "time_from": now - snap["delivery_days"] * 86400,
+            "select_alerts": ["alertid", "actionid", "status", "alerttype", "eventid", "p_eventid", "mediatypeid",
+                              "userid", "clock"]})
         if rows is None:
             return
         for e in rows:
-            for a in e.get("alerts", []):
-                if str(a.get("alerttype", "0")) != "0" or str(a.get("status")) != "1":
-                    continue
-                kind = "recovery" if (str(e.get("value")) == "0" or str(a.get("p_eventid", "0")) not in ("", "0")) else "problem"
-                events.setdefault(e["objectid"], {}).setdefault(a["actionid"], set()).add(kind)
+            events.setdefault(e["objectid"], []).append({
+                "eventid": e["eventid"], "value": str(e.get("value")), "clock": int(e.get("clock") or 0),
+                "r_eventid": str(e.get("r_eventid") or "0"),
+                "alerts": [dict((k, str(a.get(k, ""))) for k in ("alertid", "actionid", "status", "alerttype",
+                                                                 "p_eventid", "mediatypeid", "userid", "clock"))
+                           for a in e.get("alerts", [])]})
     snap["events"] = events
+
+
+ITEM_OUTPUT = ["itemid", "hostid", "key_", "name", "lastvalue", "lastclock", "state", "status", "error", "delay",
+               "value_type", "type", "master_itemid"]
+FUNC_REF = re.compile(r"\{(\d+)\}")
+
+
+def _remember(snap, it, host):
+    """Data-quality record of every item a trigger may use (port, NETOPS, health and referenced items)."""
+    snap["items"][it["itemid"]] = {
+        "itemid": it["itemid"], "host": host, "key": it.get("key_", ""), "lastclock": int(it.get("lastclock") or 0),
+        "state": str(it.get("state", "0")), "enabled": str(it.get("status", "0")) == "0",
+        "delay": it.get("delay", ""), "type": str(it.get("type", "0")), "master": str(it.get("master_itemid") or "0"),
+        "error": it.get("error", "")}
+
+
+def _fetch_missing_items(client, snap, itemids):
+    """Items referenced by triggers (and masters of dependent items) that were not read yet."""
+    for _ in range(4):                                     # dependent chains are short; bounded on purpose
+        want = set(i for i in itemids if i not in snap["items"])
+        want |= set(it["master"] for it in snap["items"].values()
+                    if it and it["type"] == "18" and it["master"] != "0" and it["master"] not in snap["items"])
+        if not want:
+            return
+        got = set()
+        for chunk in _chunks(sorted(want)):
+            for it in client.call("item.get", {"output": ITEM_OUTPUT, "itemids": chunk, "selectHosts": ["host"]}):
+                hosts = it.get("hosts") or []
+                _remember(snap, it, hosts[0]["host"] if hosts else None)
+                got.add(it["itemid"])
+        for i in want - got:                               # not readable with this token: quality unknown
+            snap["items"].setdefault(i, None)
+        itemids = set()
+
+
+def _quality(snap, it, now, stale_after):
+    """freshness() of one item; a dependent item is judged with its master's polling interval."""
+    if it is None:
+        return "not readable"
+    if it["type"] == "18":
+        master = snap["items"].get(it["master"])
+        if not master:
+            return "master item not readable"
+        mq = freshness(master, now, stale_after)
+        if mq != "fresh":
+            return "master item %s" % mq
+        return freshness(dict(it, delay=master["delay"]), now, stale_after)
+    return freshness(it, now, stale_after)
+
+
+def rebuild(expr, functions, items):
+    """'{123}=2' + functions -> 'last(/HOST/key)=2'. An unknown reference becomes {UNKNOWN} (fails closed)."""
+    def one(m):
+        f = functions.get(m.group(1))
+        it = items.get(f["itemid"]) if f else None
+        if not f or not it or not it.get("host"):
+            return "{UNKNOWN}"
+        par = str(f.get("parameter", "$"))
+        rest = par[1:] if par.startswith("$") else None
+        if rest is None:
+            return "{UNKNOWN}"
+        return "%s(/%s/%s%s)" % (f["name"], it["host"], it["key"], rest)
+    return FUNC_REF.sub(one, expr or "")
 
 
 def _speed_bps(item):

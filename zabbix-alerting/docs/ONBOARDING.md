@@ -4,9 +4,9 @@
 and devices, lets you approve them in a terminal, generates both inventories, audits monitoring coverage, and gates
 deployment. The existing `apply.sh` / `apply-health.sh` still do every write.
 
-> **Status:** offline only — 265 tests on an in-memory Zabbix 7.0 model (Python 3.9 and 3.13); the real-API replay test
+> **Status:** offline only — 298 tests on an in-memory Zabbix 7.0 model (Python 3.9 and 3.13); the real-API replay test
 > is NOT RUN until LAB recordings exist. Never run against LAB or Production yet. Review findings and their fixes:
-> `docs/REMEDIATION-v1.1.md`. Remaining gates: section 8.
+> `docs/REMEDIATION-v1.1.md`, `docs/REMEDIATION-v1.1-rc3.md`. Remaining gates: section 8.
 
 ## 1. What it does, and what it never does
 
@@ -38,27 +38,38 @@ rpm -q python3-pyyaml || sudo dnf install -y python3-pyyaml            # from th
 
 PIN=<validated commit SHA or tag>                                       # never a moving branch
 mkdir -p ~/Zabbix && cd ~/Zabbix && git init -q && git remote add origin https://github.com/jaber717/Zabbix.git
+git config user.name "netops-$(hostname -s)" && git config user.email "netops@$(hostname -f)"   # local site commits
 git config http.lowSpeedLimit 1000 && git config http.lowSpeedTime 60   # abort stalled transfers instead of hanging
 for i in 1 2 3 4 5; do git fetch --depth 1 origin "$PIN" && break; echo "fetch failed (proxy 504?) retry $i"; sleep $((i*20)); done
 git checkout -q -b prod-local FETCH_HEAD && git remote set-url --push origin no-push   # nothing ever pushed from here
 cd zabbix-alerting && ./onboard.sh --env production --setup
+git add config && git commit -q -m "site: production settings"
 ```
 `--setup` asks for the Zabbix URL, API token (hidden), optional NetBox URL/token (stored in `.env`, mode 600,
-git-ignored), sets the production URL guard (`url_regex`) and pins production deployment to the checked-out commit
-(`deploy_pin`). Commit `config/environments/production.yaml` locally. A shallow fetch transfers only the pinned
-tree, which avoids the long transfers that hit FortiProxy 504 timeouts; the loop retries with back-off.
+git-ignored), sets the production URL guard (`url_regex`) and pins production deployment to the checked-out GitHub
+commit (`deploy_pin`). A shallow fetch transfers only the pinned tree, which avoids the long transfers that hit
+FortiProxy 504 timeouts; the loop retries with back-off.
+
+**Validated code vs. site configuration.** `deploy_pin` is the validated application revision and must be a commit
+fetched from GitHub (the shallow-fetch boundary or a remote branch) - `--setup` refuses to pin a commit made on the
+VM. Your local commits on top of it may change **only** the site configuration: `config/interfaces.<env>.yaml`,
+`config/network-health.<env>.yaml`, `config/onboarding.<env>.yaml`, `config/fault-tests.<env>.yaml`,
+`config/environments/*.yaml`, `config/onboarding-rules.yaml`. Every other file (code, scripts, templates, docs) must
+be byte-identical to `deploy_pin`, committed or not; `--verify`/`--deploy` fail otherwise.
 
 API token: a dedicated service user. Discovery reads hosts, items, triggers, templates, actions, media types, events;
 users and user groups are needed to *prove* notification recipients (otherwise UNVERIFIED). Deployment and the one-time
 `./apply.sh --env production --init-identity --confirm production` need a Super admin service user.
 
-Update to a newer validated revision (local config commits are kept):
+Update to a newer validated revision (one command; the site configuration is carried over):
 ```bash
-cd ~/Zabbix && PIN=<new validated commit/tag>
-for i in 1 2 3 4 5; do git fetch --depth 1 origin "$PIN" && break; sleep $((i*20)); done
-git merge --no-edit FETCH_HEAD          # conflict in config/*.production.yaml: keep yours (git checkout --ours <file>)
-cd zabbix-alerting && ./onboard.sh --env production --setup   # answer y to re-pin deploy_pin to the new commit
+cd ~/Zabbix/zabbix-alerting && ./onboard.sh --env production --update <new validated commit or tag>
+./onboard.sh --env production --verify
 ```
+`--update` fetches the commit (shallow, 5 retries with back-off), resets the local branch to it, carries every
+site-configuration file over with a 3-way merge (stops without changing anything on a conflict), sets `deploy_pin`
+to the new commit, commits, and re-checks. The previous state stays on branch `site-backup-<commit>`.
+(A plain `git merge FETCH_HEAD` does not work with shallow fetches: git refuses to merge unrelated histories.)
 
 ## 3. Walkthrough: from an existing Zabbix to a deployed, verified inventory
 
@@ -80,11 +91,19 @@ onboard> w            # write -> strict validation + link_id integrity -> read-o
 onboard> q
 ```
 ```bash
-git add config && git commit -m "onboarding: approved production inventory"   # 2. the three files travel together
+git add config && git commit -q -m "onboarding: approved production inventory"   # 2. site config only; code stays at deploy_pin
 ./onboard.sh --env production --verify             # 3. gate + preflight of both components -> APPROVAL TOKEN abc123...
 ./onboard.sh --env production --deploy --confirm production --approve abc123...   # 4. refuses if ANYTHING changed
 ./onboard.sh --env production --report             # 5. CONFIG VERIFIED expected; DELIVERY TESTED only after a fault test
+# 6. In a change window: take the port down, wait for the Problem e-mail, bring it up, wait for the Recovery e-mail.
+./onboard.sh --env production --record-fault-test 'EDGE-RTR-01|Hu0/0/0/0'   # binds that event pair to this config
+git add config && git commit -q -m "fault test EDGE-RTR-01|Hu0/0/0/0"
 ```
+`--record-fault-test` accepts only one Problem event and *its* Recovery event from the last 24 h, both SENT by the
+proven action to the same user who is still an eligible recipient. The record carries a fingerprint of the trigger,
+its macro values, the action and every recipient's groups and media; the audit reports PROTECTED (DELIVERY TESTED)
+only while that fingerprint still matches and the events are still in Zabbix history (90 days). Older sent messages
+are reported as *historical delivery evidence* and never as a current fault test.
 No YAML is typed. Free text is limited to an optional description (`d N text`), MIB evidence references (`ev`) and
 expected neighbor lists (`ex`, or `ex N ospf seen` after the first deploy).
 
@@ -116,11 +135,11 @@ Ranges: `3`, `1,4,7-12`, `all`. Batch: `--commands file.txt`.
 
 | Class | Meaning |
 |---|---|
-| PROTECTED (DELIVERY TESTED) | CONFIG VERIFIED **and** Zabbix's alert history shows a *sent* Problem **and** Recovery message from that action for that trigger within 90 days |
-| CONFIG VERIFIED (DELIVERY NOT TESTED) | fresh data; enabled trigger whose **expression** tests link-down on this port, and one that tests utilization; every gating macro resolved (host → templates → global) and open; an enabled action whose conditions provably match (full tags incl. template tags, nested host groups, template inheritance); an immediate problem operation **and** a recovery operation, each with ≥1 eligible recipient (active media, enabled media type, severity included, unrestricted active period, enabled user group, read permission — a deny anywhere wins); host not in maintenance |
+| PROTECTED (DELIVERY TESTED) | CONFIG VERIFIED **and** a fault test recorded with `--record-fault-test`: one Problem event and *its* Recovery event, both SENT by that action to the same current recipient, with the configuration fingerprint (trigger, macro values, action, recipients, media) unchanged since |
+| CONFIG VERIFIED (DELIVERY NOT TESTED) | an enabled link-down trigger and RX **and** TX utilization triggers implementing the approved policy (70 % / 65 % hysteresis; only the NETOPS template shape is accepted) whose **expressions** pass a conservative validator (plain `and` of recognised conditions; gates resolved host → templates → global and open; constants evaluated; recovery possible); **every item those triggers use** readable, enabled, supported and fresh (dependent items by their master); an enabled action whose conditions provably match (full tags incl. template tags, nested host groups, template inheritance); an immediate problem operation **and** a recovery operation, each with ≥1 eligible recipient (active media, enabled media type, severity included, unrestricted active period, enabled user group, read permission — a deny anywhere wins); host not in maintenance. Older sent messages appear as *historical delivery evidence* |
 | PARTIALLY COVERED | some alerting exists but a link above is missing or cannot be proven |
 | NOT COVERED | no enabled, ungated link-down trigger (disabled or gated-off triggers count as none) |
-| STALE / UNKNOWN | host disabled, SNMP unavailable, status item stale/never/unsupported, trigger UNKNOWN |
+| STALE / UNKNOWN | host disabled, SNMP unavailable, status item stale/never/unsupported, an item of the link-down trigger stale/disabled/unsupported/unreadable, trigger UNKNOWN |
 | REVIEW REQUIRED | ambiguous name, port vanished, ifIndex changed, pairing/link_id issue |
 
 Unknowable inputs (unreadable users/templates/history, custom formulas with unknown inputs, time-period conditions,
@@ -133,7 +152,7 @@ after the last write** · either inventory differing from what the current decis
 generated files · any `link_id` integrity problem · any approved port missing, stale, unsupported, ambiguous, without
 recorded identity evidence, or with host id / status item / ifIndex drift (`handover.cross_check`) · pairing issues ·
 unsupported or UNVERIFIED health features, OSPF/BGP without expected lists, Network Health without production acceptance ·
-production code not a clean checkout of `deploy_pin` · **either component's read-only preflight dry-run** failing.
+production checkout differing from `deploy_pin` outside the site configuration, or `deploy_pin` not a GitHub commit · **either component's read-only preflight dry-run** failing.
 Only pending (unreviewed) candidates are warnings: they are not part of the deployment.
 
 `--deploy` needs the APPROVAL TOKEN from `--verify`. The token covers code commit, decisions, both inventories and both
@@ -153,11 +172,15 @@ live plans, so a deploy can only apply exactly what was reviewed. An empty inter
 
 ## 8. Remaining validation gates (not yet done)
 
-1. LAB: `scripts/capture-api-fixtures.py --env lab --out tests/fixtures/recorded/lab-<date>.json`, review the sanitized
-   file, commit it, and make `tests/test_recorded_fixtures.py` pass (real `selectHostGroups`, `selectHostGroupRights`,
-   user media, trigger expressions, item tags, permission errors).
+1. LAB: `scripts/capture-api-fixtures.py --env lab` (written outside the repository; the script refuses a path inside
+   it and refuses to write if any original string survives sanitizing), then
+   `NETALERT_RECORDED_DIR=<dir> python3 -m unittest tests.test_recorded_fixtures` must pass (real `selectHostGroups`,
+   `selectHostGroupRights`, user media, raw trigger expressions + `selectFunctions`, item tags, event `r_eventid` and
+   alert `userid`/`p_eventid`, permission errors). A capture is committed only after an independent confidentiality
+   review — never automatically.
 2. LAB: onboarding of the 18 accepted P2P ports must regenerate `config/interfaces.lab.yaml` with `No changes required.`.
-3. LAB: one Problem + Recovery **e-mail** fault test on a deployed port → `--report` shows PROTECTED (DELIVERY TESTED).
+3. LAB: one Problem + Recovery **e-mail** fault test on a deployed port → `--record-fault-test` → `--report` shows
+   PROTECTED (DELIVERY TESTED); then change the action or a recipient's media and confirm it drops to CONFIG VERIFIED.
 4. Production `--report` (read-only) reviewed by the network owner; token can read users/user groups.
 5. Production deploy pinned to the validated commit, then one e-mail fault test in Production.
 6. Network Health: full LAB acceptance (docs/NETWORK-HEALTH.md §8) before `network_health_lab_acceptance` is set.

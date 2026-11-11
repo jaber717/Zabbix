@@ -12,6 +12,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 
 from . import cli as icli
@@ -38,6 +39,11 @@ def parse_args(argv):
     mode.add_argument("--verify", action="store_true", help="deployment gate only (read-only)")
     mode.add_argument("--deploy", action="store_true", help="gate, then apply both inventories")
     mode.add_argument("--setup", action="store_true", help="(re)enter Zabbix/NetBox connection settings")
+    mode.add_argument("--update", metavar="PIN",
+                      help="move this checkout to another validated GitHub commit/tag, keeping the site configuration")
+    mode.add_argument("--record-fault-test", metavar="HOST|PORT",
+                      help="after a real fault test of this port: record the correlated Problem+Recovery e-mail "
+                           "evidence, bound to the current configuration (config/fault-tests.<env>.yaml)")
     p.add_argument("--confirm", help="production deploy: repeat the environment name")
     p.add_argument("--approve", help="deploy: the APPROVAL TOKEN printed by --verify")
     p.add_argument("--commands", help="run review commands from this file instead of interactively")
@@ -96,10 +102,15 @@ def setup(base, env, environ, ask, secret, out, code_check=None):
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(text)
             out("  %s: url_regex set (commit this file locally)" % os.path.relpath(path, base))
-    if env["is_production"] and not env.get("deploy_pin") and code_check is not None:
-        commit, _ = code_check(default_base(), None)
-        if commit and ask("Pin production deployment to the checked-out commit %s (only if this is the validated "
-                          "revision)? [y/N]: " % commit[:12]).strip().lower() == "y":
+    if env["is_production"] and code_check is not None:
+        commit, _ = code_check(base, None)
+        local = commit and any("not a commit fetched from GitHub" in x for x in code_check(base, commit)[1])
+        if commit and commit != env.get("deploy_pin") and local:
+            out("  deploy_pin not offered: the checked-out commit %s was made on this machine. Pin the GitHub commit "
+                "you installed (docs/ONBOARDING.md section 2)." % commit[:12])
+        elif commit and commit != env.get("deploy_pin") and ask(
+                "Pin production deployment to %s, the GitHub commit checked out now (only if it is the validated "
+                "release)? [y/N]: " % commit[:12]).strip().lower() == "y":
             path = env["_path"]
             with open(path, encoding="utf-8") as fh:
                 text = fh.read()
@@ -115,31 +126,230 @@ def setup(base, env, environ, ask, secret, out, code_check=None):
 
 # ----------------------------------------------------------------------------------- deploy helpers
 
+# Site-local files an operator commits on the RHEL VM. Everything else must be byte-identical to deploy_pin.
+SITE_CONFIG = re.compile(r"^config/(interfaces|network-health|onboarding|fault-tests)\.[a-z0-9_-]+\.yaml$|"
+                         r"^config/environments/[a-z0-9_-]+\.yaml$|^config/onboarding-rules\.yaml$")
+
+
+def _git(code_dir, *a):
+    return subprocess.run(["git", "-C", code_dir] + list(a), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          universal_newlines=True, timeout=30)
+
+
+def published(code_dir, commit):
+    """True if `commit` came from GitHub: the boundary of the documented shallow fetch (listed in .git/shallow) or
+    contained in a remote-tracking branch. A commit made on this VM is neither, whatever deploy_pin says."""
+    gd = _git(code_dir, "rev-parse", "--git-dir")
+    if gd.returncode == 0:
+        path = gd.stdout.strip()
+        path = path if os.path.isabs(path) else os.path.join(code_dir, path)
+        try:
+            with open(os.path.join(path, "shallow"), encoding="utf-8") as fh:
+                if commit in fh.read().split():
+                    return True
+        except OSError:
+            pass
+    rb = _git(code_dir, "branch", "-r", "--contains", commit)
+    return rb.returncode == 0 and bool(rb.stdout.strip())
+
+
 def git_code_check(code_dir, pin):
-    """(HEAD commit or None, [problems]): the code that will deploy must be a clean checkout of the pinned revision."""
-    def git(*a):
-        return subprocess.run(["git", "-C", code_dir] + list(a), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              universal_newlines=True, timeout=30)
+    """(HEAD commit or None, [problems]).
+
+    The validated application revision is deploy_pin (a commit published on GitHub). The checkout may carry
+    site-local commits on top of it, but only of the site configuration (SITE_CONFIG); every other file - the
+    code, scripts, templates, docs - must be identical to deploy_pin, committed or not."""
     try:
-        head = git("rev-parse", "HEAD")
+        head = _git(code_dir, "rev-parse", "HEAD")
     except (OSError, subprocess.SubprocessError) as exc:
         return None, ["cannot determine the code revision (git unavailable: %s)" % exc]
     if head.returncode != 0:
         return None, ["the tool is not running from a git checkout - deploy from a GitHub clone"]
     commit = head.stdout.strip()
     problems = []
-    dirty = git("status", "--porcelain", "--untracked-files=no", "--", "netalert", "nethealth", "apply.sh",
-                "apply-health.sh", "onboard.sh").stdout.strip()
-    if dirty:
-        problems.append("code differs from commit %s (local modifications: %s)" % (commit[:12], dirty.splitlines()[0]))
-    if pin:
-        want = git("rev-parse", "%s^{commit}" % pin)
-        if want.returncode != 0:
-            problems.append("deploy_pin '%s' is not known in this checkout (git fetch --tags?)" % pin)
-        elif want.stdout.strip() != commit:
-            problems.append("checked-out commit %s is not the pinned deploy_pin %s (%s)" % (
-                commit[:12], pin, want.stdout.strip()[:12]))
+    prefix = _git(code_dir, "rev-parse", "--show-prefix").stdout.strip()
+
+    def rel(path):
+        return path[len(prefix):] if prefix and path.startswith(prefix) else (None if prefix else path)
+
+    def outside_config(paths):
+        return [x for x in paths if x and (rel(x) is None or not SITE_CONFIG.match(rel(x)))]
+
+    dirty = [l[3:].split(" -> ")[-1] for l in _git(code_dir, "status", "--porcelain", "--untracked-files=all",
+                                                   "--", ".").stdout.splitlines()]
+    dirty = [prefix + d if prefix and not d.startswith(prefix) else d for d in dirty]
+    bad = outside_config(dirty)
+    if bad:
+        problems.append("uncommitted or untracked changes outside the site configuration: %s" % ", ".join(bad[:3]))
+    if not pin:
+        return commit, problems
+    want = _git(code_dir, "rev-parse", "%s^{commit}" % pin)
+    if want.returncode != 0:
+        problems.append("deploy_pin '%s' is not known in this checkout (fetch it from GitHub)" % pin)
+        return commit, problems
+    pinned = want.stdout.strip()
+    if not published(code_dir, pinned):
+        problems.append("deploy_pin %s is not a commit fetched from GitHub (a local commit cannot be a validated "
+                        "release; pin the GitHub commit you installed)" % pinned[:12])
+    if pinned != commit:
+        anc = _git(code_dir, "merge-base", "--is-ancestor", pinned, commit)
+        if anc.returncode != 0:
+            problems.append("checked-out commit %s does not descend from deploy_pin %s" % (commit[:12], pinned[:12]))
+        else:
+            changed = _git(code_dir, "diff", "--name-only", pinned, commit).stdout.split()
+            bad = outside_config(changed)
+            if bad:
+                problems.append("local commits since deploy_pin %s change files outside the site configuration: %s"
+                                % (pinned[:12], ", ".join(bad[:3])))
     return commit, problems
+
+
+def update_checkout(code_dir, pin, env_path, out, sleep=time.sleep, retries=5):
+    """GitHub-only update of a shallow production checkout to the validated commit `pin`:
+    fetch it (retries with back-off for proxy 504s), reset the local branch to it, carry the site configuration
+    over with a 3-way merge per file (old pin -> site edits -> new release), re-pin, commit. Refuses on any
+    conflict or local change outside the site configuration; the previous state stays on a backup branch."""
+    g = lambda *a: _git(code_dir, *a)
+    old, problems = git_code_check(code_dir, None)
+    if old is None or problems:
+        out("FAIL  %s" % "; ".join(problems or ["not a git checkout"]))
+        return icli.EXIT_FAIL
+    if g("status", "--porcelain", "--untracked-files=all", "--", "config").stdout.strip():
+        out("FAIL  uncommitted site configuration: commit it first (git add config && git commit)")
+        return icli.EXIT_FAIL
+    m = re.search(r"(?m)^deploy_pin:\s*'?([^'\s#]+)", open(env_path, encoding="utf-8").read())
+    oldpin = g("rev-parse", "%s^{commit}" % m.group(1)).stdout.strip() if m else ""
+    if not oldpin or not published(code_dir, oldpin):
+        out("FAIL  current deploy_pin is missing or not a GitHub commit - cannot tell site changes from code")
+        return icli.EXIT_FAIL
+    for i in range(1, retries + 1):
+        f = g("fetch", "--depth", "1", "origin", pin)
+        if f.returncode == 0:
+            break
+        out("fetch failed (%s) - retry %d/%d" % ((f.stderr.strip().splitlines() or ["?"])[-1], i, retries))
+        sleep(20 * i)
+    else:
+        out("FAIL  could not fetch %s from GitHub" % pin)
+        return icli.EXIT_FAIL
+    new = g("rev-parse", "FETCH_HEAD^{commit}").stdout.strip()
+    top = g("rev-parse", "--show-toplevel").stdout.strip()
+    prefix = g("rev-parse", "--show-prefix").stdout.strip()
+    site = [x for x in g("diff", "--name-only", oldpin, old).stdout.split()
+            if x.startswith(prefix) and SITE_CONFIG.match(x[len(prefix):])]
+    merged = {}
+    for path in site:
+        def show(rev):
+            r = g("show", "%s:%s" % (rev, path))
+            return r.stdout if r.returncode == 0 else None
+        base_t, ours, theirs = show(oldpin), show(old), show(new)
+        if ours is None:
+            out("FAIL  %s was deleted locally - restore it before updating" % path)
+            return icli.EXIT_FAIL
+        if theirs is None or base_t is None or theirs == base_t:
+            merged[path] = ours
+            continue
+        with tempfile.TemporaryDirectory() as td:
+            fn = []
+            for n, t in (("ours", ours), ("base", base_t), ("theirs", theirs)):
+                fn.append(os.path.join(td, n))
+                with open(fn[-1], "w", encoding="utf-8") as fh:
+                    fh.write(t)
+            r = subprocess.run(["git", "merge-file", "-p"] + fn, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               universal_newlines=True, timeout=30)
+        if r.returncode != 0:
+            out("FAIL  %s: the new release changed this file and so did you - merge by hand; nothing changed" % path)
+            return icli.EXIT_FAIL
+        merged[path] = r.stdout
+    branch = g("symbolic-ref", "--short", "-q", "HEAD").stdout.strip() or "prod-local"
+    backup = "site-backup-%s" % old[:12]
+    g("branch", "-f", backup, old)
+    co = g("checkout", "-q", "-B", branch, new)
+    if co.returncode != 0:
+        out("FAIL  checkout of %s failed: %s" % (new[:12], co.stderr.strip()))
+        return icli.EXIT_FAIL
+    for path, text in merged.items():
+        full = os.path.join(top, path)
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        with open(full, "w", encoding="utf-8") as fh:
+            fh.write(text)
+    envrel = os.path.relpath(env_path, top)
+    with open(env_path, encoding="utf-8") as fh:
+        text = fh.read()
+    if re.search(r"(?m)^deploy_pin:", text):
+        text = re.sub(r"(?m)^deploy_pin:.*$", "deploy_pin: '%s'" % new, text)
+    else:
+        text = text.rstrip("\n") + "\ndeploy_pin: '%s'      # validated code revision for production deploys\n" % new
+    with open(env_path, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    _git(top, "add", "--", *(sorted(merged) + [envrel]))
+    c = _git(top, "commit", "-q", "-m", "site configuration on %s" % new[:12])
+    if c.returncode != 0:
+        out("FAIL  commit failed: %s (previous state: branch %s)" % (c.stderr.strip(), backup))
+        return icli.EXIT_FAIL
+    _, problems = git_code_check(code_dir, new)
+    if problems:
+        out("FAIL  after update: %s (previous state: branch %s)" % ("; ".join(problems), backup))
+        return icli.EXIT_FAIL
+    out("updated %s -> %s; site configuration carried over (%d file(s)); deploy_pin = %s; previous state kept on "
+        "branch %s" % (oldpin[:12], new[:12], len(merged), new[:12], backup))
+    out("next: ./onboard.sh --env production --verify   (then --deploy --approve <token>)")
+    return icli.EXIT_OK
+
+
+FAULT_TEST_MAX_AGE = 86400          # the recorded Problem must be from a fault test performed in the last 24 h
+
+
+def load_fault_tests(path):
+    """{row id: record} from config/fault-tests.<env>.yaml (missing file = no fault tests)."""
+    raw = ob.read_yaml(path)
+    tests = raw.get("fault_tests") or {}
+    if not isinstance(tests, dict):
+        raise ob.OnboardError("%s: 'fault_tests' must be a mapping of HOST|PORT to a record" % path)
+    return tests
+
+
+def record_fault_test(rid, snap, model, p, base, out):
+    """Bind a just-performed fault test to the configuration it was performed with. Nothing is written to Zabbix;
+    the record (a local file, committed with the inventories) is only accepted by the audit while the trigger,
+    its macros, the action, the recipients and their media are unchanged and the events are still in history."""
+    row = model["by_id"].get(rid)
+    if row is None:
+        out("ERROR: %s is not a discovered port (use HOST|PORT exactly as the report lists it)" % rid)
+        return icli.EXIT_USAGE
+    cls, why, ev = coverage.port_coverage(snap, row)
+    if cls not in coverage.PROTECTED_CLASSES or not ev.get("candidates"):
+        out("FAIL  %s is %s - a fault test can only be recorded for a CONFIG VERIFIED port: %s" % (
+            rid, cls, "; ".join(why[:3]) or "-"))
+        return icli.EXIT_FAIL
+    now = snap["taken_at"]
+    best = None
+    for c in ev["candidates"]:
+        for pair in c["pairs"]:
+            if now - pair["clock"] <= FAULT_TEST_MAX_AGE and (best is None or pair["clock"] > best[1]["clock"]):
+                best = (c, pair)
+    if best is None:
+        out("FAIL  no correlated Problem + Recovery message pair (same event, sent by the proven action to a current "
+            "recipient) in the last %d h for %s. Perform the fault test first; wait for the Recovery e-mail." % (
+                FAULT_TEST_MAX_AGE // 3600, rid))
+        return icli.EXIT_FAIL
+    c, pair = best
+    raw = ob.read_yaml(p["fault_tests"])
+    tests = raw.get("fault_tests") or {}
+    tests[rid] = {"triggerid": str(c["trigger"]["triggerid"]), "trigger": c["trigger"]["name"],
+                  "actionid": str(c["actionid"]), "problem_eventid": pair["problem"],
+                  "recovery_eventid": pair["recovery"], "problem_clock": pair["clock"],
+                  "recovery_clock": pair["recovery_clock"], "users": pair["users"], "fingerprint": c["fingerprint"],
+                  "recorded_at": now}
+    import yaml
+    with open(p["fault_tests"], "w", encoding="utf-8") as fh:
+        fh.write("# Fault-test evidence bound to the configuration fingerprint (written by --record-fault-test).\n"
+                 "# A record stops counting as soon as the trigger, macros, action, recipients or media change.\n")
+        yaml.safe_dump({"fault_tests": tests}, fh, default_flow_style=False, sort_keys=True)
+    out("recorded: %s Problem %s + Recovery %s (%d recipient(s)), fingerprint %s -> %s" % (
+        rid, pair["problem"], pair["recovery"], len(pair["users"]), c["fingerprint"],
+        os.path.relpath(p["fault_tests"], base)))
+    out("commit it with the inventories: git add config && git commit -m 'fault test %s'" % rid)
+    return icli.EXIT_OK
 
 
 def preflight(env_name, p, iface_raw, health_raw, environ, base, transport_factory):
@@ -189,6 +399,8 @@ def run(argv, environ=None, out=print, lines=None, base=None, transport_factory=
     except envsafety.EnvError as exc:
         out("ERROR: %s" % exc)
         return icli.EXIT_USAGE
+    if args.update:
+        return update_checkout(base, args.update, env["_path"], out)
     try:
         if args.setup:
             raise envsafety.EnvError("setup requested")
@@ -242,6 +454,11 @@ def run(argv, environ=None, out=print, lines=None, base=None, transport_factory=
         out("ERROR: cannot read the current inventories: %s" % exc)
         return icli.EXIT_USAGE
     model = ob.build(snap, rules, iface_raw, health_raw, dec, snap["taken_at"])
+    try:
+        snap["fault_tests"] = load_fault_tests(p["fault_tests"])
+    except (ob.OnboardError, ConfigError) as exc:
+        out("ERROR: %s" % exc)
+        return icli.EXIT_USAGE
     nports = sum(len(h["ports"]) for h in snap["hosts"].values())
     out("discovered %d host(s), %d port(s) in %.1fs (%d API reads, 0 writes)%s" % (
         len(snap["hosts"]), nports, time.time() - t0, len(ro.log),
@@ -267,13 +484,15 @@ def run(argv, environ=None, out=print, lines=None, base=None, transport_factory=
     summary(model)
     if args.report:
         return icli.EXIT_OK
+    if args.record_fault_test:
+        return record_fault_test(args.record_fault_test, snap, model, p, base, out)
 
     if args.verify or args.deploy:
         fails, warns = ob.verify(ro, base, env, model, dec, iface_raw, health_raw)
         if ident.state != "ok":
             fails.append("this Zabbix is not claimed as '%s' yet: ./apply.sh --env %s --init-identity%s" % (
                 args.env, args.env, " --confirm %s" % args.env if env["is_production"] else ""))
-        commit, code_problems = code_check(default_base(), env.get("deploy_pin"))
+        commit, code_problems = code_check(base, env.get("deploy_pin"))
         out("code revision: %s" % (commit or "unknown"))
         if env["is_production"]:
             fails += code_problems
