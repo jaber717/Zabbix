@@ -1,158 +1,164 @@
-# Discovery-assisted onboarding (v1.1.0 candidate)
+# Discovery-assisted onboarding (v1.1.0 candidate, remediated)
 
 `./onboard.sh` replaces hand-written inventory YAML. It reads the live Zabbix (read-only), proposes candidate ports
 and devices, lets you approve them in a terminal, generates both inventories, audits monitoring coverage, and gates
-deployment. The existing `apply.sh` / `apply-health.sh` still do every write, unchanged.
+deployment. The existing `apply.sh` / `apply-health.sh` still do every write.
 
-> **Status:** tested offline against an in-memory Zabbix 7.0 model (228 tests, Python 3.9 and 3.13). It has **not**
-> run against the LAB or Production Zabbix. See *Remaining production validation gates* at the end.
+> **Status:** offline only — 265 tests on an in-memory Zabbix 7.0 model (Python 3.9 and 3.13); the real-API replay test
+> is NOT RUN until LAB recordings exist. Never run against LAB or Production yet. Review findings and their fixes:
+> `docs/REMEDIATION-v1.1.md`. Remaining gates: section 8.
 
 ## 1. What it does, and what it never does
 
 | Step | Zabbix access | Files written |
 |---|---|---|
 | discovery + coverage audit | read-only client: any write method raises before sending | `state/onboarding/<env>/coverage-*.md` (git-ignored) |
-| review (`a`, `x`, `r`, `s`, `d`, `p`, `f`) | none | `config/onboarding.<env>.yaml` after each command |
-| write (`w`) | read-only dry-run of both tools | `config/interfaces.<env>.yaml`, `config/network-health.<env>.yaml` (previous copies in `state/onboarding/<env>/backups/`) |
-| `--verify` | read-only | none |
-| `--deploy --confirm production` | **writes, through the existing `apply.sh` / `apply-health.sh` only** | backups in `state/backups/` |
+| review (`a x u r s d p h f pl ev ex`) | none | `config/onboarding.<env>.yaml` after each command |
+| write (`w`) | read-only dry-run of both tools | both inventories (previous copies in `state/onboarding/<env>/backups/`); decisions hash bound to them |
+| `--verify` | read-only, incl. dry-run of both components | none; prints an APPROVAL TOKEN |
+| `--deploy --approve TOKEN --confirm production` | **writes, through `apply.sh` / `apply-health.sh` only** | backups in `state/backups/` |
 
-Never: creating or deleting items/triggers outside the project's own template, editing stock templates, host settings,
-actions or media, disabling monitoring, restarting services, touching devices. Network ports are taken from the items the
-stock interface templates already discovered (item tag `interface`), not from Zabbix host interfaces.
+Never: creating or deleting items/triggers outside the project's own templates, editing stock templates, host settings,
+actions or media, disabling monitoring, restarting services, touching routers or firewalls. Ports come from items the stock
+interface templates already discovered (item tag `interface`), not from Zabbix host interfaces.
 
-## 2. Install and update — GitHub only, directly on the RHEL 9 VM
+## 2. Install and update — GitHub only, directly on the RHEL 9 VM, pinned to a validated commit
 
-One time (as the service user that will run the tool):
-
+One time, as the service user:
 ```bash
-# only if SSL inspection re-signs github.com / your Zabbix: trust the company root CA system-wide (git and python use it)
-sudo cp company-root-ca.pem /etc/pki/ca-trust/source/anchors/ && sudo update-ca-trust
-# only if outbound HTTPS needs a proxy
-export https_proxy=http://<proxy>:<port>
-rpm -q python3-pyyaml || sudo dnf install -y python3-pyyaml      # from your configured RHEL repository
+# FortiProxy SSL inspection re-signs github.com: trust its CA system-wide (git and python both use it). Never disable TLS checks.
+sudo cp fortiproxy-ca.pem /etc/pki/ca-trust/source/anchors/ && sudo update-ca-trust
+# Proxy for GitHub only. Zabbix and NetBox are internal: keep them OFF the proxy (a proxied API call returns 502/504).
+cat >> ~/.bashrc <<'EOF'
+export https_proxy=http://<fortiproxy>:<port> HTTPS_PROXY=http://<fortiproxy>:<port>
+export no_proxy=localhost,127.0.0.1,<zabbix-fqdn>,<netbox-fqdn> NO_PROXY=$no_proxy
+EOF
+. ~/.bashrc
+rpm -q python3-pyyaml || sudo dnf install -y python3-pyyaml            # from the configured RHEL repository
 
-git clone --branch claude/discovery-onboarding-v1.1 https://github.com/jaber717/Zabbix.git ~/Zabbix
-cd ~/Zabbix/zabbix-alerting
-git checkout -b prod-local && git remote set-url --push origin no-push   # production inventories never leave this VM
-./onboard.sh --env production                                             # first run asks for URL + token
+PIN=<validated commit SHA or tag>                                       # never a moving branch
+mkdir -p ~/Zabbix && cd ~/Zabbix && git init -q && git remote add origin https://github.com/jaber717/Zabbix.git
+git config http.lowSpeedLimit 1000 && git config http.lowSpeedTime 60   # abort stalled transfers instead of hanging
+for i in 1 2 3 4 5; do git fetch --depth 1 origin "$PIN" && break; echo "fetch failed (proxy 504?) retry $i"; sleep $((i*20)); done
+git checkout -q -b prod-local FETCH_HEAD && git remote set-url --push origin no-push   # nothing ever pushed from here
+cd zabbix-alerting && ./onboard.sh --env production --setup
+```
+`--setup` asks for the Zabbix URL, API token (hidden), optional NetBox URL/token (stored in `.env`, mode 600,
+git-ignored), sets the production URL guard (`url_regex`) and pins production deployment to the checked-out commit
+(`deploy_pin`). Commit `config/environments/production.yaml` locally. A shallow fetch transfers only the pinned
+tree, which avoids the long transfers that hit FortiProxy 504 timeouts; the loop retries with back-off.
+
+API token: a dedicated service user. Discovery reads hosts, items, triggers, templates, actions, media types, events;
+users and user groups are needed to *prove* notification recipients (otherwise UNVERIFIED). Deployment and the one-time
+`./apply.sh --env production --init-identity --confirm production` need a Super admin service user.
+
+Update to a newer validated revision (local config commits are kept):
+```bash
+cd ~/Zabbix && PIN=<new validated commit/tag>
+for i in 1 2 3 4 5; do git fetch --depth 1 origin "$PIN" && break; sleep $((i*20)); done
+git merge --no-edit FETCH_HEAD          # conflict in config/*.production.yaml: keep yours (git checkout --ours <file>)
+cd zabbix-alerting && ./onboard.sh --env production --setup   # answer y to re-pin deploy_pin to the new commit
 ```
 
-The first run asks for the Zabbix URL, API token (hidden) and an optional NetBox URL/token, stores them in `.env`
-(mode 600, git-ignored) and offers to set the production URL guard (`url_regex`). Re-enter them with `--setup`.
-API token: a dedicated service user. Discovery needs read access to hosts, items, triggers, actions and media types;
-reading users and user groups is optional (without it notification coverage is reported as UNVERIFIED). The one-time
-`./apply.sh --env production --init-identity --confirm production` and deployment need a Super admin service user.
-
-Update:
-```bash
-cd ~/Zabbix && git fetch origin && git merge origin/claude/discovery-onboarding-v1.1   # your config commits are kept
-```
-If a merge ever conflicts in `config/*.production.yaml`, keep **your** version (`git checkout --ours <file>`).
-
-## 3. Walkthrough: from an existing Zabbix to validated inventories
+## 3. Walkthrough: from an existing Zabbix to a deployed, verified inventory
 
 ```bash
 ./onboard.sh --env production                      # 1. discover + audit + review session
 ```
 ```
-COVERAGE  PROTECTED / VERIFIED 0 | PARTIALLY COVERED 1 | NOT COVERED 4 | STALE / UNKNOWN 1 | REVIEW REQUIRED 0
+COVERAGE  PROTECTED (DELIVERY TESTED) 0 | CONFIG VERIFIED (DELIVERY NOT TESTED) 0 | PARTIALLY COVERED 1 | NOT COVERED 4 | ...
   #  S HOST                 PORT          OPER  SPEED ROLE  SEVERITY DESCRIPTION / NOTE
   1  P CORE-SW-01           Eth1/1        up    1G    DCI?  high     DCI to DC2 core  [description matches DCI pattern]
   2  P EDGE-RTR-01          Hu0/0/0/0     up    10G   ISP?  high     STC INTERNET TRANSIT 10G
   3  P EDGE-RTR-01          Te0/0/0/1     up    1G    P2P?  high     P2P TO EDGE-RTR-02 ...  [suggested peer: EDGE-RTR-02|Te0/0/0/1]
-  ...
 onboard> v 3          # evidence: freshness, ifIndex, triggers, notification path, pairing
-onboard> a 1-5        # approve the suggested candidates (blocked ones are refused with the reason)
-onboard> p 3          # confirm the suggested P2P peer (you checked it) -> shared link_id on both ends
-onboard> s disaster 2 # explicit severity change (never automatic)
-onboard> h            # devices: Network Health (UNTESTED) - approve/adjust features per device
-onboard> w            # write both inventories -> strict validation -> read-only dry-run of both tools
+onboard> a 1-5        # approve (blocked rows are refused with the reason)
+onboard> p 3          # you confirm the suggested P2P peer -> one shared link_id on both ends
+onboard> p 1 -        # this port has no monitored peer (single-ended): required for any unpaired P2P
+onboard> h            # devices: Network Health (UNTESTED, production-blocked until LAB acceptance)
+onboard> w            # write -> strict validation + link_id integrity -> read-only dry-run of both tools
 onboard> q
 ```
 ```bash
-git add config && git commit -m "onboarding: approved production inventory"     # 2. keep the three files together
-./onboard.sh --env production --verify                                           # 3. gate (read-only)
-./onboard.sh --env production --deploy --confirm production                      # 4. gate again, then apply
-./onboard.sh --env production --report                                           # 5. coverage after deployment
+git add config && git commit -m "onboarding: approved production inventory"   # 2. the three files travel together
+./onboard.sh --env production --verify             # 3. gate + preflight of both components -> APPROVAL TOKEN abc123...
+./onboard.sh --env production --deploy --confirm production --approve abc123...   # 4. refuses if ANYTHING changed
+./onboard.sh --env production --report             # 5. CONFIG VERIFIED expected; DELIVERY TESTED only after a fault test
 ```
-No YAML is typed. The only free text is an optional description (`d N text`) when a port has no ifAlias.
+No YAML is typed. Free text is limited to an optional description (`d N text`), MIB evidence references (`ev`) and
+expected neighbor lists (`ex`, or `ex N ospf seen` after the first deploy).
 
 ### Review commands
-`l [pending|approved|excluded|review|all] [text]` list · `v N` details · `a N..` approve · `x N..` exclude (or remove an
-approved entry on the next write) · `u N..` undo · `r ISP|WAN|DCI|P2P N..` role · `s warning|average|high|disaster N..`
-severity · `d N text` description · `p N M` pair / `p N` accept suggested peer / `p N -` unpair · `h` devices view ·
-`f N +ospf -cpu` features · `pl N cisco-ios|cisco-nxos|huawei-vrp|host-resources` platform · `c` coverage · `w` write · `q`.
-Ranges: `3`, `1,4,7-12`, `all` (all rows of the current listing). Batch: `./onboard.sh --env production --commands file.txt`.
+`l [pending|approved|excluded|review|all] [text]` · `v N` · `a N..` approve · `x N..` exclude / remove · `u N..` undo ·
+`r ISP|WAN|DCI|P2P N..` · `s warning|average|high|disaster N..` · `d N text` · `p N M` pair · `p N` accept suggested peer ·
+`p N -` confirmed single-ended (releases any previous peer) · `h` devices · `f N +ospf -cpu` · `pl N PLATFORM` ·
+`ev N ospf|bgp REFERENCE` · `ex N ospf|bgp seen|IP,IP` · `c` coverage · `w` write · `q`.
+Ranges: `3`, `1,4,7-12`, `all`. Batch: `--commands file.txt`.
 
-## 4. How suggestions and pairings are made (and what is never assumed)
+## 4. Suggestions, pairings and what is never assumed
 
-* **Candidates:** ports whose ifAlias matches a role pattern (ISP / DCI / WAN / P2P) or names another Zabbix host.
-  Patterns, provider names, severity policy, thresholds and the exclude pattern (loopback, VLAN, tunnel, mgmt, …) are
-  in `config/onboarding-rules.yaml` (optional; defaults in `netalert/onboarding.py`, example in `examples/`).
-* **Nothing is approved automatically.** Suggestions are marked `ROLE?` until you approve.
-* **Severity:** `high` for every role unless your rules file sets a policy. `disaster` is never chosen automatically.
-* **Thresholds:** new entries get the agreed utilization 70 % problem / 65 % recovery; errors, discards and flapping keep
-  the project defaults.
-* **Pairing:** a `link_id` is generated only from a **NetBox cable** between two ports that both exist in Zabbix, or from
-  your explicit confirmation (`p`). A description that names the other host is shown as a *suggested* peer, never used on
-  its own. Similar port names are never paired. ISP links get no `link_id`.
-* **Refused approvals (blockers):** host missing/disabled/no SNMP interface, port no longer discovered, two item sets with
-  the same name, status item never/stale/unsupported/disabled, a name Zabbix cannot use as macro context.
-* **Network Health:** reachability + SNMP-stale are suggested for devices with approved ports; CPU/memory only with a
-  platform (from the linked stock template, or set with `pl`); OSPF/BGP stay UNVERIFIED unless Zabbix already holds
-  working OSPF/BGP items — enabling them is allowed with a warning after you confirm the MIB with `snmpwalk`.
-* **Existing entries** in either inventory are kept verbatim (including custom thresholds, `expected_speed`, `link_id`,
-  `defaults`). Only entries you change or exclude are touched. Repeated runs produce byte-identical files.
+* **Nothing is approved automatically**; suggestions show `ROLE?`. Severity is `high` unless your policy file says
+  otherwise; `disaster` is never automatic. New entries get utilization 70 % / 65 %.
+* **Pairing is one-to-one and reciprocal.** Sources, strongest first: your decision (`p`), a reciprocal NetBox cable, an
+  existing `link_id` shared by exactly two entries on different hosts. Every relationship is recorded in the decisions file
+  with its source. A description naming another host is only a *suggested* peer. Re-pairing releases the old partner;
+  a `link_id` is kept only while its relationship is unchanged and is never reused for a different connection.
+* **Blockers (deployment refused):** pairing not reciprocal; NetBox now shows a different cable; a `link_id` used by more
+  than two entries or by two ports of one host (`w` refuses to rewrite it until you decide each end); P2P without a peer
+  and not confirmed single-ended; peer not approved.
+* **Approval refused:** host missing/disabled/no SNMP, port vanished, duplicate name, status item never/stale/unsupported,
+  names Zabbix cannot use as macro context.
+* **Network Health:** OSPF/BGP need per-device evidence (`ev`) and an expected list (`ex`) or the gate blocks; Network
+  Health is refused in production until `network_health_lab_acceptance` is recorded (docs/NETWORK-HEALTH.md).
+* **Existing entries** are preserved verbatim; only what you change or exclude is touched; reruns are byte-identical.
 
-## 5. Coverage audit
-
-`state/onboarding/<env>/coverage-latest.md`, for candidates, approved and project-managed ports plus all devices:
+## 5. Coverage audit — never "protected" on existence alone
 
 | Class | Meaning |
 |---|---|
-| PROTECTED / VERIFIED | fresh data, enabled link-state trigger not switched off by its macros, a utilization alert, and a notification path proven READY: enabled action whose conditions match, problem **and** recovery operations, enabled media type, ≥1 recipient with active media for that severity and read permission on the host |
-| PARTIALLY COVERED | some alerting exists but one of the above is missing or unprovable |
-| NOT COVERED | no enabled link-state trigger |
-| STALE / UNKNOWN | host disabled, SNMP unavailable, status item stale/never/unsupported, trigger in UNKNOWN state |
-| REVIEW REQUIRED | ambiguous name, port vanished, SNMP index changed, pairing conflict |
+| PROTECTED (DELIVERY TESTED) | CONFIG VERIFIED **and** Zabbix's alert history shows a *sent* Problem **and** Recovery message from that action for that trigger within 90 days |
+| CONFIG VERIFIED (DELIVERY NOT TESTED) | fresh data; enabled trigger whose **expression** tests link-down on this port, and one that tests utilization; every gating macro resolved (host → templates → global) and open; an enabled action whose conditions provably match (full tags incl. template tags, nested host groups, template inheritance); an immediate problem operation **and** a recovery operation, each with ≥1 eligible recipient (active media, enabled media type, severity included, unrestricted active period, enabled user group, read permission — a deny anywhere wins); host not in maintenance |
+| PARTIALLY COVERED | some alerting exists but a link above is missing or cannot be proven |
+| NOT COVERED | no enabled, ungated link-down trigger (disabled or gated-off triggers count as none) |
+| STALE / UNKNOWN | host disabled, SNMP unavailable, status item stale/never/unsupported, trigger UNKNOWN |
+| REVIEW REQUIRED | ambiguous name, port vanished, ifIndex changed, pairing/link_id issue |
 
-It also lists existing alerts that are preserved, pairing status, devices without fresh data, unsupported/unverified
-health checks, actions without recovery operations, disabled media, and everything the token could not read.
-Template-level tags and time-period action conditions cannot be evaluated offline; they can only *lower* the result.
+Unknowable inputs (unreadable users/templates/history, custom formulas with unknown inputs, time-period conditions,
+regex macro contexts, unrecognised expressions) lower the class; they never raise it.
 
-## 6. Deployment gate (`--verify`, also run by `--deploy`) — fails closed on
+## 6. Deployment gate (`--verify`; repeated by `--deploy`)
 
-identity mismatch or unclaimed server · inventories changed since the last reviewed write (hand edits) · generated
-files failing either tool's strict validation · any approved port that is missing, stale, unsupported, ambiguous, or whose
-host id / status item / SNMP index changed since approval (reuses `handover.cross_check`) · approved health devices
-with unsupported features. Warnings (not blocking): unpaired P2P ports, OSPF/BGP enabled while UNVERIFIED, pending candidates.
-An empty interface inventory is never deployed by `--deploy` (removing everything stays a manual `./apply.sh --allow-empty`).
+Fails closed on: identity mismatch / unclaimed server · inventory file changed since the reviewed write · **decisions changed
+after the last write** · either inventory differing from what the current decisions + live evidence regenerate · invalid
+generated files · any `link_id` integrity problem · any approved port missing, stale, unsupported, ambiguous, without
+recorded identity evidence, or with host id / status item / ifIndex drift (`handover.cross_check`) · pairing issues ·
+unsupported or UNVERIFIED health features, OSPF/BGP without expected lists, Network Health without production acceptance ·
+production code not a clean checkout of `deploy_pin` · **either component's read-only preflight dry-run** failing.
+Only pending (unreviewed) candidates are warnings: they are not part of the deployment.
 
-## 7. Rollback and recovery
+`--deploy` needs the APPROVAL TOKEN from `--verify`. The token covers code commit, decisions, both inventories and both
+live plans, so a deploy can only apply exactly what was reviewed. An empty interface inventory is never deployed.
+
+## 7. Rollback and recovery (no automatic multi-component rollback)
 
 | Situation | Action |
 |---|---|
 | Wrong approval, not yet deployed | `x N` / `u N`, then `w` |
-| Deployed and must revert | `git log -- config/` → `git checkout <good> -- config/interfaces.production.yaml config/network-health.production.yaml config/onboarding.production.yaml` → `./onboard.sh --env production --deploy --confirm production` (the three files carry matching hashes, so the gate passes without re-review) |
-| Lost or corrupt decisions file | delete `config/onboarding.production.yaml`, run `./onboard.sh`, `w`: approved entries come back from the inventories; only exclusions must be redone |
-| Previous inventory versions | `state/onboarding/production/backups/` (written before every change) |
-| Interrupted deploy | re-run the same `--deploy` (both apply tools are idempotent) |
-| What Zabbix held before an apply | `state/backups/production-*.json`, `state/backups/network-health-production-*.json` |
-| Remove the project's alerting entirely | `./apply.sh --env production --allow-empty --confirm production` with an empty interface inventory (deliberately manual) |
+| Deployed and must revert | `git checkout <good> -- config/interfaces.production.yaml config/network-health.production.yaml config/onboarding.production.yaml` → `--verify` → `--deploy --approve <token>` |
+| **Partial apply** (Interface Alerting applied, Network Health failed) | printed as `PARTIAL APPLY: completed = ...`. Fix the cause and re-run `--verify` + `--deploy` (both tools are idempotent), or revert as above |
+| Interrupted deploy | re-run `--verify` + `--deploy` |
+| Lost decisions file | delete it, run `./onboard.sh`, re-confirm exclusions/pairings, `w` |
+| Previous inventory versions / prior Zabbix state | `state/onboarding/production/backups/`; `state/backups/*.json` |
+| Remove the project's alerting entirely | manual: `./apply.sh --env production --allow-empty --confirm production` |
 
-## 8. Remaining production validation gates (not yet done)
+## 8. Remaining validation gates (not yet done)
 
-1. Run `./onboard.sh --env production --report` against Production: confirm the discovered hosts/ports are plausible and
-   the stock item conventions match (`net.if.status[...]` keys, `interface` tag, ifAlias in the `description` tag or item
-   name). This is read-only and the first contact with real data.
-2. Same against LAB: approve the 18 Codex-validated P2P ports and confirm the generated file makes `./apply.sh --env lab
-   --dry-run` report `No changes required.` against the deployed LAB state.
-3. Check that the production token can read users/user groups; otherwise notification coverage stays UNVERIFIED.
-4. Network owner review of every approved ISP/WAN/DCI/P2P port and every confirmed pairing.
-5. Deploy, then prove one Problem and one Recovery **e-mail** in Production (open item H1 from the v1.0.2 review).
-6. `--report` after deployment must show the deployed ports as PROTECTED / VERIFIED.
-7. Network Health (v1.0.3) remains UNTESTED: complete `docs/NETWORK-HEALTH.md` §8 in LAB before approving any health
-   device in Production. Its template import is also not covered by the offline model.
-8. Measure discovery time and API load on the full Production inventory.
-9. Rollback drill in LAB (section 7, row 2).
+1. LAB: `scripts/capture-api-fixtures.py --env lab --out tests/fixtures/recorded/lab-<date>.json`, review the sanitized
+   file, commit it, and make `tests/test_recorded_fixtures.py` pass (real `selectHostGroups`, `selectHostGroupRights`,
+   user media, trigger expressions, item tags, permission errors).
+2. LAB: onboarding of the 18 accepted P2P ports must regenerate `config/interfaces.lab.yaml` with `No changes required.`.
+3. LAB: one Problem + Recovery **e-mail** fault test on a deployed port → `--report` shows PROTECTED (DELIVERY TESTED).
+4. Production `--report` (read-only) reviewed by the network owner; token can read users/user groups.
+5. Production deploy pinned to the validated commit, then one e-mail fault test in Production.
+6. Network Health: full LAB acceptance (docs/NETWORK-HEALTH.md §8) before `network_health_lab_acceptance` is set.
+7. Discovery duration/API load on the full production scope; LAB rollback drill (section 7, row 2).

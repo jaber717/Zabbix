@@ -18,6 +18,7 @@ class DiscoveryZabbix(MockZabbix):
         self.users = {}
         self.deny = set()          # methods that answer "No permissions" (least-privilege token)
         self.fail_on = {}          # method -> exception raised (unexpected API failure)
+        self.events = []           # [{eventid, objectid, value, clock, alerts:[{actionid,status,alerttype,p_eventid}]}]
 
     # ------------------------------------------------------------------ builders
     def add_device(self, name, ports=(), snmp=True, status=0, available="1", groups=("2",), tags=(), templates=(),
@@ -52,21 +53,47 @@ class DiscoveryZabbix(MockZabbix):
         return ids
 
     def add_netops_items(self, hostid, name, index):
-        """What the NETOPS template's LLD creates on a host after deploy (the mock does not run LLD)."""
-        iid = self.nid()
-        self.items[iid] = {"itemid": iid, "hostid": hostid, "key_": "netops.if.oper[%s]" % index,
-                           "name": "x", "tags": [{"tag": "interface", "value": name}], "lastvalue": "1",
-                           "lastclock": str(NOW - 5), "state": "0", "status": "0", "error": "", "delay": "10s",
-                           "value_type": "3"}
-        return iid
+        """What the NETOPS template's LLD creates on a host after deploy (the mock does not run LLD).
+        Returns {kind: itemid} for oper/in/out/speed."""
+        ids = {}
+        for kind in ("oper", "in", "out", "speed"):
+            iid = self.nid()
+            self.items[iid] = {"itemid": iid, "hostid": hostid, "key_": "netops.if.%s[%s]" % (kind, index),
+                               "name": "x", "tags": [{"tag": "interface", "value": name}], "lastvalue": "1",
+                               "lastclock": str(NOW - 5), "state": "0", "status": "0", "error": "", "delay": "10s",
+                               "value_type": "3"}
+            ids[kind] = iid
+        return ids
 
-    def add_trigger(self, name, itemids, priority=4, enabled=True, tags=(), value="0", state="0"):
+    def add_template(self, name, macros=None, tags=(), parents=()):
+        tid = self.nid()
+        self.templates[tid] = {"templateid": tid, "host": name, "description": "", "tags": [
+            {"tag": k, "value": v} for k, v in tags], "parents": list(parents)}
+        for m, v in (macros or {}).items():
+            self.add_macro(tid, m, v)
+        return tid
+
+    def link(self, hostid, templateid):
+        self.hosts[hostid]["templates"].append(templateid)
+
+    def add_trigger(self, name, itemids, priority=4, enabled=True, tags=(), value="0", state="0", expression=""):
         tid = self.nid()
         self.triggers[tid] = {"triggerid": tid, "description": name, "event_name": "", "priority": str(priority),
                               "status": "0" if enabled else "1", "value": value, "state": state, "error": "",
-                              "manual_close": "1", "itemids": list(itemids),
+                              "manual_close": "1", "itemids": list(itemids), "expression": expression,
+                              "recovery_mode": "0", "recovery_expression": "",
                               "tags": [{"tag": k, "value": v} for k, v in tags]}
         return tid
+
+    def add_delivery(self, triggerid, actionid, problem=True, recovery=True, status="1"):
+        """Zabbix alert history: a problem event (and its recovery) with SENT messages from an action."""
+        pe, re_ = self.nid(), self.nid()
+        if problem:
+            self.events.append({"eventid": pe, "objectid": triggerid, "value": "1", "clock": str(NOW - 3600), "alerts": [
+                {"alertid": self.nid(), "actionid": actionid, "status": status, "alerttype": "0", "p_eventid": "0"}]})
+        if recovery:
+            self.events.append({"eventid": re_, "objectid": triggerid, "value": "0", "clock": str(NOW - 3000), "alerts": [
+                {"alertid": self.nid(), "actionid": actionid, "status": status, "alerttype": "0", "p_eventid": pe}]})
 
     def add_user(self, username, groupids, medias=()):
         uid = self.nid()
@@ -148,6 +175,38 @@ class DiscoveryZabbix(MockZabbix):
             out.append(r)
         return out
 
+    def m_template_get(self, p):
+        if "templateids" not in p:
+            return MockZabbix.m_template_get(self, p)
+        out = []
+        for tid in p["templateids"]:
+            t = self.templates.get(tid)
+            if t is None:
+                continue
+            r = {"templateid": tid, "host": t["host"]}
+            if "selectParentTemplates" in p:
+                r["parentTemplates"] = [{"templateid": x} for x in t.get("parents", [])]
+            if "selectMacros" in p:
+                r["macros"] = [{"macro": m["macro"], "value": m["value"]} for m in self.macros.values() if m["hostid"] == tid]
+            if "selectTags" in p:
+                r["tags"] = copy.deepcopy(t.get("tags", []))
+            out.append(r)
+        return out
+
+    def m_event_get(self, p):
+        want = set(p.get("objectids") or [])
+        out = []
+        for e in self.events:
+            if want and e["objectid"] not in want:
+                continue
+            if int(e["clock"]) < int(p.get("time_from", 0)):
+                continue
+            r = dict((k, v) for k, v in e.items() if k != "alerts")
+            if "select_alerts" in p:
+                r["alerts"] = copy.deepcopy(e["alerts"])
+            out.append(r)
+        return out
+
     def m_mediatype_get(self, p):
         flt = (p.get("filter") or {}).get("name")
         return [dict({"type": "0", "status": "0"}, **g) for g in self.mediatypes.values() if flt is None or g["name"] in flt]
@@ -179,21 +238,36 @@ def standard_world(z=None):
     email = z.add_mediatype("Email")
     noc = z.add_usergroup("NOC Network")
     z.usergroups[noc]["rights"] = {"2": 2}
-    z.add_user("noc1", [noc], medias=[{"mediatypeid": email, "active": "0", "severity": "60"}])
-    r1 = z.add_device("EDGE-RTR-01", tags=[("site", "DC1")], templates=(), ports=[
+    z.add_user("noc1", [noc], medias=[{"mediatypeid": email, "active": "0", "severity": "60",
+                                       "period": "1-7,00:00-24:00"}])
+    vendor = z.add_template("Cisco IOS by SNMP", macros={"{$IFCONTROL}": "1", "{$IF.UTIL.MAX}": "90"})
+    r1 = z.add_device("EDGE-RTR-01", tags=[("site", "DC1")], templates=(vendor,), ports=[
         dict(name="Hu0/0/0/0", index="1", alias="STC INTERNET TRANSIT 10G", speed=10 ** 10),
         dict(name="Te0/0/0/1", index="2", alias="P2P TO EDGE-RTR-02 Te0/0/0/1"),
         dict(name="Gi0/0/0/9", index="9", alias="spare"),
         dict(name="Loopback0", index="20", alias="router-id"),
     ])
-    r2 = z.add_device("EDGE-RTR-02", tags=[("site", "DC1")], ports=[
+    r2 = z.add_device("EDGE-RTR-02", tags=[("site", "DC1")], templates=(vendor,), ports=[
         dict(name="Hu0/0/0/0", index="1", alias="MOBILY INTERNET TRANSIT 10G", speed=10 ** 10),
         dict(name="Te0/0/0/1", index="2", alias="P2P TO EDGE-RTR-01 Te0/0/0/1"),
     ])
     z.add_device("CORE-SW-01", ports=[dict(name="Eth1/1", index="1", alias="DCI to DC2 core")])
     z.add_device("APP-SRV-01", snmp=False, groups=("3",))
     st = [i for i, it in z.items.items() if it["hostid"] == r1 and it["key_"] == "net.if.status[ifOperStatus.1]"][0]
-    z.add_trigger("EDGE-RTR-01 Hu0/0/0/0 link down (stock)", [st], priority=4)
-    z.add_action("Report network problems", [{"conditiontype": "0", "operator": "0", "value": "2", "formulaid": "A"}],
-                 noc, mediatypeid=email)
-    return z, {"r1": r1, "r2": r2, "email": email, "noc": noc}
+    z.add_trigger("EDGE-RTR-01 Hu0/0/0/0 link down (stock)", [st], priority=4, expression=stock_link("EDGE-RTR-01", "Hu0/0/0/0", "1"))
+    act = z.add_action("Report network problems", [{"conditiontype": "0", "operator": "0", "value": "2", "formulaid": "A"}],
+                       noc, mediatypeid=email)
+    return z, {"r1": r1, "r2": r2, "email": email, "noc": noc, "vendor": vendor, "action": act}
+
+
+def stock_link(host, port, idx):
+    """Shape of the Zabbix 7.0 stock 'Link down' trigger expression (expanded)."""
+    k = "/%s/net.if.status[ifOperStatus.%s]" % (host, idx)
+    return ('{$IFCONTROL:"%s"}=1 and last(%s)=2 and (last(%s,#1)<>last(%s,#2))' % (port, k, k, k))
+
+
+def stock_util(host, port, idx):
+    """Shape of the stock 'High bandwidth usage' trigger expression (expanded)."""
+    return ('(avg(/{h}/net.if.in[ifHCInOctets.{i}],15m)>({{$IF.UTIL.MAX:"{p}"}}/100)*last(/{h}/net.if.speed[ifHighSpeed.{i}]) '
+            'or avg(/{h}/net.if.out[ifHCOutOctets.{i}],15m)>({{$IF.UTIL.MAX:"{p}"}}/100)*last(/{h}/net.if.speed[ifHighSpeed.{i}])) '
+            'and last(/{h}/net.if.speed[ifHighSpeed.{i}])>0').format(h=host, i=idx, p=port)

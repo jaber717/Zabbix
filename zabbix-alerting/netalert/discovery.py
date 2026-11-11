@@ -71,7 +71,7 @@ def _optional(client, limits, what, method, params):
         return None
 
 
-def discover(client, group_names=None, host_names=None, now=None, stale_after=900):
+def discover(client, group_names=None, host_names=None, now=None, stale_after=900, delivery_days=90):
     """Return a snapshot dict. Raises DiscoveryError/ApiUnavailable/ZabbixError on any core read failure."""
     if not client.read_only:
         raise DiscoveryError("discovery must run on a read-only client")
@@ -79,9 +79,11 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
     limits = []
     snap = {"taken_at": now, "zabbix_version": client.version(), "limits": limits, "hosts": {},
             "actions": [], "mediatypes": {}, "usergroups": None, "users": None, "stale_after": stale_after,
-            "scope": {"groups": sorted(group_names or []), "hosts": sorted(host_names or [])}}
+            "scope": {"groups": sorted(group_names or []), "hosts": sorted(host_names or [])},
+            "templates": None, "global_macros": None, "hostgroups": {}, "events": None,
+            "delivery_days": delivery_days}
 
-    params = {"output": ["hostid", "host", "name", "status"],
+    params = {"output": ["hostid", "host", "name", "status", "maintenance_status"],
               "selectInterfaces": ["type", "main", "ip", "dns", "available", "error"],
               "selectHostGroups": ["groupid", "name"], "selectTags": ["tag", "value"],
               "selectParentTemplates": ["templateid", "host"],
@@ -108,6 +110,7 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
         main = next((i for i in snmp if str(i.get("main")) == "1"), snmp[0] if snmp else None)
         h = {"hostid": r["hostid"], "host": r["host"], "name": r.get("name") or r["host"],
              "enabled": str(r.get("status")) == "0",
+             "maintenance": str(r.get("maintenance_status", "0")) == "1",
              "groups": sorted(g["name"] for g in r.get("hostgroups", [])),
              "groupids": sorted(g["groupid"] for g in r.get("hostgroups", [])),
              "tags": sorted((t["tag"], t.get("value", "")) for t in r.get("tags", [])),
@@ -167,7 +170,8 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
             item_port[it["itemid"]] = (h["host"], port_name)
             h["newest_clock"] = max(h["newest_clock"], int(it.get("lastclock") or 0))
         for what, pattern in sorted(HEALTH_SEARCH.items()):
-            for it in client.call("item.get", {"output": ["itemid", "hostid", "key_", "lastclock", "state", "status"],
+            for it in client.call("item.get", {"output": ["itemid", "hostid", "key_", "name", "lastvalue", "lastclock",
+                                                          "state", "status", "delay"],
                                                "hostids": chunk, "search": {"key_": pattern},
                                                "selectTags": ["tag", "value"]}):
                 h = by_id.get(it["hostid"])
@@ -176,8 +180,10 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
                 snap.setdefault("item_tags", {})[it["itemid"]] = [(t["tag"], t.get("value", ""))
                                                                   for t in it.get("tags", [])]
                 h["health_items"].setdefault(what, []).append(
-                    {"itemid": it["itemid"], "key": it["key_"], "lastclock": int(it.get("lastclock") or 0),
-                     "state": str(it.get("state", "0")), "enabled": str(it.get("status", "0")) == "0"})
+                    {"itemid": it["itemid"], "key": it["key_"], "name": it.get("name", ""),
+                     "lastvalue": it.get("lastvalue", ""), "lastclock": int(it.get("lastclock") or 0),
+                     "state": str(it.get("state", "0")), "enabled": str(it.get("status", "0")) == "0",
+                     "delay": it.get("delay", "")})
                 item_host[it["itemid"]] = h["host"]
 
     for h in snap["hosts"].values():
@@ -199,9 +205,9 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
     for chunk in _chunks(sorted(item_host), 1000):
         for t in client.call("trigger.get", {
                 "output": ["triggerid", "description", "event_name", "priority", "status", "value", "state",
-                           "error", "manual_close"],
+                           "error", "manual_close", "expression", "recovery_mode", "recovery_expression"],
                 "itemids": chunk, "selectItems": ["itemid"], "selectTags": ["tag", "value"],
-                "expandDescription": True}):
+                "expandDescription": True, "expandExpression": True}):
             tid_items = [i["itemid"] for i in t.get("items", [])]
             hosts = set(item_host[i] for i in tid_items if i in item_host)
             for hn in hosts:
@@ -215,7 +221,18 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
                     "triggerid": t["triggerid"], "name": t.get("description", ""), "priority": int(t.get("priority", 0)),
                     "enabled": str(t.get("status", "0")) == "0", "problem": str(t.get("value", "0")) == "1",
                     "unknown": str(t.get("state", "0")) == "1", "itemids": sorted(tid_items), "ports": ports,
+                    "expression": t.get("expression", ""), "recovery_mode": str(t.get("recovery_mode", "0")),
+                    "recovery_expression": t.get("recovery_expression", ""), "event_name": t.get("event_name", ""),
                     "tags": tags, "netops": any(k == "netops_alert" for k, _ in tags)})
+
+    # ---- macro / tag context: template ancestry, global macros, all host groups ---------------------------
+    _templates(client, snap, limits)
+    gm = _optional(client, limits, "global macros", "usermacro.get",
+                   {"output": ["macro", "value"], "globalmacro": True})
+    if gm is not None:
+        snap["global_macros"] = dict((m["macro"], m.get("value", "")) for m in gm)
+    for g in client.call("hostgroup.get", {"output": ["groupid", "name"]}):
+        snap["hostgroups"][g["groupid"]] = g["name"]
 
     # ---- notification path (reads only; a least-privilege token may not see users) -----------------------
     snap["actions"] = client.call("action.get", {
@@ -231,15 +248,72 @@ def discover(client, group_names=None, host_names=None, now=None, stale_after=90
             "name": g["name"], "enabled": str(g.get("users_status", "0")) == "0",
             "rights": dict((r["id"], int(r["permission"])) for r in g.get("hostgroup_rights", []))}) for g in ug)
     us = _optional(client, limits, "users and their media", "user.get", {
-        "output": ["userid", "username"], "selectMedias": ["mediatypeid", "active", "severity"],
+        "output": ["userid", "username"], "selectMedias": ["mediatypeid", "active", "severity", "period"],
         "selectUsrgrps": ["usrgrpid"]})
     if us is not None:
         snap["users"] = [{"userid": u["userid"], "username": u.get("username", ""),
                           "groups": sorted(g["usrgrpid"] for g in u.get("usrgrps", [])),
                           "medias": [{"mediatypeid": str(m["mediatypeid"]), "active": str(m.get("active", "0")) == "0",
-                                      "severity": int(m.get("severity", 63))} for m in u.get("medias", [])]}
+                                      "severity": int(m.get("severity", 63)), "period": str(m.get("period", ""))}
+                                     for m in u.get("medias", [])]}
                          for u in us]
+    _delivery(client, snap, limits, now)
     return snap
+
+
+def _templates(client, snap, limits):
+    """Template ancestry of every host, with template macros and tags (needed for macro and tag resolution)."""
+    pending = set(t for h in snap["hosts"].values() for t in h["templateids"])
+    seen = {}
+    while pending:
+        chunk = sorted(pending - set(seen))[:BATCH]
+        pending -= set(chunk)
+        if not chunk:
+            break
+        rows = _optional(client, limits, "templates (macros/tags)", "template.get", {
+            "output": ["templateid", "host"], "templateids": chunk, "selectParentTemplates": ["templateid"],
+            "selectMacros": ["macro", "value"], "selectTags": ["tag", "value"]})
+        if rows is None:
+            return
+        for t in rows:
+            seen[t["templateid"]] = {"name": t["host"], "parents": sorted(p["templateid"] for p in t.get("parentTemplates", [])),
+                                     "macros": dict((m["macro"], m.get("value", "")) for m in t.get("macros", [])),
+                                     "tags": [(x["tag"], x.get("value", "")) for x in t.get("tags", [])]}
+            pending |= set(seen[t["templateid"]]["parents"]) - set(seen)
+        missing = set(chunk) - set(r["templateid"] for r in rows)
+        if missing:
+            limits.append("%d linked template(s) not readable - macro/tag context incomplete" % len(missing))
+            return
+    snap["templates"] = seen
+    for h in snap["hosts"].values():
+        order, queue = [], list(h["templateids"])
+        while queue:
+            t = queue.pop(0)
+            if t in order or t not in seen:
+                continue
+            order.append(t)
+            queue += seen[t]["parents"]
+        h["ancestry"] = order
+
+
+def _delivery(client, snap, limits, now):
+    """Evidence that Zabbix actually sent Problem and Recovery messages for a trigger (status 1 = sent)."""
+    tids = sorted(set(t["triggerid"] for h in snap["hosts"].values() for t in h["triggers"]))
+    events = {}
+    for chunk in _chunks(tids, 500):
+        rows = _optional(client, limits, "event/alert history (delivery evidence)", "event.get", {
+            "output": ["eventid", "objectid", "value", "clock"], "source": 0, "object": 0, "objectids": chunk,
+            "time_from": now - snap["delivery_days"] * 86400,
+            "select_alerts": ["alertid", "actionid", "status", "alerttype", "p_eventid", "mediatypeid"]})
+        if rows is None:
+            return
+        for e in rows:
+            for a in e.get("alerts", []):
+                if str(a.get("alerttype", "0")) != "0" or str(a.get("status")) != "1":
+                    continue
+                kind = "recovery" if (str(e.get("value")) == "0" or str(a.get("p_eventid", "0")) not in ("", "0")) else "problem"
+                events.setdefault(e["objectid"], {}).setdefault(a["actionid"], set()).add(kind)
+    snap["events"] = events
 
 
 def _speed_bps(item):

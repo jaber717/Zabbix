@@ -1,7 +1,9 @@
 # Network Health Alerting (v1.0.3) — **UNTESTED**
 
-> **Status: UNTESTED.** Written without access to any Zabbix, LAB or Production system. No unit, integration,
-> LAB or Production test has been run for Network Health. Not Production-ready. Validate in LAB first (section 8).
+> **Status: UNTESTED on any Zabbix. BLOCKED from Production in code**: `apply-health.sh` and `onboard.sh --deploy` refuse
+> production writes until `network_health_lab_acceptance: "<reference>"` is recorded in
+> `config/environments/production.yaml`, which may only happen after the LAB acceptance in section 8. Offline unit tests
+> cover config, macros and template structure only (docs/REMEDIATION-v1.1.md §3 answers the OSPF/BGP reliability questions).
 
 Second, independent component of the same project and release. Interface Alerting (`apply.sh`,
 `config/interfaces.<env>.yaml`) is unchanged and does not read anything below.
@@ -75,14 +77,21 @@ Unknown keys, bad severities, recovery ≥ threshold, or a device with no featur
 | Alert | Problem | Recovery |
 |---|---|---|
 | OSPF Neighbor DOWN | neighbor was **Full** within 24 h (`{$NHEALTH.NBR.LOOKBACK}`) and has not been Full for 2 min (`{$NHEALTH.NBR.DOWN.TIME}`). A neighbor that **disappears** from `ospfNbrTable` reads as state 0 and alerts. | state Full |
+| Expected OSPF neighbor(s) not established | any router-id in `{$NHEALTH.OSPF.EXPECTED}` (inventory `ospf: {expected: [...]}`) is missing from the table or not Full — also neighbors that never came up | all expected Full |
+| OSPF monitoring data LOST (SNMP blind) | no OSPF-MIB data (`ospfRouterId`) for `{$NHEALTH.NBR.NODATA}` (5 min): device silent, SNMP failing, or MIB/context not exposed. While open, neighbor alerts cannot fire | data returns |
 | BGP Peer DOWN | peer was **Established** within 24 h and not Established for 2 min, and the peer is not admin-stopped | Established |
+| Expected BGP peer(s) not established / BGP monitoring data LOST | as for OSPF, with `{$NHEALTH.BGP.EXPECTED}` peer addresses and `bgpLocalAs` | as for OSPF |
 | Device UNREACHABLE | every ICMP poll failed for `window` | one ICMP reply |
 | SNMP Data STALE | no SNMP sysUpTime value for `timeout` while the device still answers ping (when unreachable alerting is off, ping is ignored) | SNMP data returns, or the device becomes unreachable (that alert takes over) |
 | CPU / Memory HIGH | every sample in `window` above `threshold` % | latest sample below `recovery` % |
 
 * **No false alerts on discovery:** neighbors and peers that have never been Full/Established (new, still forming, or OSPF DROTHER 2-Way) never alert.
-* A vanished neighbor's item stays enabled for 7 days (`DISABLE_NEVER`, delete after 7d), so its problem stays open. After 7 days the item is deleted and the problem closes. For a deliberately removed neighbor, add it to `exclude` or close the problem manually.
-* If the device is unreachable over SNMP, the neighbor items receive no values, so no neighbor alerts fire. Device Unreachable / SNMP Stale cover that case.
+* A vanished neighbor's item and trigger are **never deleted** (`DELETE_NEVER`, `DISABLE_NEVER`), so its problem cannot close
+  without a recovery. For a deliberately removed neighbor: add it to `exclude` and remove it from `expected`.
+* If the device stops answering SNMP, neighbor items receive no values and their triggers stop evaluating; the
+  **monitoring data LOST** trigger is what fires (no silent green).
+* Production requires an expected list for every device with OSPF/BGP (`./onboard.sh`: `ex N ospf ...`, or `ex N ospf seen`
+  to adopt the neighbors Zabbix currently sees Full after a LAB/first deployment).
 * Severity is fixed per feature per device (4 trigger variants, exactly one can fire).
 
 ## 6. Platform support — verify each platform before relying on it
@@ -125,10 +134,24 @@ vi config/network-health.production.yaml                 # list devices and feat
 * **Rollback:** `git checkout <good-commit> -- config/network-health.production.yaml`, then dry-run and apply. Every apply first writes `state/backups/network-health-<env>-<time>.json`.
 * API account: same as Interface Alerting (template import, host linking and host macros).
 
-## 8. Required LAB validation before any Production use
+## 8. Required LAB acceptance before any Production use (record the reference afterwards)
 
-1. Import and idempotency: on a LAB device in both inventories, run `apply-health.sh` (apply), then dry-run must say `No changes required.`; run `apply.sh --dry-run`, which must also say `No changes required.` (proves coexistence).
-2. Template import is accepted by Zabbix 7.0 (walk items, `SNMP_WALK_TO_JSON` / `SNMP_WALK_VALUE`, calculated items, value maps, lifetime settings).
-3. Discovered OSPF neighbors / BGP peers / CPU / memory entries match `snmpwalk` output on each platform.
-4. Fault tests, each with Problem and Recovery e-mail: shut one OSPF neighbor interface; shut one BGP neighbor (admin shutdown must **not** alert); clear a peer; block ICMP+SNMP (only Unreachable must fire); block SNMP only (Stale fires); lower a CPU threshold temporarily.
-5. Remove a feature and a device from the inventory: only Network Health objects are removed; Interface Alerting is unaffected.
+Run on a Zabbix 7.0 LAB with at least one Huawei VRP router using **several OSPF areas** and an OSPF/BGP adjacency to a
+firewall (FortiGate or Palo Alto), plus one Cisco router. No production device configuration is changed by this project.
+
+1. **Import:** all generated templates import (value maps, walk items, dependent items with `SNMP_WALK_TO_JSON` +
+   JavaScript, `length()` in triggers, `DELETE_NEVER`). `./apply-health.sh --env lab --dry-run` afterwards: `No changes required.`
+2. **Discovery vs device:** for each router, discovered neighbors/peers equal `snmpwalk 1.3.6.1.2.1.14.10.1.6` /
+   `1.3.6.1.2.1.15.3.1.2`; on Huawei confirm which OSPF process the MIB exposes (`display ospf mib-binding` / config) and
+   that neighbors of every area of that process appear. Neighbors of other processes/VPN instances must show up as
+   **expected but missing**, never as healthy.
+3. **Fault/recovery with e-mail, each one Problem + Recovery received:** shut a Full OSPF neighbor interface (alert after
+   ≈2 min, recovery on Full); force EXSTART (MTU mismatch) on a LAB link; remove a neighbor completely (state 0 and expected
+   alert; problem must stay open, not disappear); block SNMP from Zabbix to the router (only *monitoring data LOST* fires);
+   shut a BGP neighbor administratively (**no** peer alert), then clear it hard (alert); bring up a configured-but-never-up
+   expected neighbor (expected alert fires although it was never Full).
+4. **Coexistence:** the same host in both inventories; `./apply.sh --env lab --dry-run` and `./apply-health.sh --env lab
+   --dry-run` both `No changes required.` after each deploy.
+5. **Removal:** dropping a feature/device removes only Network Health objects.
+6. Record evidence (event ids, alert ids with status Sent, screenshots) and only then set
+   `network_health_lab_acceptance: "<ticket/report reference>"` in the production environment file.

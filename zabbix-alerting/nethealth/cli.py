@@ -100,6 +100,10 @@ def run(argv, environ=None, out=print, base=None, transport_factory=None):
         out("RESULT: network-health yaml selects no devices, so this would remove every Network Health object. "
             "If intended re-run with --allow-empty.")
         return EXIT_FAIL
+    if env["is_production"] and not str(env.get("network_health_lab_acceptance") or "").strip():
+        out("RESULT: Network Health is not accepted for production yet (UNTESTED). Record the LAB acceptance "
+            "reference as network_health_lab_acceptance in %s first - nothing changed" % os.path.relpath(env["_path"], base))
+        return EXIT_SAFETY
     block = envsafety.production_gate(env, args.confirm)
     if block:
         out("RESULT: %s" % block)

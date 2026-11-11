@@ -220,8 +220,8 @@ def build(snap, rules, iface_raw, health_raw, dec, now=None):
         r = Row(kind="port", id=rid, host=host, port=port, alias=alias, p=p, h=h, suggest_role=role,
                 role_reason=why, peer_hint=hint, role=eff_role, severity=eff_sev, description=descr,
                 status=status, in_yaml=rid in in_yaml, yaml=yraw, decision=d, blockers=blockers, review=review,
-                candidate=candidate, pair=d.get("pair"), pair_source=d.get("pair_source", ""), pair_hints=[],
-                link_id=(yraw or {}).get("link_id", ""), excluded_by_name=excluded_by_name)
+                candidate=candidate, pair=None, pair_source="", pair_hints=[], issues=[],
+                link_id=str((yraw or {}).get("link_id", "") or ""), excluded_by_name=excluded_by_name)
         rows.append(r)
         by_id[rid] = r
 
@@ -235,25 +235,80 @@ def build(snap, rules, iface_raw, health_raw, dec, now=None):
                 add(host, port, None)
 
     _pairing(rows, by_id, snap)
-    for r in rows:
-        if r.status == "APPROVED" and r.role == "P2P" and not (r.pair or r.link_id):
-            r.review.append("P2P port has no verified or operator-confirmed peer (link_id left empty)")
 
     devices = _devices(snap, rules, health_raw, dec, rows)
-    return {"ports": rows, "devices": devices, "by_id": by_id, "now": now}
+    return {"ports": rows, "devices": devices, "by_id": by_id, "now": now, "rules": rules}
 
 
 def _pairing(rows, by_id, snap):
-    """Verified pairs come only from NetBox cables or explicit operator confirmation. Description
-    cross-references are shown as hints and never become a link_id on their own."""
+    """One-to-one, reciprocal relationships only. Sources, strongest first:
+       1. operator decision (pair / single-ended), which must be reciprocal,
+       2. a reciprocal NetBox cable between two ports that both exist in Zabbix,
+       3. an existing link_id shared by exactly two inventory entries on different hosts.
+    Any disagreement between sources, a non-reciprocal claim, or a link_id used by >2 entries is an ISSUE
+    (deploy blocker). Description cross-references are only hints."""
+    lid_users = {}
     for r in rows:
+        if r.in_yaml and r.link_id:
+            lid_users.setdefault(r.link_id, []).append(r)
+    def decided(r):
+        return bool(r.decision.get("pair") or r.decision.get("pair_source") == "single-ended")
+
+    for lid, users in lid_users.items():                     # inconsistent inventory: never repaired silently
+        bad = len(users) > 2 or (len(users) == 2 and users[0].host == users[1].host)
+        for r in users:
+            if bad and not decided(r):
+                r.issues.append("link_id conflict: '%s' is used by %d entries (%s) - decide each end with p N M or "
+                                "p N - before writing" % (lid, len(users), ", ".join(u.id for u in users)))
+
+    def netbox_partner(r):
         nb = (r.p or {}).get("netbox_peer")
-        if nb and not r.pair:
-            other = by_id.get(pid(nb[0], nb[1]))
-            back = (other.p or {}).get("netbox_peer") if other else None
-            if other and back == [r.host, r.port]:
-                r.pair, r.pair_source = other.id, "netbox-cable"
-    cands = [r for r in rows if r.candidate and r.peer_hint]
+        o = by_id.get(pid(nb[0], nb[1])) if nb else None
+        return o if o is not None and (o.p or {}).get("netbox_peer") == [r.host, r.port] else None
+
+    def inventory_partner(r):
+        users = lid_users.get(r.link_id) if r.in_yaml and r.link_id else None
+        if users and len(users) == 2 and users[0].host == users[1].host:
+            return None
+        if users and len(users) == 2 and users[0].host != users[1].host:
+            return users[1] if users[0] is r else users[0]
+        return None
+
+    for r in rows:
+        d = r.decision
+        nb, inv = netbox_partner(r), inventory_partner(r)
+        if d.get("pair_source") == "single-ended":
+            r.pair, r.pair_source = None, "single-ended"
+            if nb is not None:
+                r.issues.append("confirmed single-ended, but NetBox shows a cable to %s" % nb.id)
+            continue
+        if d.get("pair"):
+            o = by_id.get(d["pair"])
+            if o is None or o.decision.get("pair") != r.id:
+                r.issues.append("pairing with %s is not reciprocal (the other end is %s)" % (
+                    d["pair"], "missing" if o is None else (o.decision.get("pair") or "unpaired")))
+                continue
+            r.pair, r.pair_source = o.id, d.get("pair_source") or "operator-confirmed"
+            if nb is not None and nb is not o:
+                r.issues.append("approved pairing %s <-> %s, but NetBox now shows a cable to %s" % (r.id, o.id, nb.id))
+            elif nb is None and r.pair_source == "netbox-cable" and r.p is not None and \
+                    snap.get("netbox_used") and not (r.p.get("netbox_peer")):
+                r.issues.append("pairing was proven by a NetBox cable that NetBox no longer shows")
+            continue
+        if nb is not None:
+            r.pair, r.pair_source = nb.id, "netbox-cable"
+            if inv is not None and inv is not nb:
+                r.issues.append("inventory link_id pairs this port with %s, but NetBox shows a cable to %s" % (inv.id, nb.id))
+            continue
+        if inv is not None:
+            r.pair, r.pair_source = inv.id, "inventory link_id"
+    for r in rows:                                               # one-to-one: my partner must resolve to me
+        if r.pair:
+            o = by_id[r.pair]
+            if o.pair != r.id:
+                r.issues.append("pairing conflict: %s resolves to %s" % (o.id, o.pair or "no peer"))
+                r.pair = None
+    cands = [r for r in rows if r.candidate and r.peer_hint and not r.pair]
     for r in cands:
         mutual = [o for o in cands if o.host == r.peer_hint and o.peer_hint == r.host]
         if len(mutual) == 1:
@@ -261,10 +316,12 @@ def _pairing(rows, by_id, snap):
         elif len(mutual) > 1:
             r.review.append("ambiguous peer: %d ports on %s describe this host" % (len(mutual), r.peer_hint))
     for r in rows:
-        if r.pair and r.pair in by_id:
-            o = by_id[r.pair]
-            if o.pair not in (None, r.id) and o.pair_source:
-                r.review.append("pairing conflict: %s is paired with %s" % (o.id, o.pair))
+        if r.status != "APPROVED":
+            continue
+        if r.role == "P2P" and not r.pair and r.pair_source != "single-ended" and not any("pair" in i for i in r.issues):
+            r.issues.append("P2P peer unresolved: pair it (p N M) or confirm it single-ended (p N -)")
+        if r.pair and by_id[r.pair].status != "APPROVED":
+            r.issues.append("peer %s is not approved: approve it or confirm this port single-ended (p N -)" % r.pair)
 
 
 def _devices(snap, rules, health_raw, dec, port_rows):
@@ -286,8 +343,10 @@ def _devices(snap, rules, health_raw, dec, port_rows):
                 unsupported[f] = "platform unknown (set it: no CPU/memory template is guessed)"
             elif f in ("ospf", "bgp"):
                 ev = [i for i in h["health_items"].get(f, []) if i["state"] == "0" and i["lastclock"]]
-                support[f] = ("existing %s items return data" % f.upper()) if ev else \
-                    "UNVERIFIED: confirm the device answers the %s MIB (snmpwalk) before enabling" % f.upper()
+                ack = (d.get("evidence") or {}).get(f)
+                support[f] = ("existing %s items return data" % f.upper()) if ev else (
+                    "accepted by operator: %s" % ack if ack else
+                    "UNVERIFIED: confirm the device answers the %s MIB (snmpwalk) before enabling" % f.upper())
             else:
                 support[f] = "ok"
         suggested = [f for f in rules["health_suggest"] if f in support] if host in approved_hosts else []
@@ -310,7 +369,17 @@ def _devices(snap, rules, health_raw, dec, port_rows):
         for f in feats:
             if f in unsupported:
                 blockers.append("%s unsupported: %s" % (f, unsupported[f]))
+        expected, seen_ok = {}, {}
+        for f, state, rx in (("ospf", "8", r"^OSPF neighbor (\S+) "), ("bgp", "6", r"^BGP peer (\S+) ")):
+            seen_ok[f] = sorted(set(m.group(1) for i in (h or {}).get("health_items", {}).get(f, [])
+                                    if i["key"].startswith("nhealth.%s.state[" % f) and str(i.get("lastvalue")) == state
+                                    for m in [re.match(rx, i.get("name", ""))] if m))
+            exp = (d.get("expected") or {}).get(f)
+            if exp is None:
+                exp = ((yraw or {}).get(f) or {}).get("expected") if isinstance((yraw or {}).get(f), dict) else None
+            expected[f] = sorted(exp or [])
         out.append(Row(kind="device", id=host, host=host, h=h, platform=plat, features=feats, suggested=suggested,
+                       expected=expected, seen_ok=seen_ok,
                        support=support, unsupported=unsupported, status=status, yaml=yraw, decision=d,
                        blockers=blockers, review=[], candidate=bool(suggested or yraw is not None or decision),
                        in_yaml=yraw is not None))
@@ -337,10 +406,26 @@ def decide_port(dec, row, decision, now):
 
 
 def set_pair(dec, a, b, source):
+    """Pair a<->b (b=None: a is confirmed single-ended). Any previous partner of either end is released, so
+    no stale half-relationship survives."""
+    ports = dec["ports"]
+    for x in (a, b):
+        if x is None:
+            continue
+        old = (ports.get(x.id) or {}).get("pair")
+        if old and old not in (a.id, b.id if b else None):
+            od = dict(ports.get(old) or {})
+            if od.get("pair") == x.id:
+                od["pair"], od["pair_source"] = None, ""
+                od.pop("link_id", None)
+                ports[old] = od
     for x, y in ((a, b), (b, a)):
-        d = dict(dec["ports"].get(x.id) or {})
-        d["pair"], d["pair_source"] = (y.id, source) if y else (None, "")
-        dec["ports"][x.id] = d
+        if x is None:
+            continue
+        d = dict(ports.get(x.id) or {})
+        d["pair"], d["pair_source"] = (y.id, source) if y is not None else (None, "single-ended")
+        d.pop("link_id", None)
+        ports[x.id] = d
 
 
 # ------------------------------------------------------------------------------------------ generation
@@ -365,6 +450,10 @@ def generate_interfaces(model, iface_raw, rules):
         out["defaults"] = copy.deepcopy(iface_raw["defaults"])
     by_id = model["by_id"]
     approved = [r for r in model["ports"] if r.status == "APPROVED"]
+    shared = {}
+    for r in model["ports"]:
+        if r.in_yaml and r.link_id:
+            shared[r.link_id] = shared.get(r.link_id, 0) + 1
     for r in approved:
         hraw = (iface_raw.get("hosts") or {}).get(r.host) or {}
         if r.host not in out["hosts"]:
@@ -381,13 +470,47 @@ def generate_interfaces(model, iface_raw, rules):
         else:
             entry = {"description": r.description, "role": r.role or "", "severity": r.severity,
                      "utilization": copy.deepcopy(rules["interface_policy"]["utilization"])}
-        peer = by_id.get(r.pair) if r.pair else None
-        if peer is not None and peer.status == "APPROVED" and not entry.get("link_id"):
-            entry["link_id"] = (peer.yaml or {}).get("link_id") or link_id_for(r, peer)
+        entry.pop("link_id", None)
+        lid = _link_id(model, r, shared)
+        if lid:
+            entry["link_id"] = lid
         if not entry.get("role"):
             entry.pop("role", None)
         out["hosts"][r.host]["interfaces"][r.port] = entry
     return out
+
+
+def _link_id(model, r, shared):
+    """link_id for one approved entry:
+       paired with an approved peer -> keep the existing id only if both ends already share it and nobody else
+       does (relationship unchanged); otherwise a new id derived from both endpoints;
+       not paired -> keep a single-use id (e.g. an ISP circuit id); drop an id that used to be shared (stale)."""
+    peer = model["by_id"].get(r.pair) if r.pair else None
+    if peer is not None and peer.status == "APPROVED":
+        if r.link_id and r.link_id == peer.link_id and shared.get(r.link_id) == 2:
+            return r.link_id
+        return link_id_for(r, peer)
+    if r.link_id and shared.get(r.link_id, 0) == 1 and r.pair is None:
+        return r.link_id
+    return ""
+
+
+def check_link_ids(doc, model):
+    """Every link_id: at most two entries, and two only for a resolved relationship."""
+    use = {}
+    for h, hv in (doc.get("hosts") or {}).items():
+        for p, e in (hv.get("interfaces") or {}).items():
+            if (e or {}).get("link_id"):
+                use.setdefault(str(e["link_id"]), []).append(pid(h, p))
+    probs = []
+    for lid, ids in sorted(use.items()):
+        if len(ids) > 2:
+            probs.append("link_id '%s' would be used by %d entries: %s" % (lid, len(ids), ", ".join(ids)))
+        elif len(ids) == 2:
+            a = model["by_id"].get(ids[0])
+            if a is None or a.pair != ids[1]:
+                probs.append("link_id '%s' would join %s and %s, which are not a resolved pair" % (lid, ids[0], ids[1]))
+    return probs
 
 
 def generate_health(model, health_raw, rules):
@@ -403,6 +526,14 @@ def generate_health(model, health_raw, rules):
                 entry[f] = {"severity": rules["health_severity"].get(f, "high")}
             elif f not in r.features:
                 entry.pop(f, None)
+        for f in ("ospf", "bgp"):
+            if f in r.features:
+                sect = dict(entry[f]) if isinstance(entry.get(f), dict) else {}
+                if r.expected.get(f):
+                    sect["expected"] = list(r.expected[f])
+                else:
+                    sect.pop("expected", None)
+                entry[f] = sect
         if r.platform and ("cpu" in r.features or "memory" in r.features):
             entry["platform"] = r.platform
         out["devices"][r.host] = entry
@@ -420,41 +551,79 @@ def validate_generated(iface_doc, health_doc):
     return probs
 
 
+def decisions_sha(dec):
+    import json
+    return hashlib.sha256(json.dumps({"ports": dec["ports"], "devices": dec["devices"]}, sort_keys=True,
+                                     separators=(",", ":"), default=str).encode("utf-8")).hexdigest()
+
+
 def write_all(base, env_name, model, rules, dec, iface_raw, health_raw):
     """Generate, validate, write both inventories + decisions. Returns (paths, problems). Writes nothing
-    when the generated documents do not pass the projects' own strict validation."""
+    when the generated documents do not pass the projects' own strict validation or link_id integrity."""
     p = paths(base, env_name)
+    conflicts = ["%s: %s" % (r.id, i) for r in model["ports"] for i in r.issues if i.startswith("link_id conflict")]
+    if conflicts:
+        return p, conflicts
     idoc, hdoc = generate_interfaces(model, iface_raw, rules), generate_health(model, health_raw, rules)
-    probs = validate_generated(idoc, hdoc)
+    probs = validate_generated(idoc, hdoc) + check_link_ids(idoc, model)
     if probs:
         return p, probs
     bdir = os.path.join(p["state"], "backups")
     for key, header, doc in (("interfaces", IFACE_HEADER, idoc), ("health", HEALTH_HEADER, hdoc)):
         text = render(header, doc)
-        old = open(p[key], encoding="utf-8").read() if os.path.isfile(p[key]) else None
+        old = None
+        if os.path.isfile(p[key]):
+            with open(p[key], encoding="utf-8") as fh:
+                old = fh.read()
         if text != old:
             atomic_write(p[key], text, bdir)
-    for r in model["ports"]:                         # entries removed on request lose their decision record
+    written = dict(((h, i), e.get("link_id", "")) for h, hv in idoc["hosts"].items() for i, e in hv["interfaces"].items())
+    for r in model["ports"]:
+        d = dict(dec["ports"].get(r.id) or {})
         if r.status == "REMOVE":
-            dec["ports"][r.id]["decision"] = "excluded"
-        if r.status == "APPROVED" and not dec["ports"].get(r.id, {}).get("itemid") and r.p:
-            d = dict(dec["ports"].get(r.id) or {}, decision="approved")
-            d.update(fingerprint(r))
+            d["decision"] = "excluded"
+        if r.status == "APPROVED":
+            d["decision"] = "approved"
+            if not d.get("itemid") and r.p:
+                d.update(fingerprint(r))
+            if r.pair and not d.get("pair"):                 # make every relationship explicit and auditable
+                d["pair"], d["pair_source"] = r.pair, r.pair_source
+            d["link_id"] = written.get((r.host, r.port), "")
+        if d:
             dec["ports"][r.id] = d
     for r in model["devices"]:
         if r.status == "APPROVED" and r.features:
             dec["devices"][r.host] = dict(dec["devices"].get(r.host) or {}, decision="approved",
                                           features=list(r.features), platform=r.platform)
     dec["written"] = {"interfaces_sha256": file_sha(p["interfaces"]), "health_sha256": file_sha(p["health"])}
+    dec["written"]["decisions_sha256"] = decisions_sha(dec)
     save_decisions(p["decisions"], dec)
     return p, []
 
 
 # ------------------------------------------------------------------------------------------ deploy gate
 
-def verify(client, base, env_name, model, dec, iface_raw, health_raw):
-    """(failures, warnings). Any failure = do not deploy. Uses a fresh discovery (model) and read-only API."""
+def _diff(a, b, path=""):
+    """First few differences between two plain data structures (for gate messages)."""
+    if isinstance(a, dict) and isinstance(b, dict):
+        out = []
+        for k in sorted(set(a) | set(b), key=str):
+            if k not in a:
+                out.append("%s/%s only in generated" % (path, k))
+            elif k not in b:
+                out.append("%s/%s only in file" % (path, k))
+            else:
+                out += _diff(a[k], b[k], "%s/%s" % (path, k))
+        return out
+    return [] if a == b else ["%s: file %r, generated %r" % (path or "/", a, b)]
+
+
+def verify(client, base, env, model, dec, iface_raw, health_raw):
+    """(failures, warnings). Any failure = do not deploy. Uses a fresh discovery (model), the read-only API, and
+    regenerates both inventories from the current decisions to prove the files are exactly what was approved."""
+    env_name = env["environment"]
     p = paths(base, env_name)
+    rules = model["rules"]
     fails, warns = [], []
     if not dec["written"]:
         fails.append("inventories were never written by ./onboard.sh for this environment - review and write first")
@@ -463,12 +632,20 @@ def verify(client, base, env_name, model, dec, iface_raw, health_raw):
             if file_sha(p[key]) != dec["written"].get(fk, ""):
                 fails.append("%s changed since the last reviewed write (hand edit or other tool) - re-run "
                              "./onboard.sh and write (w) to re-review it" % os.path.relpath(p[key], base))
-    probs = validate_generated(iface_raw or {"hosts": {}}, health_raw or {"devices": {}})
-    fails += probs
+        if decisions_sha(dec) != dec["written"].get("decisions_sha256"):
+            fails.append("operator decisions changed after the last write - write (w) again so the inventories match")
+    fails += validate_generated(iface_raw or {"hosts": {}}, health_raw or {"devices": {}})
+    fails += check_link_ids(iface_raw or {"hosts": {}}, model)
+    for key, gen, cur in (("interfaces", generate_interfaces(model, iface_raw, rules), iface_raw or {"hosts": {}}),
+                          ("network-health", generate_health(model, health_raw, rules), health_raw or {"devices": {}})):
+        d = _diff(cur, gen)
+        if d:
+            fails.append("%s inventory differs from what the approved decisions and current live evidence generate "
+                         "(%s) - re-run ./onboard.sh and write (w)" % (key, "; ".join(d[:3])))
     extras = {}
     for r in model["ports"]:
         if r.status in ("APPROVED", "REMOVE"):
-            for b in r.blockers:
+            for b in r.blockers + r.issues:
                 fails.append("%s / %s: %s" % (r.host, r.port, b))
             for w in r.review:
                 (fails if "index changed" in w else warns).append("%s / %s: %s" % (r.host, r.port, w))
@@ -476,19 +653,28 @@ def verify(client, base, env_name, model, dec, iface_raw, health_raw):
             if r.status == "APPROVED" and d.get("itemid") and r.h is not None:
                 extras[(r.host, r.port)] = {"hostid": str(d.get("hostid", "")), "itemid": str(d["itemid"]),
                                             "index": str(d.get("index", "")), "ifname": r.port}
-            elif r.status == "APPROVED" and r.p is not None:
-                fails.append("%s / %s: no recorded identity (approve it in ./onboard.sh)" % (r.host, r.port))
+            elif r.status == "APPROVED":
+                fails.append("%s / %s: no recorded identity evidence (host id, status item, ifIndex) - approve it "
+                             "again in ./onboard.sh" % (r.host, r.port))
     if extras:
         live = planner.get_hosts(client, sorted(set(h for h, _ in extras)))
         for (host, port), why in sorted(handover.cross_check(client, extras, live).items()):
             fails.append("%s / %s: identity drift since approval: %s" % (host, port, why))
-    for r in model["devices"]:
-        if r.status == "APPROVED":
-            for b in r.blockers:
-                fails.append("%s (network health): %s" % (r.host, b))
-            for f in r.features:
-                if "UNVERIFIED" in r.support.get(f, ""):
-                    warns.append("%s (network health): %s enabled although %s" % (r.host, f, r.support[f]))
+    health = [r for r in model["devices"] if r.status == "APPROVED" and r.features]
+    if health and env.get("is_production") and not str(env.get("network_health_lab_acceptance") or "").strip():
+        fails.append("Network Health is not accepted for production: record the LAB acceptance reference as "
+                     "network_health_lab_acceptance in %s (see docs/NETWORK-HEALTH.md)" % os.path.relpath(env["_path"], base))
+    for r in health:
+        for b in r.blockers:
+            fails.append("%s (network health): %s" % (r.host, b))
+        for f in r.features:
+            if "UNVERIFIED" in r.support.get(f, ""):
+                fails.append("%s (network health): %s %s - record evidence with 'ev N %s <reference>'" % (
+                    r.host, f, r.support[f], f))
+            if f in ("ospf", "bgp") and not r.expected.get(f):
+                fails.append("%s (network health): %s has no expected-%s list - neighbors that never reached "
+                             "%s would be missed ('ex N %s ...')" % (r.host, f, "neighbor" if f == "ospf" else "peer",
+                                                                     "Full" if f == "ospf" else "Established", f))
     pending = [r for r in model["ports"] if r.status == "PENDING" and r.candidate]
     if pending:
         warns.append("%d suggested candidate port(s) are still PENDING review (not monitored by this project)" % len(pending))

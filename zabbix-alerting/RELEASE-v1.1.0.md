@@ -1,6 +1,10 @@
-# Release v1.1.0 — Discovery-assisted onboarding (CANDIDATE)
+# Release v1.1.0 — Discovery-assisted onboarding (CANDIDATE rc2, remediated)
 
-**Status: CANDIDATE on branch `claude/discovery-onboarding-v1.1`. Not tagged, no GitHub Release, not merged, not deployed.**
+**Status: CANDIDATE. Not tagged, no GitHub Release, not merged, not deployed.** rc1 (`98bd925`) received an independent
+CONDITIONAL NO-GO; every confirmed finding is fixed on `claude/discovery-onboarding-v1.1-remediation` with regression
+tests that fail on rc1 — see `docs/REMEDIATION-v1.1.md` (findings, OSPF/BGP assessment, GO/NO-GO). The rc1 notes below
+are kept for history; current test figures are in the remediation report (265 tests, 1 NOT RUN).
+
 Tag `v1.0.2` is unchanged and remains the only accepted release. Builds on the v1.0.3 proposal (Network Health, untested).
 
 ## What changes for the operator

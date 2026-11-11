@@ -15,7 +15,9 @@ from netalert import cli as icli
 from netalert import coverage, discovery, onboard_cli
 from netalert import onboarding as ob
 from netalert.zbx import ApiUnavailable, ZabbixClient
-from tests.discovery_fixture import NOW, DiscoveryZabbix, standard_world
+import re
+
+from tests.discovery_fixture import NOW, DiscoveryZabbix, standard_world, stock_util
 from tests.helpers import LAB_YAML, PROD_YAML, write
 
 IDENT = {"globalmacroid": "1", "macro": "{$NETOPS.ENVIRONMENT}", "value": "production",
@@ -23,11 +25,23 @@ IDENT = {"globalmacroid": "1", "macro": "{$NETOPS.ENVIRONMENT}", "value": "produ
 READ_METHODS = ("apiinfo.version",)
 
 
+def netops_expr(alert, prio, host="EDGE-RTR-01", port="Hu0/0/0/0", idx="1"):
+    """Expanded shape of the NETOPS template's own trigger expressions (netalert/template.py)."""
+    k = lambda kind: "/%s/netops.if.%s[%s]" % (host, kind, idx)
+    gate = '{$NETOPS.SEV:"%s"}=%d' % (port, prio)
+    if alert == "link_down":
+        return '{$NETOPS.LINK:"%s"}=1 and %s and last(%s)<>1' % (port, gate, k("oper"))
+    kind = "in" if alert == "util_rx" else "out"
+    return '{$NETOPS.UTIL.ON:"%s"}=1 and %s and last(%s)*100>{$NETOPS.UTIL.MAX:"%s"}*last(%s) and last(%s)>0' % (
+        port, gate, k(kind), port, k("speed"), k("speed"))
+
+
 class World(object):
-    def __init__(self, z=None, iface="hosts: {}\n", health="devices: {}\n", prod_extra="", claim=True):
+    def __init__(self, z=None, iface="hosts: {}\n", health="devices: {}\n", prod_extra="", claim=True,
+                 pin="deploy_pin: 'test-pin'\n"):
         self.base = tempfile.mkdtemp(prefix="onboard-test-")
         write(os.path.join(self.base, "config/environments/lab.yaml"), LAB_YAML)
-        write(os.path.join(self.base, "config/environments/production.yaml"), PROD_YAML + prod_extra)
+        write(os.path.join(self.base, "config/environments/production.yaml"), PROD_YAML + pin + prod_extra)
         write(os.path.join(self.base, "config/interfaces.production.yaml"), iface)
         write(os.path.join(self.base, "config/network-health.production.yaml"), health)
         if z is None:
@@ -37,6 +51,7 @@ class World(object):
             z.gmacros["1"] = dict(IDENT)
         self.env = {"ZABBIX_URL_PRODUCTION": "https://zbx.prod.example", "ZABBIX_TOKEN_PRODUCTION": "tok"}
         self.netbox_opener = None
+        self.code = ("c0ffee0000000000000000000000000000000000", [])     # clean checkout at the pinned commit
 
     def close(self):
         shutil.rmtree(self.base, ignore_errors=True)
@@ -45,8 +60,19 @@ class World(object):
         out = []
         rc = onboard_cli.run(["--env", "production"] + list(argv), environ=dict(self.env if environ is None else environ), out=out.append,
                              lines=lines, base=self.base, transport_factory=lambda u, t, v: self.z.transport(t),
-                             netbox_opener=self.netbox_opener, now=NOW)
+                             netbox_opener=self.netbox_opener, now=NOW, code_check=lambda d, pin: self.code)
         return rc, "\n".join(out)
+
+    def token(self):
+        rc, out = self.run("--verify")
+        m = re.search(r"APPROVAL TOKEN: (\w+)", out)
+        return (m.group(1) if m else None), rc, out
+
+    def deploy(self, confirm=True):
+        tok, rc, out = self.token()
+        if tok is None:
+            return rc, out
+        return self.run("--deploy", "--approve", tok, *(["--confirm", "production"] if confirm else []))
 
     def apply(self, *argv):
         out = []
@@ -230,14 +256,18 @@ class Pairing(Base):
         self.assertEqual(l1, doc["hosts"]["EDGE-RTR-02"]["interfaces"]["Te0/0/0/1"]["link_id"])
         self.assertEqual(l1, "edge-rtr-01-te0-0-0-1--edge-rtr-02-te0-0-0-1")
 
-    def test_unmatched_p2p_endpoint_is_a_warning_not_a_guess(self):
+    def test_unmatched_p2p_endpoint_blocks_until_confirmed_single_ended(self):
         rc, out = self.w.run(lines=["l"])
-        self.w.run(lines=["l", "a %s" % row_no(out, "EDGE-RTR-01", "Te0/0/0/1"), "w", "q"])
+        n = row_no(out, "EDGE-RTR-01", "Te0/0/0/1")
+        self.w.run(lines=["l", "a %s" % n, "w", "q"])
         entry = self.w.yaml("config/interfaces.production.yaml")["hosts"]["EDGE-RTR-01"]["interfaces"]["Te0/0/0/1"]
         self.assertNotIn("link_id", entry)
         rc, out = self.w.run("--verify")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("FAIL  EDGE-RTR-01 / Te0/0/0/1: P2P peer unresolved", out)
+        self.w.run(lines=["l approved", "p 1 -", "w", "q"])
+        rc, out = self.w.run("--verify")
         self.assertEqual(rc, 0, out)
-        self.assertIn("WARN  EDGE-RTR-01 / Te0/0/0/1: P2P port has no verified or operator-confirmed peer", out)
 
     def test_similar_names_are_never_paired(self):
         z = DiscoveryZabbix(token="tok")
@@ -355,10 +385,15 @@ class Generation(Base):
         self.w.run(lines=["l", "a %s" % row_no(out, "EDGE-RTR-01", "Hu0/0/0/0"), "h", "f 1 +cpu +ospf",
                           "a 1", "w", "q"])
         doc = self.w.yaml("config/network-health.production.yaml")["devices"]["EDGE-RTR-01"]
-        self.assertEqual(sorted(k for k in doc if k != "site"), ["device_unreachable", "ospf", "snmp_stale"])
+        self.assertEqual(sorted(k for k in doc if k not in ("site", "platform")),
+                         ["cpu", "device_unreachable", "ospf", "snmp_stale"])
+        self.assertEqual(doc["platform"], "cisco-ios")             # inferred from the linked stock template
         self.assertEqual(doc["device_unreachable"], {"severity": "high"})     # never the module's 'disaster' default
         rc, out = self.w.run("--verify")
-        self.assertIn("ospf enabled although UNVERIFIED", out)
+        self.assertEqual(rc, 1)
+        self.assertIn("ospf UNVERIFIED", out)
+        self.assertIn("has no expected-neighbor list", out)
+        self.assertIn("Network Health is not accepted for production", out)
 
     def test_invalid_existing_inventory_is_never_rewritten(self):
         bad = EXISTING.replace("        severity: disaster\n", "        severity: disaster\n        notify: false\n")
@@ -395,16 +430,17 @@ class Coverage(Base):
         hid = self.w.z.host_id(host)
         ids = [i for i, it in self.w.z.items.items() if it["hostid"] == hid and it["key_"] in (
             "net.if.in[ifHCInOctets.%s]" % index, "net.if.out[ifHCOutOctets.%s]" % index)]
-        return self.w.z.add_trigger("%s high bandwidth" % host, ids)
+        port = {"1": "Hu0/0/0/0", "2": "Te0/0/0/1"}[index]
+        return self.w.z.add_trigger("%s high bandwidth" % host, ids, expression=stock_util(host, port, index))
 
     def test_stock_link_trigger_without_utilization_is_partial(self):
         cls, why, ev = self._cls("EDGE-RTR-01|Hu0/0/0/0")
         self.assertEqual(cls, coverage.PART)
-        self.assertIn("no utilization alert", " ".join(why))
+        self.assertIn("no proven utilization alert", " ".join(why))
 
     def test_protected_requires_link_util_fresh_and_ready_notification(self):
         self._util_trigger("EDGE-RTR-01", "1")
-        self.assertEqual(self._cls("EDGE-RTR-01|Hu0/0/0/0")[0], coverage.PROT)
+        self.assertEqual(self._cls("EDGE-RTR-01|Hu0/0/0/0")[0], coverage.CONFIG)
 
     def test_not_protected_when_recovery_missing(self):
         self._util_trigger("EDGE-RTR-01", "1")
@@ -432,7 +468,7 @@ class Coverage(Base):
 
     def test_deny_in_any_user_group_wins(self):
         self._util_trigger("EDGE-RTR-01", "1")
-        self.assertEqual(self._cls("EDGE-RTR-01|Hu0/0/0/0")[0], coverage.PROT)
+        self.assertEqual(self._cls("EDGE-RTR-01|Hu0/0/0/0")[0], coverage.CONFIG)
         deny = self.w.z.add_usergroup("Deny network")
         self.w.z.usergroups[deny]["rights"] = {"2": 0}
         for u in self.w.z.users.values():
@@ -446,25 +482,28 @@ class Coverage(Base):
         for t in self.w.z.triggers.values():
             t["status"] = "0"
         self.w.z.add_macro(self.w.ids["r1"], '{$IFCONTROL:"Hu0/0/0/0"}', "0")
-        self.assertEqual(self._cls("EDGE-RTR-01|Hu0/0/0/0")[0], coverage.NOTC)
+        cls, why, _ = self._cls("EDGE-RTR-01|Hu0/0/0/0")
+        self.assertEqual(cls, coverage.NOTC)
+        self.assertIn('gated off by {$IFCONTROL:"Hu0/0/0/0"}=0', " ".join(why))
 
     def test_action_filter_evaluation(self):
-        host = {"groupids": ["2"], "hostid": "9", "templateids": [], "tags": [("site", "DC1")]}
+        host = {"groupids": ["2"], "hostid": "9", "templateids": [], "tags": [("site", "DC1")], "ancestry": []}
+        snap = {"hostgroups": {"2": "Network devices", "7": "Servers"}, "templates": {}}
         trig = {"triggerid": "1", "name": "x link down", "priority": 4, "tags": [("netops_alert", "link_down")]}
         c = lambda t, op, v, **kw: dict({"conditiontype": str(t), "operator": str(op), "value": v}, **kw)
-        self.assertTrue(coverage.eval_filter({"evaltype": "0", "conditions": [c(25, 0, "netops_alert")]}, host, trig))
-        self.assertFalse(coverage.eval_filter({"evaltype": "0", "conditions": [c(4, 5, "5")]}, host, trig))
+        self.assertTrue(coverage.eval_filter({"evaltype": "0", "conditions": [c(25, 0, "netops_alert")]}, host, trig, snap))
+        self.assertFalse(coverage.eval_filter({"evaltype": "0", "conditions": [c(4, 5, "5")]}, host, trig, snap))
         f = {"evaltype": "3", "formula": "(A or B) and not C", "conditions": [
             c(0, 0, "7", formulaid="A"), c(26, 0, "DC1", value2="site", formulaid="B"), c(4, 0, "2", formulaid="C")]}
-        self.assertTrue(coverage.eval_filter(f, host, trig))
+        self.assertTrue(coverage.eval_filter(f, host, trig, snap))
         f["formula"] = "A and __import__"
-        self.assertIsNone(coverage.eval_filter(f, host, trig))
-        self.assertIsNone(coverage.eval_filter({"evaltype": "0", "conditions": [c(6, 4, "1-7,00:00-24:00")]}, host, trig))
+        self.assertIsNone(coverage.eval_filter(f, host, trig, snap))
+        self.assertIsNone(coverage.eval_filter({"evaltype": "0", "conditions": [c(6, 4, "1-7,00:00-24:00")]}, host, trig, snap))
 
     def test_report_sections_and_preserved_alerts(self):
         self.w.run("--report")
         rep = self.w.read("state/onboarding/production/coverage-latest.md")
-        for s in ("| PROTECTED / VERIFIED |", "## Existing alerts that are preserved", "EDGE-RTR-01 Hu0/0/0/0 link down (stock)",
+        for s in ("| PROTECTED (DELIVERY TESTED) |", "| CONFIG VERIFIED (DELIVERY NOT TESTED) |", "## Existing alerts that are preserved", "EDGE-RTR-01 Hu0/0/0/0 link down (stock)",
                   "## ISP / P2P endpoint relationships", "SUGGESTED (description cross-reference only, NOT verified)",
                   "## Findings, blind spots and limits"):
             self.assertIn(s, rep)
@@ -522,7 +561,7 @@ class Gates(Base):
         p = self.w.path("config/interfaces.production.yaml")
         with open(p, "a", encoding="utf-8") as fh:
             fh.write("# edited\n")
-        rc, out = self.w.run("--deploy", "--confirm", "production")
+        rc, out = self.w.deploy()
         self.assertEqual(rc, 1)
         self.assertIn("changed since the last reviewed write", out)
         self.assertEqual(self.w.z.writes(), [])
@@ -540,6 +579,9 @@ class Gates(Base):
         self.approve_isp()
         rc, out = self.w.run("--deploy")
         self.assertEqual(rc, icli.EXIT_SAFETY)
+        self.assertIn("does not match the current approval token", out)
+        rc, out = self.w.deploy(confirm=False)
+        self.assertEqual(rc, icli.EXIT_SAFETY)
         self.assertIn("--confirm production", out)
         self.assertEqual(self.w.z.writes(), [])
 
@@ -547,7 +589,7 @@ class Gates(Base):
         self.w.close()
         self.w = World(prod_extra=ACTION)
         self.approve_isp()
-        rc, out = self.w.run("--deploy", "--confirm", "production")
+        rc, out = self.w.deploy()
         self.assertEqual(rc, 0, out)
         self.assertIn("verification plan is empty", out)
         self.assertEqual(self.w.apply("--dry-run")[1].splitlines()[-1], "No changes required.")
@@ -556,8 +598,9 @@ class Gates(Base):
         own = z.add_netops_items(hid, "Hu0/0/0/0", "1")
         for alert in ("link_down", "util_rx", "util_tx"):
             for prio in (2, 3, 4, 5):                              # four severity variants; macros pick one
-                z.add_trigger("NETOPS %s" % alert, [own], priority=prio,
-                              tags=[("netops_alert", alert), ("if_name", "Hu0/0/0/0")])
+                z.add_trigger("NETOPS %s" % alert, list(own.values()), priority=prio,
+                              tags=[("netops_alert", alert), ("if_name", "Hu0/0/0/0")],
+                              expression=netops_expr(alert, prio))
         for t in list(z.triggers.values()):                        # remove the stock trigger: project coverage only
             if "(stock)" in t["description"]:
                 t["status"] = "1"
@@ -568,8 +611,13 @@ class Gates(Base):
                 a["status"] = "1"
         snap = self.w.snapshot()
         cls, why, ev = coverage.port_coverage(snap, self.w.model()["by_id"]["EDGE-RTR-01|Hu0/0/0/0"])
-        self.assertEqual(cls, coverage.PROT, why)
+        self.assertEqual(cls, coverage.CONFIG, why)                # configuration proven, delivery never observed
         self.assertIn("NETOPS-IaC Interface Alerts", " ".join(ev["notify"]))
+        netops = [a for a in z.actions.values() if a["name"].startswith("NETOPS-IaC")][0]["actionid"]
+        link = [t for t in z.triggers.values() if t["description"] == "NETOPS link_down" and t["priority"] == "4"][0]
+        z.add_delivery(link["triggerid"], netops)
+        cls, why, ev = coverage.port_coverage(self.w.snapshot(), self.w.model()["by_id"]["EDGE-RTR-01|Hu0/0/0/0"])
+        self.assertEqual(cls, coverage.PROT, why)
         # a second onboarding run over the deployed state changes nothing
         before = self.w.read("config/interfaces.production.yaml")
         self.w.run(lines=["w", "q"])
@@ -580,9 +628,9 @@ class Gates(Base):
         self.w.close()
         self.w = World(prod_extra=ACTION)
         self.approve_isp()
-        self.assertEqual(self.w.run("--deploy", "--confirm", "production")[0], 0)
+        self.assertEqual(self.w.deploy()[0], 0)
         rc, out = self.w.run(lines=["l approved", "x 1", "w", "q"])
-        rc, out = self.w.run("--deploy", "--confirm", "production")
+        rc, out = self.w.deploy()
         self.assertIn("deliberately not automated", out)
         self.assertIn('{$NETOPS.IF.MATCH}', self.w.z.host_macro_map("EDGE-RTR-01"))
 
@@ -593,16 +641,18 @@ class Setup(Base):
     def test_first_run_setup_writes_private_env_and_url_guard(self):
         write(self.w.path("config/environments/production.yaml"),
               PROD_YAML.replace(r"'^https://zbx\.prod\.example$'", "'^CHANGE-ME-TO-YOUR-PRODUCTION-URL-REGEX$'"))
-        answers = iter(["https://zbx.prod.example", "", "y"])
+        answers = iter(["https://zbx.prod.example", "", "y", "y"])
         out = []
         rc = onboard_cli.run(["--env", "production", "--setup"], environ={}, out=out.append, lines=[], base=self.w.base,
                              transport_factory=lambda u, t, v: self.w.z.transport(t), now=NOW,
-                             ask=lambda q: next(answers), secret=lambda q: "tok")
+                             ask=lambda q: next(answers), secret=lambda q: "tok",
+                             code_check=lambda d, pin: ("c0ffee" * 6 + "abcd", []))
         self.assertEqual(rc, 0, out)
         envf = self.w.path(".env")
         self.assertEqual(stat.S_IMODE(os.stat(envf).st_mode), 0o600)
         self.assertIn("ZABBIX_TOKEN_PRODUCTION=tok", self.w.read(".env"))
         self.assertIn(r"url_regex: '^https://zbx\.prod\.example/?$'", self.w.read("config/environments/production.yaml"))
+        self.assertIn("deploy_pin: 'c0ffeec0ffee", self.w.read("config/environments/production.yaml"))
         rc, text = self.w.run("--report", environ={})               # .env is picked up on the next run
         self.assertEqual(rc, 0, text)
 

@@ -12,6 +12,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from .zbx import NoRedirect
+
 ABBREV = (("hundredgigabitethernet", "hundredgige"), ("fortygigabitethernet", "fortygige"),
           ("twentyfivegigabitethernet", "twentyfivegige"), ("tengigabitethernet", "tengige"),
           ("gigabitethernet", "gigabitethernet"), ("fastethernet", "fastethernet"), ("port-channel", "port-channel"),
@@ -49,15 +51,21 @@ class NetBox(object):
         self.token = token
         self.timeout = timeout
         self._ctx = None if verify_tls else ssl._create_unverified_context()
+        handlers = [NoRedirect()] + ([urllib.request.HTTPSHandler(context=self._ctx)] if self._ctx else [])
+        self._opener = urllib.request.build_opener(*handlers)
         self._open = opener or self._http
+        u = urllib.parse.urlsplit(self.base)
+        self._origin, self._prefix = (u.scheme.lower(), u.netloc.lower()), u.path.rstrip("/") + "/"
         self.calls = []
 
     def _http(self, url):
         req = urllib.request.Request(url, headers={"Authorization": "Token " + self.token,
                                                    "Accept": "application/json"}, method="GET")
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout, context=self._ctx) as resp:
+            with self._opener.open(req, timeout=self.timeout) as resp:
                 return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            raise NetBoxError("NetBox answered HTTP %s%s" % (exc.code, " (redirect refused)" if 300 <= exc.code < 400 else ""))
         except (urllib.error.URLError, OSError, ValueError) as exc:
             raise NetBoxError("NetBox read failed: %s" % exc)
 
@@ -69,6 +77,10 @@ class NetBox(object):
             data = self._open(url)
             out += data.get("results", [])
             url = data.get("next")
+            if url:
+                n = urllib.parse.urlsplit(url)
+                if (n.scheme.lower(), n.netloc.lower()) != self._origin or not n.path.startswith(self._prefix):
+                    raise NetBoxError("NetBox pagination pointed outside %s%s - refused" % ("://".join(self._origin), self._prefix))
         return out
 
 
@@ -84,6 +96,7 @@ def enrich(snap, nb, limits):
     except NetBoxError as exc:
         limits.append("NetBox enrichment skipped: %s" % exc)
         return
+    snap["netbox_used"] = True
     by_device = {}
     for hname, h in snap["hosts"].items():
         found = devices.get(hname, [])

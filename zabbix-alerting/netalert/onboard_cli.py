@@ -10,6 +10,7 @@ import argparse
 import getpass
 import os
 import re
+import subprocess
 import sys
 import time
 
@@ -38,6 +39,7 @@ def parse_args(argv):
     mode.add_argument("--deploy", action="store_true", help="gate, then apply both inventories")
     mode.add_argument("--setup", action="store_true", help="(re)enter Zabbix/NetBox connection settings")
     p.add_argument("--confirm", help="production deploy: repeat the environment name")
+    p.add_argument("--approve", help="deploy: the APPROVAL TOKEN printed by --verify")
     p.add_argument("--commands", help="run review commands from this file instead of interactively")
     p.add_argument("--no-netbox", action="store_true", help="skip optional NetBox enrichment")
     return p.parse_args(argv)
@@ -58,7 +60,10 @@ def load_dotenv(base, environ):
 
 def _set_dotenv(base, values):
     path = os.path.join(base, ".env")
-    lines = open(path, encoding="utf-8").read().splitlines() if os.path.isfile(path) else []
+    lines = []
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
     for k, v in values.items():
         lines = [l for l in lines if not re.match(r"^\s*(?:export\s+)?%s=" % k, l)]
         lines.append("%s=%s" % (k, v))
@@ -68,7 +73,7 @@ def _set_dotenv(base, values):
     os.chmod(path, 0o600)
 
 
-def setup(base, env, environ, ask, secret, out):
+def setup(base, env, environ, ask, secret, out, code_check=None):
     """Minimal interactive configuration: URL, token, optional NetBox; fixes the production URL guard."""
     z = env["zabbix"]
     out("Connection settings for environment '%s' (stored in .env, mode 600, git-ignored)." % env["environment"])
@@ -85,22 +90,96 @@ def setup(base, env, environ, ask, secret, out):
         rx = "^" + re.escape(envsafety.normalize_url(url)) + "/?$"
         if ask("Production URL guard is not set. Allow only %s  (regex %s)? [y/N]: " % (url, rx)).strip().lower() == "y":
             path = env["_path"]
-            text = open(path, encoding="utf-8").read()
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
             text = re.sub(r"(?m)^(\s*url_regex:\s*).*$", lambda m: m.group(1) + "'%s'" % rx.replace("'", "''"), text, count=1)
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(text)
             out("  %s: url_regex set (commit this file locally)" % os.path.relpath(path, base))
+    if env["is_production"] and not env.get("deploy_pin") and code_check is not None:
+        commit, _ = code_check(default_base(), None)
+        if commit and ask("Pin production deployment to the checked-out commit %s (only if this is the validated "
+                          "revision)? [y/N]: " % commit[:12]).strip().lower() == "y":
+            path = env["_path"]
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+            if re.search(r"(?m)^deploy_pin:", text):
+                text = re.sub(r"(?m)^deploy_pin:.*$", "deploy_pin: '%s'" % commit, text)
+            else:
+                text = text.rstrip("\n") + "\ndeploy_pin: '%s'      # validated code revision for production deploys\n" % commit
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+            out("  %s: deploy_pin set to %s" % (os.path.relpath(path, base), commit[:12]))
     out("Settings saved.")
+
+
+# ----------------------------------------------------------------------------------- deploy helpers
+
+def git_code_check(code_dir, pin):
+    """(HEAD commit or None, [problems]): the code that will deploy must be a clean checkout of the pinned revision."""
+    def git(*a):
+        return subprocess.run(["git", "-C", code_dir] + list(a), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              universal_newlines=True, timeout=30)
+    try:
+        head = git("rev-parse", "HEAD")
+    except (OSError, subprocess.SubprocessError) as exc:
+        return None, ["cannot determine the code revision (git unavailable: %s)" % exc]
+    if head.returncode != 0:
+        return None, ["the tool is not running from a git checkout - deploy from a GitHub clone"]
+    commit = head.stdout.strip()
+    problems = []
+    dirty = git("status", "--porcelain", "--untracked-files=no", "--", "netalert", "nethealth", "apply.sh",
+                "apply-health.sh", "onboard.sh").stdout.strip()
+    if dirty:
+        problems.append("code differs from commit %s (local modifications: %s)" % (commit[:12], dirty.splitlines()[0]))
+    if pin:
+        want = git("rev-parse", "%s^{commit}" % pin)
+        if want.returncode != 0:
+            problems.append("deploy_pin '%s' is not known in this checkout (git fetch --tags?)" % pin)
+        elif want.stdout.strip() != commit:
+            problems.append("checked-out commit %s is not the pinned deploy_pin %s (%s)" % (
+                commit[:12], pin, want.stdout.strip()[:12]))
+    return commit, problems
+
+
+def preflight(env_name, p, iface_raw, health_raw, environ, base, transport_factory):
+    """Read-only dry-run of both components. Returns (plan lines, problems). Nothing is written."""
+    lines, problems = [], []
+    if iface_raw.get("hosts"):
+        rc = icli.run(["--env", env_name, "--dry-run", "--config", p["interfaces"]], environ=environ,
+                      out=lines.append, base=base, transport_factory=transport_factory)
+        bad = [l for l in lines if re.search(r"\b(FAIL|REVIEW REQUIRED|VERIFICATION INCOMPLETE|MISMATCH)\b", l)]
+        if rc != icli.EXIT_OK or bad:
+            problems.append("Interface Alerting preflight failed (rc %d): %s" % (rc, "; ".join(x.strip() for x in bad[:3]) or "see --dry-run"))
+    if health_raw.get("devices"):
+        from nethealth import cli as hcli
+        hl = []
+        rc = hcli.run(["--env", env_name, "--dry-run", "--config", p["health"]], environ=environ, out=hl.append,
+                      base=base, transport_factory=transport_factory)
+        bad = [l for l in hl if re.search(r"\b(FAIL|REVIEW REQUIRED)\b", l)]
+        if rc != icli.EXIT_OK or bad:
+            problems.append("Network Health preflight failed (rc %d): %s" % (rc, "; ".join(x.strip() for x in bad[:3]) or "see apply-health.sh --dry-run"))
+        lines += hl
+    return lines, problems
+
+
+def approval_token(commit, dec, p, plan_lines):
+    import hashlib
+    import json
+    blob = json.dumps([commit or "", ob.decisions_sha(dec), ob.file_sha(p["interfaces"]), ob.file_sha(p["health"]),
+                       [l.rstrip() for l in plan_lines]], sort_keys=True)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:12]
 
 
 # ------------------------------------------------------------------------------------------------ run
 
 def run(argv, environ=None, out=print, lines=None, base=None, transport_factory=None, netbox_opener=None,
-        now=None, ask=None, secret=None):
+        now=None, ask=None, secret=None, code_check=None):
     """`lines`: iterable of review commands (tests / --commands). None = interactive when stdin is a TTY."""
     environ = dict(os.environ) if environ is None else environ
     base = base or default_base()
     args = parse_args(argv)
+    code_check = code_check or git_code_check
     load_dotenv(base, environ)
     interactive = lines is None and args.commands is None and sys.stdin.isatty()
     ask = ask or (lambda q: input(q))
@@ -118,7 +197,7 @@ def run(argv, environ=None, out=print, lines=None, base=None, transport_factory=
         if not (interactive or args.setup):
             out("ERROR: %s - run ./onboard.sh --env %s --setup" % (exc, args.env))
             return icli.EXIT_USAGE
-        setup(base, env, environ, ask, secret, out)
+        setup(base, env, environ, ask, secret, out, code_check)
         env = envsafety.load_env(base, args.env)
         if args.setup:
             return icli.EXIT_OK
@@ -190,10 +269,23 @@ def run(argv, environ=None, out=print, lines=None, base=None, transport_factory=
         return icli.EXIT_OK
 
     if args.verify or args.deploy:
-        fails, warns = ob.verify(ro, base, args.env, model, dec, iface_raw, health_raw)
+        fails, warns = ob.verify(ro, base, env, model, dec, iface_raw, health_raw)
         if ident.state != "ok":
             fails.append("this Zabbix is not claimed as '%s' yet: ./apply.sh --env %s --init-identity%s" % (
                 args.env, args.env, " --confirm %s" % args.env if env["is_production"] else ""))
+        commit, code_problems = code_check(default_base(), env.get("deploy_pin"))
+        out("code revision: %s" % (commit or "unknown"))
+        if env["is_production"]:
+            fails += code_problems
+            if not env.get("deploy_pin"):
+                fails.append("production deployments must be pinned: set deploy_pin (validated commit or tag) in %s"
+                             % os.path.relpath(env["_path"], base))
+        else:
+            warns += code_problems
+        plan_lines, pre = [], []
+        if not fails:                                     # complete read-only preflight of BOTH components
+            plan_lines, pre = preflight(args.env, p, iface_raw, health_raw, environ, base, transport_factory)
+            fails += pre
         for w in warns:
             out("  WARN  %s" % w)
         for f in fails:
@@ -201,28 +293,45 @@ def run(argv, environ=None, out=print, lines=None, base=None, transport_factory=
         if fails:
             out("DEPLOY GATE: FAIL - nothing was applied")
             return icli.EXIT_FAIL
+        token = approval_token(commit, dec, p, plan_lines)
         out("DEPLOY GATE: PASS (%d warning(s))" % len(warns))
+        out("planned: %s" % "; ".join(l.strip() for l in plan_lines if "PLANNED" in l or "No changes required" in l) or "-")
+        out("APPROVAL TOKEN: %s  (binds code %s, decisions, both inventories and both live plans)" % (
+            token, (commit or "unknown")[:12]))
         if args.verify:
+            out("deploy exactly this: ./onboard.sh --env %s --deploy%s --approve %s" % (
+                args.env, " --confirm %s" % args.env if env["is_production"] else "", token))
             return icli.EXIT_OK
+        if args.approve != token:
+            out("RESULT: --approve %s does not match the current approval token %s - something changed since you "
+                "reviewed it (or no token was given). Run --verify, review, and deploy with the new token. "
+                "Nothing was applied." % (args.approve or "(none)", token))
+            return icli.EXIT_SAFETY
         block = envsafety.production_gate(env, args.confirm)
         if block:
             out("RESULT: %s" % block)
             return icli.EXIT_SAFETY
         conf = ["--confirm", args.confirm] if args.confirm else []
-        rc = icli.EXIT_OK
+        rc, applied = icli.EXIT_OK, []
         if iface_raw.get("hosts"):
             rc = icli.run(["--env", args.env, "--config", p["interfaces"]] + conf,
                           environ=environ, out=out, base=base, transport_factory=transport_factory)
+            if rc == icli.EXIT_OK:
+                applied.append("Interface Alerting")
         else:
             out("interface inventory is empty - Interface Alerting not applied (removing everything needs "
                 "./apply.sh --allow-empty, deliberately not automated)")
-        if rc != icli.EXIT_OK:
-            return rc
-        if (health_raw.get("devices") or {}):
+        if rc == icli.EXIT_OK and (health_raw.get("devices") or {}):
             from nethealth import cli as hcli
-            out("Network Health (v1.0.3, UNTESTED on a real Zabbix) - applying approved devices")
+            out("Network Health - applying approved devices")
             rc = hcli.run(["--env", args.env, "--config", p["health"]] + conf, environ=environ, out=out, base=base,
                           transport_factory=transport_factory)
+            if rc == icli.EXIT_OK:
+                applied.append("Network Health")
+        if rc != icli.EXIT_OK:
+            out("PARTIAL APPLY: completed = %s. This is NOT rolled back automatically. Recovery: fix the cause and "
+                "re-run the same --verify/--deploy (both tools are idempotent), or restore the previous inventories "
+                "from git and deploy them (docs/ONBOARDING.md section 7)." % (", ".join(applied) or "nothing"))
         return rc
 
     # --------------------------------------------------------------------- review session

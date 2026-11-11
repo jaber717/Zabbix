@@ -20,3 +20,8 @@ zabbix:
 #   enabled: true
 #   usergroups: ["<production user group>"]   # users in it need an active e-mail media (all severities)
 #   media_type: "Email"                        # exact name of the production media type; null = all of the group's media
+
+# Production deployments through ./onboard.sh are pinned to a validated code revision (set by ./onboard.sh --setup):
+# deploy_pin: '<full commit SHA>'
+# Network Health (apply-health.sh) is refused in production until its LAB acceptance is recorded here:
+# network_health_lab_acceptance: '<acceptance report / ticket reference>'

@@ -11,7 +11,7 @@ NETOPS-IaC e-mail action (filtered on that tag) delivers them without being chan
 import hashlib
 import json
 
-TOOL_VERSION = "1.0.3"
+TOOL_VERSION = "1.0.4"
 MARKER = "managed_by=network-health-as-code"
 MACRO_PREFIX = "{$NHEALTH."
 GROUP = "Templates/Network devices"
@@ -73,9 +73,10 @@ def _tags(alert, obj, descr, role, threshold="-"):
 def _item(t, name, key, item_type, value_type="UNSIGNED", **kw):
     it = {"uuid": uuid_for("%s:item:%s" % (t, key)), "name": name, "type": item_type, "key": key,
           "value_type": value_type, "tags": [{"tag": "component", "value": "network-health"}]}
+    if value_type not in ("TEXT", "CHAR"):
+        it["trends"] = "0"
     if value_type != "TEXT":
         it.setdefault("history", "7d")
-        it["trends"] = "0"
     it.update(kw)
     return it
 
@@ -98,16 +99,19 @@ def _dep(t, name, key, master, oid, missing=None, value_type="UNSIGNED", units="
     return it
 
 
-def _lld(t, name, key, master, fields, conditions=None):
+def _lld(t, name, key, master, fields, conditions=None, keep_lost=False):
     params = []
     for macro_name, oid in fields:
         params += [macro_name, oid, "0"]
     rule = {"uuid": uuid_for("%s:lld:%s" % (t, key)), "name": name, "type": "DEPENDENT", "key": key,
             "master_item": {"key": master},
             "preprocessing": [{"type": "SNMP_WALK_TO_JSON", "parameters": params}],
-            # a neighbor that vanishes keeps its (enabled) item for 7 days, so "gone" is alerted, not deleted
-            "lifetime_type": "DELETE_AFTER", "lifetime": "7d", "enabled_lifetime_type": "DISABLE_NEVER",
+            # keep_lost: a neighbor/peer that vanishes keeps its enabled item and trigger forever (its problem stays
+            # open until it returns or the operator excludes it); deleting it would close the problem silently
+            "lifetime_type": "DELETE_NEVER" if keep_lost else "DELETE_AFTER", "enabled_lifetime_type": "DISABLE_NEVER",
             "item_prototypes": [], "trigger_prototypes": []}
+    if not keep_lost:
+        rule["lifetime"] = "7d"
     if conditions:
         rule["filter"] = {"evaltype": "AND", "conditions": [
             {"macro": m, "value": v, "operator": "MATCHES_REGEX", "formulaid": chr(65 + i)}
@@ -193,7 +197,52 @@ def _reachability():
     return t, items, [], trig, macros, vmaps, "Device Unreachable (ICMP) and SNMP Data Stale. Vendor-neutral."
 
 
+def _expected_items(t, feat, master, id_oid, state_oid, ok_state):
+    """Dependent items comparing the live table with {$NHEALTH.<F>.EXPECTED}: count and list of expected
+    neighbors/peers that are missing from the table or not in the established state. -1 = no list configured."""
+    m = "{$NHEALTH.%s.EXPECTED}" % feat.upper()
+    js = ("var exp = '%s'.split(/[\\s,;]+/).filter(function (x) { return x.length > 0; });\n"
+          "if (exp.length === 0) { return %s; }\n"
+          "var ok = {};\n"
+          "JSON.parse(value).forEach(function (r) { if (String(r['{#ST}']) === '%s') { ok[String(r['{#ID}'])] = true; } });\n"
+          "var miss = exp.filter(function (e) { return !ok[e]; });\n"
+          "return %s;")
+    walk = {"type": "SNMP_WALK_TO_JSON", "parameters": ["{#ID}", id_oid, "0", "{#ST}", state_oid, "0"]}
+    count = _item(t, "%s: expected not established (count, -1 = no list)" % feat.upper(),
+                  "nhealth.%s.expected.missing" % feat, "DEPENDENT", master_item={"key": master},
+                  preprocessing=[walk, {"type": "JAVASCRIPT", "parameters": [js % (m, "-1", ok_state, "miss.length")]}])
+    names = _item(t, "%s: expected not established (list)" % feat.upper(), "nhealth.%s.expected.names" % feat,
+                  "DEPENDENT", "CHAR", master_item={"key": master},
+                  preprocessing=[walk, {"type": "JAVASCRIPT", "parameters": [js % (m, "'none configured'", ok_state,
+                                                                                    "miss.length ? miss.join(', ') : 'none'")]}])
+    return [count, names]
+
+
+def _blind_item(t, feat, master, oid, value_type):
+    """A stored scalar from the same walk. nodata() on it = the router stopped answering this MIB."""
+    return _item(t, "%s: SNMP data (scalar %s)" % (feat.upper(), oid), "nhealth.%s.alive" % feat, "DEPENDENT",
+                 value_type, master_item={"key": master}, preprocessing=[{"type": "SNMP_WALK_VALUE", "parameters": [oid, "0"]}])
+
+
+def _blind_and_expected_triggers(t, feat, label, sev):
+    alive, miss, names = (_ref(t, "nhealth.%s.alive" % feat), _ref(t, "nhealth.%s.expected.missing" % feat),
+                          _ref(t, "nhealth.%s.expected.names" % feat))
+    out = _triggers(t, feat + "_blind", "{HOST.NAME} %s monitoring data LOST (SNMP blind)" % label, sev,
+                    "nodata(%s,{$NHEALTH.NBR.NODATA})=1" % alive, None, "",
+                    _tags("%s_blind" % feat, "%s MIB" % label, "no %s data from the device" % label, label),
+                    "No %s MIB data for NBR.NODATA: device unreachable, SNMP failing, or the MIB/context is not "
+                    "exposed. While this is open, neighbor/peer alerts cannot fire." % label)
+    out += _triggers(t, feat + "_expected", "{HOST.NAME} expected %s not established: {ITEM.LASTVALUE2}" % (
+                     "OSPF neighbor(s)" if feat == "ospf" else "BGP peer(s)"), sev,
+                     "last(%s)>0 and length(last(%s))>0" % (miss, names), "last(%s)<1" % miss, "missing {ITEM.LASTVALUE1}",
+                     _tags("%s_expected" % feat, "%s expected list" % label, "{ITEM.LASTVALUE2}", label),
+                     "An expected %s (from the inventory) is missing from the table or not established - also catches "
+                     "neighbors that never came up, which the per-neighbor trigger cannot." % label)
+    return out
+
+
 NBR_MACROS = [
+    macro("{$NHEALTH.NBR.NODATA}", "5m", "No MIB data for this long = monitoring blind."),
     macro("{$NHEALTH.NBR.DOWN.TIME}", "2m", "Neighbor/peer must stay not-established for this long."),
     macro("{$NHEALTH.NBR.LOOKBACK}", "24h", "Alert only if the neighbor/peer was established within this period."),
 ]
@@ -204,8 +253,10 @@ def _ospf():
     # ospfRouterId (scalar) keeps the walk non-empty when the neighbor table is empty
     items = [_walk(t, "OSPF: neighbor table walk", w, ["1.3.6.1.2.1.14.1.1", "1.3.6.1.2.1.14.10.1.1",
                                                        "1.3.6.1.2.1.14.10.1.3", "1.3.6.1.2.1.14.10.1.6"])]
+    items.append(_blind_item(t, "ospf", w, "1.3.6.1.2.1.14.1.1.0", "CHAR"))
+    items += _expected_items(t, "ospf", w, "1.3.6.1.2.1.14.10.1.3", "1.3.6.1.2.1.14.10.1.6", "8")
     rule = _lld(t, "OSPF neighbor discovery", "nhealth.ospf.discovery", w,
-                [("{#NH_NBR_IP}", "1.3.6.1.2.1.14.10.1.1"), ("{#NH_NBR_RTRID}", "1.3.6.1.2.1.14.10.1.3")])
+                [("{#NH_NBR_IP}", "1.3.6.1.2.1.14.10.1.1"), ("{#NH_NBR_RTRID}", "1.3.6.1.2.1.14.10.1.3")], keep_lost=True)
     key = "nhealth.ospf.state[{#SNMPINDEX}]"
     rule["item_prototypes"].append(_dep(t, "OSPF neighbor {#NH_NBR_RTRID} ({#NH_NBR_IP}): state", key, w,
                                         "1.3.6.1.2.1.14.10.1.6.{#SNMPINDEX}", missing="0",
@@ -220,22 +271,26 @@ def _ospf():
         "Adjacency was Full within NBR.LOOKBACK and has not been Full for NBR.DOWN.TIME (includes the neighbor "
         "disappearing from ospfNbrTable = state 0). Never-Full neighbors (e.g. DROTHER 2-Way) never alert. "
         "Recovers when the state is Full again.")
+    trig = _blind_and_expected_triggers(t, "ospf", "OSPF", "{$NHEALTH.OSPF.SEV}")
     macros = COMMON_MACROS + NBR_MACROS + [
+        macro("{$NHEALTH.OSPF.EXPECTED}", "", "Expected neighbor router-ids, comma separated (from the inventory)."),
         macro("{$NHEALTH.OSPF.SEV}", "4", "OSPF Neighbor Down severity 2..5."),
         macro("{$NHEALTH.OSPF.ALERT}", "1", "Per-neighbor switch, context = neighbor router-id. 0 = do not alert."),
     ]
     vmaps = [("NHEALTH OSPF neighbor state", [("0", "Not in neighbor table"), ("1", "Down"), ("2", "Attempt"),
                                               ("3", "Init"), ("4", "Two-way"), ("5", "ExStart"),
                                               ("6", "Exchange"), ("7", "Loading"), ("8", "Full")])]
-    return t, items, [rule], [], macros, vmaps, "OSPFv2 neighbor Down/Recovery from OSPF-MIB (RFC 1850/4750) ospfNbrTable."
+    return t, items, [rule], trig, macros, vmaps, "OSPFv2 neighbor Down/Recovery from OSPF-MIB (RFC 1850/4750) ospfNbrTable."
 
 
 def _bgp():
     t, w = BGP, "nhealth.bgp.walk"
     items = [_walk(t, "BGP: peer table walk", w, ["1.3.6.1.2.1.15.2", "1.3.6.1.2.1.15.3.1.2", "1.3.6.1.2.1.15.3.1.3",
                                                   "1.3.6.1.2.1.15.3.1.7", "1.3.6.1.2.1.15.3.1.9"])]
+    items.append(_blind_item(t, "bgp", w, "1.3.6.1.2.1.15.2.0", "UNSIGNED"))
+    items += _expected_items(t, "bgp", w, "1.3.6.1.2.1.15.3.1.7", "1.3.6.1.2.1.15.3.1.2", "6")
     rule = _lld(t, "BGP peer discovery", "nhealth.bgp.discovery", w,
-                [("{#NH_PEER}", "1.3.6.1.2.1.15.3.1.7"), ("{#NH_PEER_AS}", "1.3.6.1.2.1.15.3.1.9")])
+                [("{#NH_PEER}", "1.3.6.1.2.1.15.3.1.7"), ("{#NH_PEER_AS}", "1.3.6.1.2.1.15.3.1.9")], keep_lost=True)
     sk, ak = "nhealth.bgp.state[{#SNMPINDEX}]", "nhealth.bgp.admin[{#SNMPINDEX}]"
     rule["item_prototypes"] += [
         _dep(t, "BGP peer {#NH_PEER} AS{#NH_PEER_AS}: state", sk, w, "1.3.6.1.2.1.15.3.1.2.{#SNMPINDEX}",
@@ -252,7 +307,9 @@ def _bgp():
         _tags("bgp_peer", "BGP {#NH_PEER}", "AS{#NH_PEER_AS}", "BGP"),
         "Session was Established within NBR.LOOKBACK and has not been Established for NBR.DOWN.TIME. "
         "Administratively stopped peers (bgpPeerAdminStatus=stop) do not alert. Recovers on Established.")
+    trig = _blind_and_expected_triggers(t, "bgp", "BGP", "{$NHEALTH.BGP.SEV}")
     macros = COMMON_MACROS + NBR_MACROS + [
+        macro("{$NHEALTH.BGP.EXPECTED}", "", "Expected peer addresses, comma separated (from the inventory)."),
         macro("{$NHEALTH.BGP.SEV}", "4", "BGP Peer Down severity 2..5."),
         macro("{$NHEALTH.BGP.ALERT}", "1", "Per-peer switch, context = peer address. 0 = do not alert."),
     ]
@@ -260,7 +317,7 @@ def _bgp():
                                          ("3", "Active"), ("4", "OpenSent"), ("5", "OpenConfirm"),
                                          ("6", "Established")]),
              ("NHEALTH BGP admin status", [("0", "Not in peer table"), ("1", "Stop"), ("2", "Start")])]
-    return t, items, [rule], [], macros, vmaps, "BGP-4 peer Down/Recovery from BGP4-MIB (RFC 4273) bgpPeerTable, IPv4 peers."
+    return t, items, [rule], trig, macros, vmaps, "BGP-4 peer Down/Recovery from BGP4-MIB (RFC 4273) bgpPeerTable, IPv4 peers."
 
 
 def _cpu_ios():

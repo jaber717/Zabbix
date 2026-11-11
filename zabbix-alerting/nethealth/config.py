@@ -4,6 +4,8 @@ Independent of config/interfaces.<env>.yaml. A feature is ON for a device only w
 under that device (`ospf:`, `ospf: {}` or `ospf: true`); absent or `false` means OFF. An empty file
 (`devices: {}`) means Network Health is disabled.
 """
+import re
+
 import yaml
 
 from netalert.config import SEVERITIES, ConfigError, UniqueKeyLoader, parse_interval
@@ -13,8 +15,8 @@ FEATURES = {
     "snmp_stale": {"severity": "high", "timeout": "5m"},
     "cpu": {"severity": "high", "threshold": 90, "recovery": 80, "window": "5m"},
     "memory": {"severity": "high", "threshold": 90, "recovery": 85, "window": "5m"},
-    "ospf": {"severity": "high", "exclude": []},
-    "bgp": {"severity": "high", "exclude": []},
+    "ospf": {"severity": "high", "exclude": [], "expected": []},
+    "bgp": {"severity": "high", "exclude": [], "expected": []},
 }
 PLATFORMS = ("cisco-ios", "cisco-nxos", "huawei-vrp", "host-resources")
 DEVICE_KEYS = {"site", "platform"} | set(FEATURES)
@@ -63,6 +65,21 @@ def _validate(dev, feat, s, problems):
         s["exclude"] = ex
 
 
+IPV4 = re.compile(r"^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$")
+
+
+def _expected(dev, feat, s, problems):
+    """Expected OSPF neighbor router-ids / BGP peer addresses (IPv4). Detects neighbors that are missing
+    or never reached Full/Established, which per-neighbor triggers alone cannot."""
+    ex = s.get("expected") or []
+    if not isinstance(ex, list) or any(not isinstance(x, str) or not IPV4.match(x) for x in ex):
+        problems.append((dev, feat, "expected must be a list of IPv4 addresses (OSPF router-ids / BGP peers)"))
+        ex = []
+    if len(",".join(ex)) > 2000:
+        problems.append((dev, feat, "expected list too long for one Zabbix macro (2048 characters)"))
+    s["expected"] = sorted(set(ex))
+
+
 def parse(data):
     problems = []
     if not isinstance(data, dict):
@@ -104,6 +121,8 @@ def parse(data):
             _unknown(v, FEATURES[f], f, name, f, problems)
             s = dict(defaults[f], **v)
             _validate(name, f, s, problems)
+            if f in ("ospf", "bgp"):
+                _expected(name, f, s, problems)
             feats[f] = s
         if not feats:
             problems.append((name, "-", "device selects no feature (remove it, or add one of: %s)" %

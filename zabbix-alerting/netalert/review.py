@@ -15,8 +15,11 @@ Ports view (default)                      Device view (h)            Ranges: 3  
   v N            details: evidence, triggers, freshness, pairing, notification path
   a N..          approve (refused while a blocker exists)      x N..  exclude / remove      u N..  undo decision
   r ROLE N..     role ISP|WAN|DCI|P2P      s SEV N..  severity warning|average|high|disaster      d N text  description
-  p N M          pair two ports you confirm are connected     p N  accept the suggested peer     p N -  unpair
+  p N M          pair two ports you confirm are connected     p N  accept the suggested peer
+  p N -          confirm the port is single-ended (no monitored peer); releases any previous pairing
   h              switch ports <-> devices (Network Health)     f N +ospf -cpu ...  device features     pl N PLATFORM
+  ev N ospf|bgp REFERENCE      record MIB evidence (e.g. "snmpwalk 2026-11-12 ticket CHG123")
+  ex N ospf|bgp seen|IP,IP,..  expected neighbors (router-ids) / peers; 'seen' = those Zabbix currently sees up
   c              coverage summary          w  write both inventories + validate + dry-run          q  quit
 """
 SPEED = ((10 ** 12, "T"), (10 ** 9, "G"), (10 ** 6, "M"), (10 ** 3, "K"))
@@ -102,7 +105,7 @@ class Session(object):
             for i, r in enumerate(sel, 1):
                 role = (r.role or "-") + ("" if r.decision.get("role") or r.in_yaml or not r.role else "?")
                 note = ("BLOCKED: " + r.blockers[0]) if r.blockers else (
-                    ("REVIEW: " + r.review[0]) if r.review else (
+                    ("ISSUE: " + r.issues[0]) if r.issues else ("REVIEW: " + r.review[0]) if r.review else (
                         ("pair: %s (%s)" % (r.pair, r.pair_source or "operator")) if r.pair else (
                             ("suggested peer: %s" % r.pair_hints[0]) if r.pair_hints else r.role_reason)))
                 p = r.p or {}
@@ -143,7 +146,7 @@ class Session(object):
                 for k in ("link", "util", "notify"):
                     if ev.get(k):
                         self.out("     %s: %s" % (k, "; ".join(ev[k])))
-                for b in r.blockers + r.review:
+                for b in r.blockers + r.issues + r.review:
                     self.out("   ! %s" % b)
             else:
                 self.out("   status %s | platform %s%s" % (r.status, r.platform or "unknown", (
@@ -151,6 +154,10 @@ class Session(object):
                 for f in ob.HEALTH_FEATURES:
                     self.out("   %-18s %s%s" % (f, "ON " if f in r.features else "off",
                                                " - " + (r.unsupported.get(f) or r.support.get(f, ""))))
+                for f in ("ospf", "bgp"):
+                    if f in r.features or r.seen_ok.get(f):
+                        self.out("   %s expected: %s | seen up now: %s" % (f, ", ".join(r.expected[f]) or "NONE",
+                                                                     ", ".join(r.seen_ok[f]) or "-"))
                 for b in r.blockers:
                     self.out("   ! %s" % b)
 
@@ -224,11 +231,8 @@ class Session(object):
             raise ValueError("pair takes single rows: p N M")
         a = a[0]
         if len(args) > 1 and args[1] == "-":
-            other = self.model["by_id"].get(a.pair) if a.pair else None
-            ob.set_pair(self.c["dec"], a, None, "")
-            if other is not None:
-                ob.set_pair(self.c["dec"], other, None, "")
-            self.out("  unpaired %s" % a.id)
+            ob.set_pair(self.c["dec"], a, None, "single-ended")
+            self.out("  %s confirmed single-ended (no link_id); any previous peer was released and must be resolved" % a.id)
         else:
             if len(args) > 1:
                 b = self.pick(args[1])[0]
@@ -261,6 +265,32 @@ class Session(object):
                     feats.remove(f)
             self.c["dec"]["devices"][d.id] = dict(self.c["dec"]["devices"].get(d.id) or {}, features=feats)
             self.out("  %s features: %s" % (d.id, ", ".join(feats) or "none"))
+        self.save()
+
+    def evidence(self, args):
+        feat, ref = args[1], " ".join(args[2:]).strip()
+        if feat not in ("ospf", "bgp") or not ref:
+            raise ValueError("ev N ospf|bgp REFERENCE")
+        for d in self.pick(args[0]):
+            rec = dict(self.c["dec"]["devices"].get(d.id) or {})
+            rec["evidence"] = dict(rec.get("evidence") or {}, **{feat: ref})
+            self.c["dec"]["devices"][d.id] = rec
+            self.out("  %s %s evidence recorded: %s" % (d.id, feat, ref))
+        self.save()
+
+    def expected(self, args):
+        from nethealth.config import IPV4
+        feat, spec = args[1], (args[2] if len(args) > 2 else "")
+        if feat not in ("ospf", "bgp") or not spec:
+            raise ValueError("ex N ospf|bgp seen|IP,IP,...")
+        for d in self.pick(args[0]):
+            vals = list(d.seen_ok.get(feat, [])) if spec == "seen" else [x for x in re.split(r"[,\s]+", spec) if x]
+            if not vals or any(not IPV4.match(v) for v in vals):
+                raise ValueError("%s: need IPv4 addresses%s" % (d.id, " (nothing seen up yet)" if spec == "seen" else ""))
+            rec = dict(self.c["dec"]["devices"].get(d.id) or {})
+            rec["expected"] = dict(rec.get("expected") or {}, **{feat: sorted(set(vals))})
+            self.c["dec"]["devices"][d.id] = rec
+            self.out("  %s %s expected: %s" % (d.id, feat, ", ".join(sorted(set(vals)))))
         self.save()
 
     def platform(self, args):
@@ -308,6 +338,10 @@ class Session(object):
                 self.features(args)
             elif cmd == "pl" and len(args) == 2 and self.view == "devices":
                 self.platform(args)
+            elif cmd == "ev" and len(args) >= 3 and self.view == "devices":
+                self.evidence(args)
+            elif cmd == "ex" and len(args) >= 3 and self.view == "devices":
+                self.expected(args)
             elif cmd == "c":
                 self.c["summary"](self.model)
             elif cmd == "w":

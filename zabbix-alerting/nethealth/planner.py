@@ -36,6 +36,8 @@ def host_macros(dev):
     for feat, p in (("ospf", "OSPF"), ("bgp", "BGP")):
         if feat in f:
             m["{$NHEALTH.%s.SEV}" % p] = sev[f[feat]["severity"]]
+            if f[feat].get("expected"):
+                m["{$NHEALTH.%s.EXPECTED}" % p] = ",".join(f[feat]["expected"])
             for x in f[feat]["exclude"]:
                 m['{$NHEALTH.%s.ALERT:"%s"}' % (p, x)] = "0"
     return m

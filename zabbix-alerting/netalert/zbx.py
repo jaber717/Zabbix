@@ -36,6 +36,14 @@ def is_write_method(method):
     return not (method.endswith(".get") or method in READ_ONLY_METHODS)
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Never follow redirects: urllib would re-send the Authorization header to whatever host the Location
+    names. A 3xx then surfaces as an HTTP error and the call fails closed."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 class HttpTransport(object):
     def __init__(self, url, token, verify_tls=True, timeout=30):
         base = url.rstrip("/")
@@ -49,6 +57,10 @@ class HttpTransport(object):
             self._ctx = ssl.create_default_context()
             self._ctx.check_hostname = False
             self._ctx.verify_mode = ssl.CERT_NONE
+        handlers = [NoRedirect()]
+        if self._ctx is not None:
+            handlers.append(urllib.request.HTTPSHandler(context=self._ctx))
+        self._opener = urllib.request.build_opener(*handlers)
 
     def send(self, payload, authenticated=True):
         headers = {"Content-Type": "application/json-rpc"}
@@ -56,9 +68,12 @@ class HttpTransport(object):
             headers["Authorization"] = "Bearer " + self._token
         req = urllib.request.Request(self.endpoint, json.dumps(payload).encode("utf-8"), headers)
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout, context=self._ctx) as resp:
+            with self._opener.open(req, timeout=self.timeout) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
+            if 300 <= exc.code < 400:
+                raise ApiUnavailable("HTTP %s redirect from %s refused (the token is never sent to another URL); "
+                                     "use the final frontend URL" % (exc.code, self.endpoint))
             raise ApiUnavailable("HTTP %s from %s" % (exc.code, self.endpoint))
         except (urllib.error.URLError, OSError, ValueError) as exc:
             raise ApiUnavailable("cannot reach %s (%s)" % (self.endpoint, exc))
